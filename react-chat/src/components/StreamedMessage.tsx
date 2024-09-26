@@ -15,11 +15,11 @@ export const StreamedMessage = () => {
   const { message } = useMessageContext();
   const { channel } = useChannelStateContext();
 
-  // 1.1 flag to indicate the ui to render a streamed message, default to false
+  // 1.1 flag to indicate the ui to render a streamed message, defaults to false
   // comes from the message object and is set in step 1.1 in OpenAI.ts
   const isGptStreamed = !!message.isGptStreamed;
 
-  const [text, setText] = useState(isGptStreamed ? "" : message.text || "");
+  const [text, setText] = useState<string>(isGptStreamed ? "" : message.text || "");
 
   useEffect(() => {
     if (!channel || !isGptStreamed) return;
@@ -36,7 +36,7 @@ export const StreamedMessage = () => {
 
   // Handles the streaming animation
   const pValue = useRef(isGptStreamed ? 0 : text.length);
-  const [streamedText, setStreamedText] = useState(
+  const [streamedText, setStreamedText] = useState<string>(
     isGptStreamed ? "..." : text,
   );
 
@@ -58,23 +58,10 @@ export const StreamedMessage = () => {
       clearInterval(interval);
     };
   }, [text]);
-  const getRehypePlugins: RenderTextPluginConfigurator = (plugins) => {
-    return [remarkRehype, rehypeHighlight, ...plugins];
-  };
-  const getRemarkPlugins: RenderTextPluginConfigurator = (plugins) => {
-    return [...plugins];
-  };
 
   return (
     <MessageSimple
       message={{ ...message!, text: streamedText }}
-      renderText={(text, mentionedUsers) =>
-        renderText(text, mentionedUsers, {
-          getRehypePlugins,
-          getRemarkPlugins,
-          allowedTagNames: [...defaultAllowedTagNames, "span"],
-        })
-      }
     />
   );
 };

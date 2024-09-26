@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "start:gemini": "node index.js gemini",
     "start:openai": "node index.js openai",
     "test": "echo \"Error: no test specified\" && exit 1"

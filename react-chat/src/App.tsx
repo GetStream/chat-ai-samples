@@ -1,24 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-
-import type { Channel as StreamChannel, User } from "stream-chat";
+import env from "react-dotenv";
 import {
   Channel,
   ChannelHeader,
   Chat,
   MessageInput,
   MessageList,
-  Thread,
+  Thread, useCreateChatClient,
   Window,
 } from "stream-chat-react";
-import { useCreateChatClient } from "./hooks/useCreateChatClient";
 import { StreamedMessage } from "./components/StreamedMessage";
+import {renderText} from "./renderText";
+import type { Channel as StreamChannel, User } from "stream-chat";
 import "stream-chat-react/dist/css/v2/index.css";
-import env from "react-dotenv";
 
 const apiKey = env.STREAM_API_KEY!;
 const userId = env.USER_ID!;
 const userName = env.USER_NAME!;
 const token = env.USER_TOKEN!;
+const aiUserId = env.AI_USER_ID!;
 
 const App = () => {
   const [channel, setChannel] = useState<StreamChannel>();
@@ -42,7 +42,7 @@ const App = () => {
     if (!client) return;
 
     const newChannel = client.channel("messaging", {
-      members: [user.id, "chat-ai-assistant"],
+      members: [user.id, aiUserId],
     });
     setChannel(newChannel);
   }, [client, user.id]);
@@ -55,7 +55,7 @@ const App = () => {
         <Channel channel={channel}>
           <Window>
             <ChannelHeader />
-            <MessageList Message={StreamedMessage} />
+            <MessageList Message={StreamedMessage} renderText={renderText} />
             <MessageInput />
           </Window>
           <Thread />

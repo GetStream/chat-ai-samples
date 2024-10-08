@@ -2,10 +2,12 @@ const { startStreaming: startGeminiAIStreaming } = require("./geminiAI");
 const { startStreaming: startOpenAIStreaming } = require("./openAI");
 const { startStreaming: startMockStreaming } = require("./mockAI");
 
+const aiuserid = process.env.AI_USER_ID;
+
 async function startAiBotStreaming(client, channel, prompt, provider) {
   // 1. create an empty message and mark it with 'isGptStreamed' custom property
   const message = await channel.sendMessage({
-    user_id: "chat-ai-assistant",
+    user_id: aiuserid,
     type: "regular",
     // 1.1 flag to indicate the ui to render a streamed message
     isGptStreamed: true,
@@ -32,7 +34,7 @@ async function startAiBotStreaming(client, channel, prompt, provider) {
     await channel.sendEvent({
       // @ts-expect-error - non-standard event, StreamedMessage subscribes to it
       type: "gpt_chunk",
-      user_id: "chat-ai-assistant",
+      user_id: aiuserid,
       message_id: message.message.id,
       chunk,
     });
@@ -51,7 +53,7 @@ async function startAiBotStreaming(client, channel, prompt, provider) {
       // 3.2 store the full text in the message
       text,
     },
-    "chat-ai-assistant",
+    aiuserid,
   );
 }
 

@@ -749,10 +749,10 @@ statuses@2.0.1:
   resolved "https://registry.yarnpkg.com/statuses/-/statuses-2.0.1.tgz#55cb000ccf1d48728bd23c685a063998cf1a1b63"
   integrity sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==
 
-stream-chat@^8.19.0:
-  version "8.19.0"
-  resolved "https://registry.yarnpkg.com/stream-chat/-/stream-chat-8.19.0.tgz#ea674f26e5c5115bb4ea46eff78545e1dc40bb6f"
-  integrity sha512-7PkTNN+2+RRqE/lVcQo9p4/IxU398RNbET7+v0a8FRbqMcfuVlKKzJPnp23MiNKyus+25OZl64ZVNB4e4iwgPg==
+stream-chat@^8.40.9:
+  version "8.40.9"
+  resolved "https://registry.yarnpkg.com/stream-chat/-/stream-chat-8.40.9.tgz#82e4f450150821ba73aa271f09a5b58c8f6bab53"
+  integrity sha512-mP0b5mtTU5T/M+IoSRzOT9utGwPFw5TkoySEjekY8LcU/PemLFDcU3BtuWV2L/+/v5NTdI3mzsiW7sxMeeo1QA==
   dependencies:
     "@babel/runtime" "^7.16.3"
     "@types/jsonwebtoken" "~9.0.0"
@@ -762,7 +762,7 @@ stream-chat@^8.19.0:
     form-data "^4.0.0"
     isomorphic-ws "^4.0.1"
     jsonwebtoken "~9.0.0"
-    ws "^7.4.4"
+    ws "^7.5.10"
 
 toidentifier@1.0.1:
   version "1.0.1"
@@ -825,10 +825,10 @@ whatwg-url@^5.0.0:
     tr46 "~0.0.3"
     webidl-conversions "^3.0.0"
 
-ws@^7.4.4:
-  version "7.5.9"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-7.5.9.tgz#54fa7db29f4c7cec68b1ddd3a89de099942bb591"
-  integrity sha512-F+P9Jil7UiSKSkppIiD94dN07AwvFixvLIj1Og1Rl9GGMuNipJnV9JzjD6XuqmAeiswGvUmNLjr5cFuXwNS77Q==
+ws@^7.5.10:
+  version "7.5.10"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-7.5.10.tgz#58b5c20dc281633f6c19113f39b349bd8bd558d9"
+  integrity sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==
 
 yallist@^4.0.0:
   version "4.0.0"

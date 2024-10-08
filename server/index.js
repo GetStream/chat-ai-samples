@@ -10,11 +10,12 @@ app.use(express.raw({ type: "application/json" })); // <-- parses all bodies as 
 
 const apiKey = process.env.STREAM_API_KEY;
 const apiSecret = process.env.STREAM_API_SECRET;
+const aiUserID = process.env.AI_USER_ID;
 
 const reqHandler = async (req, res) => {
   const client = StreamChat.getInstance(apiKey, apiSecret);
 
-  // parse the request budy
+  // parse the request body
   const rawBody = req.body;
   const isValid = client.verifyWebhook(rawBody, req.headers["x-signature"]);
 
@@ -31,7 +32,7 @@ const reqHandler = async (req, res) => {
   if (
     event.type !== "message.new" ||
     !event.message ||
-    event.message.user.id === "chat-ai-assistant" ||
+    event.message.user.id === aiUserID ||
     !event.channel_type ||
     !event.channel_id
   ) {

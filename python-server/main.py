@@ -1,15 +1,20 @@
 import os
 from flask import Flask, request, jsonify, stream_with_context, Response
 from flask_cors import CORS
-from openai import OpenAI
 from stream_chat import StreamChat
 from dotenv import load_dotenv
+
+from openai import OpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 STREAM_API_KEY = os.getenv("STREAM_API_KEY")
 STREAM_API_SECRET = os.getenv("STREAM_API_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+print("GEMINI_API_KEY", GEMINI_API_KEY)
 
 app = Flask(__name__)
 
@@ -25,13 +30,13 @@ CORS(
     },
 )
 
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 stream_chat = StreamChat(api_key=STREAM_API_KEY, api_secret=STREAM_API_SECRET)
 
 
 def generate_gpt_response(message):
     # Stream the response from OpenAI's API
+    client = OpenAI(api_key=OPENAI_API_KEY)
     gpt_response = client.chat.completions.create(
         # gpt_response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
@@ -50,12 +55,28 @@ def generate_gpt_response(message):
             yield chunk.choices[0].delta.content
 
 
+def generate_gemini_response(message):
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    gemini_response = model.generate_content(message, stream=True)
+    for chunk in gemini_response:
+        yield chunk.text
+
+
+def generate_response(message, ai_provider):
+    if ai_provider == "openai":
+        return generate_gpt_response(message)
+    elif ai_provider == "gemini":
+        return generate_gemini_response(message)
+
+
 @app.route("/", methods=["POST"])
 def respond():
     data = request.json
     channel_type = data.get("channel_type")
     channel_id = data.get("channel_id")
     message_text = data.get("message")
+    ai_provider = data.get("ai_provider", "openai")
 
     if not message_text or not channel_type or not channel_id:
         return (
@@ -77,7 +98,13 @@ def respond():
 
     def generate():
         nonlocal response_text
-        for content in generate_gpt_response(message_text):
+        response = generate_response(ai_provider=ai_provider, message=message_text)
+
+        if response == None:
+            print("Incorrect AI provider set.")
+            return
+
+        for content in response:
             stream_channel.send_event(
                 event={
                     "type": "gpt_chunk",

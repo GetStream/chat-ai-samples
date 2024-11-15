@@ -35,6 +35,8 @@ const App = () => {
             channel_type: 'messaging',
             channel_id: channel?.id,
             message: messageBody,
+            ai_provider: 'openai',
+            // ai_provider: 'gemini',
           }),
         });
       }

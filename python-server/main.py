@@ -14,7 +14,16 @@ STREAM_API_SECRET = os.getenv("STREAM_API_SECRET")
 app = Flask(__name__)
 
 # Allow requests from the frontend (change to the port your frontend is running on)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(
+    app,
+    resources={
+        r"/*": {
+            "origins": ["http://localhost:8080"],  # Allow only your frontend origin
+            "methods": ["POST"],  # Allow only POST requests
+            "allow_headers": ["Content-Type"],  # Allow Content-Type header
+        }
+    },
+)
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -46,7 +55,7 @@ def respond():
     data = request.json
     channel_type = data.get("channel_type")
     channel_id = data.get("channel_id")
-    message_text = data.get("message", {}).get("text")
+    message_text = data.get("message")
 
     if not message_text or not channel_type or not channel_id:
         return (
@@ -57,10 +66,10 @@ def respond():
     stream_channel = stream_chat.channel(channel_type, channel_id)
     message = stream_channel.send_message(
         {
-            "user_id": "chat-ai-assistant",
             "text": "Starting GPT response...",
             "isGptStreamed": True,
-        }
+        },
+        user_id="chat-ai-assistant",
     )
 
     message_id = message["message"]["id"]
@@ -70,13 +79,17 @@ def respond():
         nonlocal response_text
         for content in generate_gpt_response(message_text):
             stream_channel.send_event(
-                event={"type": "gpt_chunk", "text": content, "message_id": message_id},
+                event={
+                    "type": "gpt_chunk",
+                    "text": str(content),
+                    "message_id": message_id,
+                },
                 user_id="chat-ai-assistant",
             )
             response_text += content
             yield content
 
-        stream_channel.update_message(
+        stream_chat.update_message(
             {
                 "id": message_id,
                 "text": response_text,

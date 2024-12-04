@@ -10,7 +10,8 @@ import Foundation
 class StreamAIChatService {
     static let shared = StreamAIChatService()
     
-    private let baseURL = "http://localhost:3000"
+    private let baseURL = "https://stream-nodejs-ai-e5d85ed5ce6f.herokuapp.com"
+
     private let jsonEncoder = JSONEncoder()
     
     private let urlSession = URLSession.shared

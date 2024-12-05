@@ -69,7 +69,7 @@ flutter run
 
 - `lib/main.dart`: Entry point of the application.
 - `lib/src/chat_ai_assistant_service.dart`: Service for starting and stopping the AI assistant.
-- `lib/src/chat_ai_assistant_channels_page.dart`: UI for displaying the list of chat channels.
+- `lib/src/chat_ai_assistant_channel_list_page.dart`: UI for displaying the list of chat channels.
 - `lib/src/chat_ai_assistant_channel_page.dart`: UI for the chat interface within a channel.
 - `lib/src/chat_ai_assistant_typing_indicator_handler.dart`: Handles the AI typing indicator state.
 

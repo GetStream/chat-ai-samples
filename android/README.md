@@ -9,7 +9,6 @@ This repository demonstrates the following key features:
 - Real-time display of AI-generated assistant messages accompanied by dynamic loading indicators.
 - Complete implementation of UI elements using **Jetpack Compose** for a modern and declarative approach.
 - Fully supports markdown formats, such as code highlighting, tables, LaTeX formulas.
-- Utilization of Android Architecture Components powered by Jetpack libraries such as **Hilt** for dependency injection.
 - Efficient execution of business logic using **Kotlin Coroutines** for asynchronous programming.
 
 ## 📷 Previews

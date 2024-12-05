@@ -12,6 +12,7 @@ import {
   MessageList,
   MessageInput,
   AITypingIndicatorView,
+  MessageType,
 } from 'stream-chat-react-native';
 import { StreamChat, ChannelSort, Channel as ChannelType } from 'stream-chat';
 import { chatUserId, chatApiKey } from './chatConfig';
@@ -139,7 +140,10 @@ export default () => {
       <AppProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <OverlayProvider value={{ style: chatTheme }}>
-            <Chat client={chatInstance}>
+            <Chat
+              client={chatInstance}
+              isMessageAIGenerated={(message: MessageType) => !!message.ai_generated}
+            >
               <NavigationContainer>
                 <NavigationStack />
               </NavigationContainer>

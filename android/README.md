@@ -8,7 +8,7 @@ This repository demonstrates the following key features:
 - Robust event handling to manage status changes, including activity indicators from the Stream SDK.
 - Real-time display of AI-generated assistant messages accompanied by dynamic loading indicators.
 - Complete implementation of UI elements using **Jetpack Compose** for a modern and declarative approach.
-- Fully suports markdown formats, such as code hightlightings, tables, LaTeX formulas.
+- Fully supports markdown formats, such as code highlighting, tables, LaTeX formulas.
 - Utilization of Android Architecture Components powered by Jetpack libraries such as **Hilt** for dependency injection.
 - Efficient execution of business logic using **Kotlin Coroutines** for asynchronous programming.
 

@@ -17,6 +17,7 @@ pids
 *.seed
 *.pid.lock
 .DS_store
+.DS_Store
 .install*
 .tern-port
 releases/

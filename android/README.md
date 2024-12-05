@@ -14,8 +14,8 @@ This repository demonstrates the following key features:
 ## 📷 Previews
 
 <p align="center">
-<img src="/previews/gif0.gif" width="320">
-<img src="/previews/gif1.gif" width="320">
+<img src="/android/previews/gif0.gif" width="320">
+<img src="/android/previews/gif1.gif" width="320">
 </p>
 
 ## ✍️ Technical Content

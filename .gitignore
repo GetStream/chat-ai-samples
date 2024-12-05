@@ -115,3 +115,5 @@ egress/worker/deps
 local-storage
 
 env.js
+
+python-server/server-env/

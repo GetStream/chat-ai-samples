@@ -64,11 +64,7 @@ class MessageViewModel : ViewModel() {
       _isAiStarted.value = true
       NetworkModule.aiService.startAiAgent(
         request = AiAgentRequest(id)
-      ).onSuccess {
-        streamLog { "success start: $data" }
-      }.onFailure {
-        streamLog { "failure stop: $messageOrNull" }
-      }
+      )
     }
   }
 
@@ -78,11 +74,7 @@ class MessageViewModel : ViewModel() {
       _isAiStarted.value = false
       NetworkModule.aiService.stopAiAgent(
         request = AiAgentRequest(id)
-      ).onSuccess {
-        streamLog { "success stop: $data" }
-      }.onFailure {
-        streamLog { "failure stop: $messageOrNull" }
-      }
+      )
     }
   }
 }

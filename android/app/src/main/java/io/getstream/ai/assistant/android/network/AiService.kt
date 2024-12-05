@@ -15,7 +15,6 @@
  */
 package io.getstream.ai.assistant.android.network
 
-import com.skydoves.sandwich.ApiResponse
 import io.getstream.ai.assistant.android.model.AiAgentRequest
 import io.getstream.ai.assistant.android.model.AiAgentResponse
 import retrofit2.http.Body
@@ -24,8 +23,8 @@ import retrofit2.http.POST
 interface AiService {
 
   @POST("start-ai-agent")
-  suspend fun startAiAgent(@Body request: AiAgentRequest): ApiResponse<AiAgentResponse>
+  suspend fun startAiAgent(@Body request: AiAgentRequest): AiAgentResponse
 
   @POST("stop-ai-agent")
-  suspend fun stopAiAgent(@Body request: AiAgentRequest): ApiResponse<AiAgentResponse>
+  suspend fun stopAiAgent(@Body request: AiAgentRequest): AiAgentResponse
 }

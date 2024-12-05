@@ -15,7 +15,6 @@
  */
 package io.getstream.ai.assistant.android.network
 
-import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
@@ -27,7 +26,6 @@ object NetworkModule {
   private val retrofit = Retrofit.Builder()
     .baseUrl("http://192.168.50.248:3000/")
     .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
-    .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
     .build()
 
   val aiService = retrofit.create<AiService>()

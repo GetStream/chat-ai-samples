@@ -16,7 +16,6 @@
 package io.getstream.ai.assistant.android
 
 import android.app.Application
-import dagger.hilt.android.HiltAndroidApp
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.logger.ChatLogLevel
 import io.getstream.chat.android.models.ConnectionData
@@ -29,7 +28,6 @@ import io.getstream.log.streamLog
 import io.getstream.result.call.Call
 import kotlin.random.Random
 
-@HiltAndroidApp
 class App : Application() {
 
   override fun onCreate() {

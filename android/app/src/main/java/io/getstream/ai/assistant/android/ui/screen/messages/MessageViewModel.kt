@@ -20,7 +20,6 @@ import androidx.lifecycle.viewModelScope
 import com.skydoves.sandwich.messageOrNull
 import com.skydoves.sandwich.onFailure
 import com.skydoves.sandwich.onSuccess
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.getstream.ai.assistant.android.model.AiAgentRequest
 import io.getstream.ai.assistant.android.network.NetworkModule
 import io.getstream.chat.android.ai.assistant.TypingState
@@ -34,10 +33,8 @@ import io.getstream.log.streamLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class MessageViewModel @Inject constructor() : ViewModel() {
+class MessageViewModel : ViewModel() {
 
   private val chatClient by lazy { ChatClient.instance() }
 

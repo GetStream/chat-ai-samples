@@ -26,12 +26,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dagger.hilt.android.AndroidEntryPoint
 import io.getstream.chat.android.ai.assistant.AiMessagesScreen
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.compose.viewmodel.messages.MessagesViewModelFactory
 
-@AndroidEntryPoint
 class MessageActivity : ComponentActivity() {
 
   private val cid by lazy { intent.getStringExtra(KEY_CHANNEL_ID)!! }

@@ -17,15 +17,12 @@ package io.getstream.ai.assistant.android.ui.screen.channel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.log.streamLog
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 import kotlin.random.Random
 
-@HiltViewModel
-class MainViewModel @Inject constructor() : ViewModel() {
+class MainViewModel : ViewModel() {
 
   private val chatClient by lazy { ChatClient.instance() }
 

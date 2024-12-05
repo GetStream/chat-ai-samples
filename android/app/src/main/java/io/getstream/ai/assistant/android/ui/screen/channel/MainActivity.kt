@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dagger.hilt.android.AndroidEntryPoint
 import io.getstream.ai.assistant.android.R
 import io.getstream.ai.assistant.android.ui.screen.messages.MessageActivity
 import io.getstream.chat.android.client.ChatClient
@@ -36,7 +35,6 @@ import io.getstream.chat.android.compose.ui.channels.ChannelsScreen
 import io.getstream.chat.android.compose.ui.theme.ChatTheme
 import io.getstream.chat.android.models.InitializationState
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
   private val mainViewModel: MainViewModel by viewModels()

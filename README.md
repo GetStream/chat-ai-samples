@@ -1,23 +1,18 @@
 ![Integrating Stream Chat with AI](/assets/repo_cover.png)
 
 ## **Quick Links** 🔗
-- [Register](https://getstream.io/try-for-free/) to get an API key for Stream
-- [ReactJS Example](https://github.com/GetStream/chat-ai-samples/tree/main/react-chat)
-- [ChatGPT Node Server](https://github.com/GetStream/chat-ai-samples/blob/main/server/ai/openAI.js)
-- [Gemini Node Server](https://github.com/GetStream/chat-ai-samples/blob/main/server/ai/geminiAI.js)
+- [Register](https://getstream.io/try-for-free/) to get a free Stream API Key
+- [Getting Started Guide](#todo)
+- [Stream Chat](https://getstream.io/chat/)
 
 ## Repo Overview 😎
-This repo contains Stream's official sample projects demonstrating how Generative AI can be used in our Chat products. It includes sample backend servers for ChatGPT and Gemini, which can be used as a reference guide when using Gen AI with Stream.
+This repo contains Stream's official sample projects demonstrating how Generative AI can be integrated with our Chat API and UI Kits. It includes samples built using our [React](#), [React Native](#), [Jetpack Compose](#), [Swift UI](#) and [Flutter](#) UI SDKs and example servers in NodeJS and Python.
 
-Sample integrations in ReactJS, Android, and Flutter are located in the "frontends" directory, which also demonstrates working with and rendering real-time message chunks as they are sent from AI providers.
+Developers can clone this repo and run these samples directly using our pre-made OpenAI or Anthropic integrations or integrate with their favourite external LLM provider by extending the Agent class in our backend server.
 
-## **Projects/Packages 🚀**
-- **Backend**
-    - [ChatGPT Server](https://github.com/GetStream/chat-ai-samples/blob/main/server/ai/openAI.js): Node server that connects to both OpenAI and Stream chat to intercept and respond to messages in real time.
-    - [Gemini Server](https://github.com/GetStream/chat-ai-samples/blob/main/server/ai/geminiAI.js): Node server that connects Stream Chat with Gemini, allowing for sending, receiving, and replying to messages.
-- **Frontend**
-    - [React/NextJS](https://github.com/GetStream/chat-ai-samples/tree/main/react-chat): NextJs app, which interacts with ChatGPT and implements streaming responses.
-    - Android: Jetpack Compose app written in Kotlin which integrates Google’s Gemini and our Jetpack Compose SDK. Please see the sub-directory for detailed getting started instructions.
+![Integrating Stream Chat with AI](/assets/arch_diagram.png)
+
+Using this approach, regardless of which LLM provider is used, developers can remain confident our UI components will adapt and take care of the heavy lifting for rendering LLM responses, including full out-of-the-box support for common AI UI patterns such as thinking indicators, code blocks, markdown support, tables, images, etc.
 
 
 ## How to Run 🏃
@@ -33,41 +28,23 @@ Add following credentials to `.env` file:
 1. Stream Chat app api key and secret
 2. [User ID and token](https://getstream.io/pr-previews/5538/chat/docs/javascript/tokens_and_authentication/?language=javascript&q=secret#manually-generating-tokens)
 2. [OpenAI API key](https://openai.com/product)
-3. Or [Gemini API key](https://ai.google.dev/tutorials/node_quickstart?authuser=3#set-up-api-key)
+3. Or [Anthropic API key](https://www.anthropic.com/api)
 
 ### **Backend**
+For detailed instructions on running the backend server for this project, please see the README located in [nodejs-ai-assistant](https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant).
 
-To start the backend server, you can choose between ChatGPT and Gemini. The server will listen for messages and respond with AI-generated responses. You need to configure this server url as a webhook for your Stream Chat app.
-
-```sh
-cd server
-yarn;
-
-# Start ChatGPT server
-yarn start:openai
-
-# Or start Gemini server
-yarn start:gemini
-```
-
-### **Configure Ngrok webhook**
-
-To expose the local server to the internet, you can use ngrok. Follow the instructions here to set up ngrok and configure the webhook URL for your Stream Chat app:
-
-https://getstream.io/chat/docs/react/debugging_with_ngrok/
 
 ### **Frontend**
-
-```sh
-cd react-chat
-yarn; yarn start
-```
-
+Each frontend SDK has an accompanying tutorial on our website aimed at walking you through the different steps to integrate:
+* [React](#)
+* [React Native](#)
+* [Flutter](#)
+* [Jetpack Compose](#)
+* [SwiftUI](#)
 
 ## AI Guides 📚
 These guides explore more of how AI can be used across our SDKs and products.  
 
-- [Implementing ChatGPT with Stream Chat](https://getstream.io/blog/implement-chatgpt/)
 - [Build an AI Chat Android App With Google’s Generative AI](https://getstream.io/blog/android-generative-ai/)
 - [Create LLM-powered Chatbot For Your Documentation](https://getstream.io/blog/llm-chatbot-docs/)
 - [Conversational AI Using Stream Chat, HuggingFace, and DialogGPT](https://getstream.io/blog/conversational-ai-flutter/)

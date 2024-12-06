@@ -3,8 +3,8 @@
 This repo contains a sample project that shows you how you can integrate StreamChat with AI services, such as Anthropic and OpenAI.
 
 The project exposes two endpoints:
-- /start-ai-agent - this will create an AI agent, that will join a channel where it was invoked from.
-- /stop-ai-agent - this will stop the AI agent and leave the channel.
+- `/start-ai-agent` - this will create an AI agent, that will join a channel where it was invoked from.
+- `/stop-ai-agent` - this will stop the AI agent and leave the channel.
 
 Depending on your use-case, you can call these either on channel appearance or by tapping on a UI element (e.g. Ask AI button).
 

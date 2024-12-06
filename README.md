@@ -6,7 +6,7 @@
 - [Stream Chat](https://getstream.io/chat/)
 
 ## Repo Overview 😎
-This repo contains Stream's official sample projects demonstrating how Generative AI can be integrated with our Chat API and UI Kits. It includes samples built using our [React](#), [React Native](#), [Jetpack Compose](#), [Swift UI](#) and [Flutter](#) UI SDKs and example servers in NodeJS and Python.
+This repo contains Stream's official sample projects demonstrating how Generative AI can be integrated with our Chat API and UI Kits. It includes samples built using our [React](https://getstream.io/blog/react-assistant/), [React Native](https://getstream.io/blog/react-native-assistant/), [Jetpack Compose](https://getstream.io/blog/android-assistant/), [Swift UI](https://getstream.io/blog/ios-assistant/) and [Flutter](https://getstream.io/blog/flutter-assistant/) UI SDKs and example servers in [NodeJS](https://getstream.io/blog/nodejs-assistant/) and Python (coming soon).
 
 Developers can clone this repo and run these samples directly using our pre-made OpenAI or Anthropic integrations or integrate with their favourite external LLM provider by extending the Agent class in our backend server.
 
@@ -28,19 +28,19 @@ Add following credentials to `.env` file:
 1. Stream Chat app api key and secret
 2. [User ID and token](https://getstream.io/pr-previews/5538/chat/docs/javascript/tokens_and_authentication/?language=javascript&q=secret#manually-generating-tokens)
 2. [OpenAI API key](https://openai.com/product)
-3. Or [Anthropic API key](https://www.anthropic.com/api)
+3. [Anthropic API key](https://www.anthropic.com/api)
 
 ### **Backend**
-For detailed instructions on running the backend server for this project, please see the README located in [nodejs-ai-assistant](https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant).
+For detailed instructions on running the backend server for this project, please see the README located in [nodejs-ai-assistant](https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant). Our team also wrote a detailed [backend guide](https://getstream.io/blog/nodejs-assistant/) on our blog explaining the setup and integration with Stream Chat. 
 
 
 ### **Frontend**
 Each frontend SDK has an accompanying tutorial on our website aimed at walking you through the different steps to integrate:
-* [React](#)
-* [React Native](#)
-* [Flutter](#)
-* [Jetpack Compose](#)
-* [SwiftUI](#)
+* [React](https://getstream.io/blog/react-assistant/)
+* [React Native](https://getstream.io/blog/react-native-assistant/)
+* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
+* [Swift UI](https://getstream.io/blog/ios-assistant/)  
+* [Flutter](https://getstream.io/blog/flutter-assistant/) 
 
 ## AI Guides 📚
 These guides explore more of how AI can be used across our SDKs and products.  

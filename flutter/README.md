@@ -1,4 +1,4 @@
-# Stream Chat AI Assistant for Flutter
+# Stream Chat AI Assistant for [Flutter](https://getstream.io/blog/flutter-assistant/)
 
 This project demonstrates the integration of AI assistant features in a Flutter application using
 the Stream [Chat SDK](https://getstream.io/chat/).

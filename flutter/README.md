@@ -1,7 +1,7 @@
 # Stream Chat AI Assistant for Flutter
 
 This project demonstrates the integration of AI assistant features in a Flutter application using
-the Stream Chat SDK.
+the Stream [Chat SDK](https://getstream.io/chat/).
 
 ## Description
 
@@ -22,11 +22,12 @@ user messages.
 - **Stream Chat SDK**: Utilize the Stream Chat SDK for chat functionalities.
 
 ## Getting Started
+To follow along with this integration, we recommend checking out our step by step guide for building with Flutter and AI on our [blog](https://getstream.io/blog/flutter-assistant/). 
 
 ### Prerequisites
 
 - Flutter SDK: ^3.24.0
-- Stream Chat account and API key
+- [Stream Chat account](https://getstream.io/try-for-free/) and API key
 
 ### Installation
 
@@ -93,13 +94,11 @@ To learn more about integrating AI and chatbots into your application, we recomm
 full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is
 natively supported across:
 
-* [React](https://getstream.io/chat/react-chat/tutorial/)
-* [React Native](https://getstream.io/chat/react-native-chat/tutorial/)
-* [Angular](https://getstream.io/chat/angular/tutorial/)
-* [Jetpack Compose](https://getstream.io/tutorials/android-chat/)
-* [SwiftUI](https://getstream.io/tutorials/ios-chat/)
-* [Flutter](https://getstream.io/chat/flutter/tutorial/)
-* [Javascript/Bring your own](https://getstream.io/chat/docs/javascript/)
+* [React](https://getstream.io/blog/react-assistant/)
+* [React Native](https://getstream.io/blog/react-native-assistant/)
+* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
+* [Swift UI](https://getstream.io/blog/ios-assistant/)
+* [Flutter](https://getstream.io/blog/flutter-assistant/)
 
 ## 👩‍💻 Free for Makers 👨‍💻
 

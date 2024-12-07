@@ -1,6 +1,7 @@
-## AI Assistant Node.js
+## AI Assistant [Node.js](https://getstream.io/blog/nodejs-assistant/)
 
-This repo contains a sample project that shows you how you can integrate StreamChat with AI services, such as Anthropic and OpenAI.
+This repo contains a sample project that shows you how you can integrate Stream [Chat](https://getstream.io/chat/) with AI services, such as Anthropic and OpenAI. It is part of our tutorial series on adding AI agents to your existing Stream Chat based application. For more information, we recommend following our written guide located on the Stream [blog](https://getstream.io/blog/ai-assistant/). 
+
 
 The project exposes two endpoints:
 - `/start-ai-agent` - this will create an AI agent, that will join a channel where it was invoked from.
@@ -80,13 +81,12 @@ Stream provides UI components and state handling that make it easy to build real
 ## 📕 Tutorials
 
 To learn more about integrating AI and chatbots into your application, we recommend checking out the full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is natively supported across:
-* [React](https://getstream.io/chat/react-chat/tutorial/)
-* [React Native](https://getstream.io/chat/react-native-chat/tutorial/)
-* [Angular](https://getstream.io/chat/angular/tutorial/)
-* [Jetpack Compose](https://getstream.io/tutorials/android-chat/)
-* [SwiftUI](https://getstream.io/tutorials/ios-chat/)
-* [Flutter](https://getstream.io/chat/flutter/tutorial/)
-* [Javascript/Bring your own](https://getstream.io/chat/docs/javascript/)
+* [React](https://getstream.io/blog/react-assistant/)
+* [React Native](https://getstream.io/blog/react-native-assistant/)
+* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
+* [Swift UI](https://getstream.io/blog/ios-assistant/)
+* [Flutter](https://getstream.io/blog/flutter-assistant/)
+
 
 
 ## 👩‍💻 Free for Makers 👨‍💻

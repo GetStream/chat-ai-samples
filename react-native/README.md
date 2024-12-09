@@ -1,4 +1,4 @@
-# [React Native](https://getstream.io/chat/sdk/react-native/) AI components Sample App
+# [React Native](https://getstream.io/blog/react-native-assistant/) AI components Sample App
 
 This repository contains a sample AI assistant app that integrates Stream's [React Native Chat SDK](https://github.com/GetStream/stream-chat-react-native). The sample shows how to render responses from LLM providers such as ChatGPT, Gemini, Anthropic or any custom backend by using our AI components and server-side SDKs. Our UI components are able to render Markdown, Code blocks, tables, thinking indicators, images, etc.
 
@@ -46,13 +46,11 @@ Stream provides UI components and state handling that make it easy to build real
 ## 📕 Tutorials
 
 To learn more about integrating AI and chatbots into your application, we recommend checking out the full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is natively supported across:
-* [React](https://getstream.io/chat/react-chat/tutorial/)
-* [React Native](https://getstream.io/chat/react-native-chat/tutorial/)
-* [Angular](https://getstream.io/chat/angular/tutorial/)
-* [Jetpack Compose](https://getstream.io/tutorials/android-chat/)
-* [SwiftUI](https://getstream.io/tutorials/ios-chat/)
-* [Flutter](https://getstream.io/chat/flutter/tutorial/)
-* [Javascript/Bring your own](https://getstream.io/chat/docs/javascript/)
+* [React](https://getstream.io/blog/react-assistant/)
+* [React Native](https://getstream.io/blog/react-native-assistant/)
+* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
+* [Swift UI](https://getstream.io/blog/ios-assistant/)
+* [Flutter](https://getstream.io/blog/flutter-assistant/)
 
 
 ## 👩‍💻 Free for Makers 👨‍💻

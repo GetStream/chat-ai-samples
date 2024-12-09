@@ -1,12 +1,12 @@
-# [Swift UI](https://getstream.io/tutorials/ios-chat/) AI components Sample App
+# [Swift UI](https://getstream.io/blog/ios-assistant/) AI components Sample App
 
-This repository contains a sample AI assistant app that integrates Stream's [AI UI components](https://github.com/GetStream/stream-chat-swift-ai.git), as well as the [ StreamChatSwiftUI SDK](https://github.com/GetStream/stream-chat-swiftui.git). The sample shows how to render responses from LLM providers such as ChatGPT, Gemini, Anthropic or any custom backend by using our AI components and server-side SDKs. Our UI components are able to render Markdown, Code blocks, tables, thinking indicators, images, etc.
+This repository contains a sample AI assistant app that integrates Stream's [AI UI components](https://github.com/GetStream/chat-ai-samples/tree/main/ios), as well as the [ StreamChatSwiftUI SDK](https://github.com/GetStream/stream-chat-swiftui.git). The sample shows how to render responses from LLM providers such as ChatGPT, Gemini, Anthropic or any custom backend by using our AI components and server-side SDKs. Our UI components are able to render Markdown, Code blocks, tables, thinking indicators, images, etc.
 
 The sample shows you how to integrate the following views:
 - `StreamingMessageView` - a component that is able to render text, markdown and code in real-time, using character-by-character animation, similar to ChatGPT.
 - `AITypingIndicatorView` - a component that can display different states of the LLM (thinking, checking external sources, etc).
 
-These components are designed to work seamlessly with our existing Swift UI [Chat SDK](https://getstream.io/tutorials/ios-chat/). Our [developer guide](https://getstream.io/chat/solutions/ai-integration/) explains how to get started building AI integrations with Stream and Swift UI. 
+These components are designed to work seamlessly with our existing Swift UI [Chat SDK](https://getstream.io/tutorials/ios-chat/). Our [developer guide](https://getstream.io/blog/ai-assistant/) explains how to get started building AI integrations with Stream and Swift UI. 
 
 The app consists of the standard StreamChat channel list and channel view. The channel view is enhanced with a button to start and stop AI agents. When the agent is started, it listens to all the sent messages in the channel and connects to an LLM to receive AI-generated responses.
 
@@ -33,13 +33,11 @@ Stream provides UI components and state handling that make it easy to build real
 ## 📕 Tutorials
 
 To learn more about integrating AI and chatbots into your application, we recommend checking out the full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is natively supported across:
-* [React](https://getstream.io/chat/react-chat/tutorial/)
-* [React Native](https://getstream.io/chat/react-native-chat/tutorial/)
-* [Angular](https://getstream.io/chat/angular/tutorial/)
-* [Jetpack Compose](https://getstream.io/tutorials/android-chat/)
-* [SwiftUI](https://getstream.io/tutorials/ios-chat/)
-* [Flutter](https://getstream.io/chat/flutter/tutorial/)
-* [Javascript/Bring your own](https://getstream.io/chat/docs/javascript/)
+* [React](https://getstream.io/blog/react-assistant/)
+* [React Native](https://getstream.io/blog/react-native-assistant/)
+* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
+* [Swift UI](https://getstream.io/blog/ios-assistant/)
+* [Flutter](https://getstream.io/blog/flutter-assistant/)
 
 
 ## 👩‍💻 Free for Makers 👨‍💻

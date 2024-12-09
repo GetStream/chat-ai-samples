@@ -2,7 +2,7 @@
 
 ## **Quick Links** 🔗
 - [Register](https://getstream.io/try-for-free/) to get a free Stream API Key
-- [Getting Started Guide](#todo)
+- [Getting Started Guide](https://getstream.io/blog/ai-assistant/)
 - [Stream Chat](https://getstream.io/chat/)
 
 ## Repo Overview 😎

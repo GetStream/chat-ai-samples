@@ -82,9 +82,9 @@ Select your preferred SDK to get started.
 ## AI Guides 📚
 These guides explore more of how AI can be used across our SDKs and products.
 
-- [Build an AI Chat Android App With Google’s Generative AI](https://getstream.io/blog/android-generative-ai/)
-- [Create LLM-powered Chatbot For Your Documentation](https://getstream.io/blog/llm-chatbot-docs/)
-- [Conversational AI Using Stream Chat, HuggingFace, and DialogGPT](https://getstream.io/blog/conversational-ai-flutter/)
+- [How to Build an AI Chat Android App With Google’s Generative AI](https://getstream.io/blog/android-generative-ai/)
+- [How to Build an LLM-powered Chatbot For Your Documentation](https://getstream.io/blog/llm-chatbot-docs/)
+- [How to Build an AI bot Using Stream Chat, HuggingFace, and DialogGPT](https://getstream.io/blog/conversational-ai-flutter/)
 
 ## Contributing 🤔
 

@@ -26,7 +26,7 @@ cp .env.example .env
 Add following credentials to `.env` file:
 
 1. Stream Chat app api key and secret
-2. [User ID and token](https://getstream.io/pr-previews/5538/chat/docs/javascript/tokens_and_authentication/?language=javascript&q=secret#manually-generating-tokens)
+2. [User ID and token](https://getstream.io/chat/docs/javascript/tokens_and_authentication/?language=javascript&q=secret#manually-generating-tokens)
 2. [OpenAI API key](https://openai.com/product)
 3. [Anthropic API key](https://www.anthropic.com/api)
 

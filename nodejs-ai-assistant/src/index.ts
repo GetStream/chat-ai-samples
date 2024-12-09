@@ -14,7 +14,8 @@ app.use(cors({ origin: '*' }));
 const aiAgentCache = new Map<string, AIAgent>();
 const pendingAiAgents = new Set<string>();
 
-const inactivityThreshold = 5 * 60 * 1000;
+// TODO: temporary set to 8 hours, should be cleaned up at some point
+const inactivityThreshold = 480 * 60 * 1000;
 setInterval(async () => {
   const now = Date.now();
   for (const [userId, aiAgent] of aiAgentCache) {

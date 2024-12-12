@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 
 class StartAgentRequest(BaseModel):
@@ -12,6 +13,6 @@ class StopAgentRequest(BaseModel):
 
 
 class NewMessageRequest(BaseModel):
-    cid: str
-    type: str
-    message: object
+    cid: Optional[str]
+    type: Optional[str]
+    message: Optional[object]

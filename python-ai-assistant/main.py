@@ -113,6 +113,9 @@ async def stop_ai_agent(request: StopAgentRequest):
 @app.post("/new-message")
 async def send_message(request: NewMessageRequest):
     # print(request)
+    if not request.cid:
+        return {"error": "Missing required fields", "code": 400}
+
     channel_id = clean_channel_id(request.cid)
     user_id = create_bot_id(channel_id=channel_id)
 

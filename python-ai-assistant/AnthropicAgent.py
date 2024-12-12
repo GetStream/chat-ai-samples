@@ -7,19 +7,16 @@ import asyncio
 from model import NewMessageRequest
 from helpers import create_bot_id
 
-# from .anthropic_response_handler import AnthropicResponseHandler
-
 
 class AnthropicAgent:
     def __init__(self, chat_client, channel):
         self.anthropic: Optional[AsyncAnthropic] = None
-        # self.handlers: List[AnthropicResponseHandler] = []
+        self.handlers: List[AnthropicResponseHandler] = []
         self.last_interaction_ts: float = datetime.now().timestamp()
         self.chat_client = chat_client
         self.channel = channel
 
     async def dispose(self):
-        # self.chat_client.off("message.new", self.handle_message)
         await self.chat_client.disconnect_user()
 
         for handler in self.handlers:
@@ -44,10 +41,9 @@ class AnthropicAgent:
             print("Skip handling ai generated message")
             return
 
-        # print("Message: ", event.message)
-
         message = event.message.get("text")
         if not message:
+            print("Skip handling empty message")
             return
 
         self.last_interaction_ts = datetime.now().timestamp()
@@ -59,8 +55,6 @@ class AnthropicAgent:
             channel_filters, message_filters, sort, limit=5
         )
 
-        # print("Message search: ", message_search)
-
         messages = [
             {
                 "content": message["message"]["text"].strip(),
@@ -71,21 +65,8 @@ class AnthropicAgent:
                 ),
             }
             for message in message_search["results"]
+            if message["message"]["text"] != ""
         ]
-
-        # print("Messages: ", messages)
-
-        # messages = [
-        #     {
-        #         "role": (
-        #             "assistant"
-        #             if msg.get("user", {}).get("id", "").startswith("ai-bot")
-        #             else "user"
-        #         ),
-        #         "content": msg.get("text", ""),
-        #     }
-        #     for msg in messages
-        # ]
 
         if "parent_id" in event.message:
             message_to_append = {"role": "user", "content": message["text"]}
@@ -106,13 +87,15 @@ class AnthropicAgent:
         )
 
         try:
-            await self.channel.send_event(
-                {
-                    "type": "ai_indicator.update",
-                    "ai_state": "AI_STATE_THINKING",
-                    "message_id": channel_message["id"],
-                }
-            )
+            if channel_message["message"]["id"]:
+                await self.channel.send_event(
+                    {
+                        "type": "ai_indicator.update",
+                        "ai_state": "AI_STATE_THINKING",
+                        "message_id": channel_message["message"]["id"],
+                    },
+                    bot_id,
+                )
         except Exception as error:
             print("Failed to send ai indicator update", error)
 
@@ -122,4 +105,5 @@ class AnthropicAgent:
             anthropic_stream, self.chat_client, self.channel, channel_message
         )
         asyncio.create_task(handler.run())
-        self.handlers.append(handler)
+        if self.handlers:
+            self.handlers.append(handler)

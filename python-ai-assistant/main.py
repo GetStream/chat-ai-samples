@@ -1,13 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from stream_chat import StreamChatAsync
+from stream_chat import StreamChatAsync, StreamChat
 from dotenv import load_dotenv
 from model import StartAgentRequest, StopAgentRequest, NewMessageRequest
 from helpers import clean_channel_id, create_bot_id
 
 from AnthropicAgent import AnthropicAgent
 import os
+import json
 
 load_dotenv()
 
@@ -36,77 +36,70 @@ agents = {}
 
 @app.get("/")
 async def root():
-    return {"message": "GetStream AI Server is running"}
+    return {
+        "message": "GetStream AI Server is running",
+        "apiKey": api_key,
+        "activeAgents": len(agents),
+    }
 
 
 @app.post("/start-ai-agent")
-async def start_ai_agent(request: StartAgentRequest):
-    print(request)
-    # Validation that if no channel_id is provided, return an error
-    if not request.channel_id:
-        return {"error": "Missing required fields", "code": 400}
-
+async def start_ai_agent(request: StartAgentRequest, response: Response):
     server_client = StreamChatAsync(api_key, api_secret)
-
-    client_object_methods = [
-        method_name
-        for method_name in dir(server_client)
-        if callable(getattr(server_client, method_name))
-    ]
-
-    # print("Client methods: ", "\n".join(client_object_methods))
 
     # Clean up channel id to remove the channel type - if necessary
     channel_id_updated = clean_channel_id(request.channel_id)
 
-    user_id = create_bot_id(channel_id=channel_id_updated)
+    # Create a bot id
+    bot_id = create_bot_id(channel_id=channel_id_updated)
+
+    # Upsert the bot user
     await server_client.upsert_user(
         {
-            "id": user_id,
+            "id": bot_id,
             "name": "AI Bot",
             "role": "admin",
         }
     )
+
+    # Create a channel
     channel = server_client.channel(request.channel_type, channel_id_updated)
+
+    # Add the bot to the channel
     try:
-        await channel.add_members([user_id])
+        await channel.add_members([bot_id])
     except Exception as error:
-        print("Failed to add members to channel", error)
+        print("Failed to add members to the channel: ", error)
+        response.status_code = 405
+        response.body = str.encode(
+            json.dumps({"error": "Not possible to add the AI to distinct channels"})
+        )
+        return response
 
-    # channel_object_methods = [
-    #     method_name
-    #     for method_name in dir(channel)
-    #     if callable(getattr(channel, method_name))
-    # ]
-
-    # print("Channel methods: ", "\n".join(channel_object_methods))
-
-    # await channel.watch()
-
+    # Create an agent
     agent = AnthropicAgent(server_client, channel)
     await agent.init()
 
-    if user_id in agents:
-        await agents[user_id].dispose()
+    if bot_id in agents:
+        await agents[bot_id].dispose()
     else:
-        agents[user_id] = agent
+        agents[bot_id] = agent
 
     return {"message": "AI agent started"}
 
 
 @app.post("/stop-ai-agent")
 async def stop_ai_agent(request: StopAgentRequest):
-    print(request)
     server_client = StreamChatAsync(api_key, api_secret)
 
-    ai_id = f"ai-bot-{request.channel_id.replace('!', '')}"
+    bot_id = create_bot_id(request.channel_id)
 
-    if ai_id in agents:
-        await agents[ai_id].dispose()
-        del agents[ai_id]
+    if bot_id in agents:
+        await agents[bot_id].dispose()
+        del agents[bot_id]
 
     channel = server_client.channel("messaging", request.channel_id)
-    await channel.remove_members([ai_id])
+    await channel.remove_members([bot_id])
     return {"message": "AI agent stopped"}
 
 

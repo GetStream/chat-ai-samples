@@ -17,8 +17,7 @@ class AnthropicAgent:
         self.channel = channel
 
     async def dispose(self):
-        await self.chat_client.disconnect_user()
-
+        await self.chat_client.close()
         for handler in self.handlers:
             await handler.dispose()
         self.handlers = []

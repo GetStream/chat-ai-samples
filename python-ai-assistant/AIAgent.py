@@ -11,11 +11,6 @@ class AIAgent(Protocol):
     channel: Channel
 
     @abstractmethod
-    async def init(self) -> None:
-        """Initialize the agent."""
-        pass
-
-    @abstractmethod
     async def dispose(self) -> None:
         """Clean up the agent resources."""
         pass

@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from stream_chat import StreamChatAsync, StreamChat
+from stream_chat import StreamChatAsync
 from dotenv import load_dotenv
 from model import StartAgentRequest, StopAgentRequest, NewMessageRequest
 from helpers import clean_channel_id, create_bot_id
@@ -70,6 +70,7 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
         await channel.add_members([bot_id])
     except Exception as error:
         print("Failed to add members to the channel: ", error)
+        await server_client.close()
         response.status_code = 405
         response.body = str.encode(
             json.dumps({"error": "Not possible to add the AI to distinct channels"})
@@ -78,9 +79,9 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
 
     # Create an agent
     agent = AnthropicAgent(server_client, channel)
-    await agent.init()
 
     if bot_id in agents:
+        print("Disposing agent")
         await agents[bot_id].dispose()
     else:
         agents[bot_id] = agent
@@ -100,22 +101,26 @@ async def stop_ai_agent(request: StopAgentRequest):
 
     channel = server_client.channel("messaging", request.channel_id)
     await channel.remove_members([bot_id])
+    await server_client.close()
     return {"message": "AI agent stopped"}
 
 
 @app.post("/new-message")
-async def send_message(request: NewMessageRequest):
-    # print(request)
+async def new_message(request: NewMessageRequest):
+    print(request)
     if not request.cid:
         return {"error": "Missing required fields", "code": 400}
 
     channel_id = clean_channel_id(request.cid)
-    user_id = create_bot_id(channel_id=channel_id)
+    bot_id = create_bot_id(channel_id=channel_id)
 
-    if user_id in agents:
-        await agents[user_id].handle_message(request)
+    if bot_id in agents:
+        if not agents[bot_id].processing:
+            await agents[bot_id].handle_message(request)
+        else:
+            print("AI agent is already processing a message")
     else:
-        print("AI agent not found for user", user_id)
+        print("AI agent not found for bot", bot_id)
 
 
 @app.get("/get-ai-agents")

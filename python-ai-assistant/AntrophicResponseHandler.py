@@ -15,9 +15,6 @@ class AnthropicResponseHandler:
         self.message_text = ""
         self.chunk_counter = 0
 
-        # Register stop handler
-        # self.chat_client.on("ai_indicator.stop", self.handle_stop_generating)
-
     async def run(self):
         try:
             async for message_stream_event in self.anthropic_stream:
@@ -33,10 +30,6 @@ class AnthropicResponseHandler:
                 },
                 bot_id,
             )
-
-    def dispose(self):
-        pass
-        # self.chat_client.off("ai_indicator.stop", self.handle_stop_generating)
 
     async def handle_stop_generating(self):
         print("Stop generating")

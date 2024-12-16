@@ -20,11 +20,14 @@ import MyChannelHeader from './MyChannelHeader';
 import MyAIStateIndicator from './MyAIStateIndicator';
 
 // your Stream app information
-const apiKey = 'zcgvnykxsfm8';
+const apiKey = process.env.STREAM_API_KEY;
+const userToken = process.env.STREAM_TOKEN;
 const userId = 'anakin_skywalker';
 const userName = 'Anakin Skywalker';
-const userToken =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYW5ha2luX3NreXdhbGtlciJ9.ZwCV1qPrSAsie7-0n61JQrSEDbp6fcMgVh4V2CB0kM8';
+
+if (!apiKey || !userToken) {
+  throw new Error('Missing API key or user token');
+}
 
 const user: User = {
   id: userId,

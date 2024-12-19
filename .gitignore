@@ -116,3 +116,6 @@ egress/worker/deps
 local-storage
 
 env.js
+
+python-ai-assistant/venv
+python-ai-assistant/__pycache__/

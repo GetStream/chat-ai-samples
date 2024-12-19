@@ -70,6 +70,8 @@ class AnthropicAgent:
             for message in message_search["results"]
             if message["message"]["text"] != ""
         ]
+        if messages[0]["content"] != message:
+            messages.insert(0, {"role": "user", "content": message})
 
         if "parent_id" in event.message:
             message_to_append = {"role": "user", "content": message["text"]}
@@ -98,7 +100,7 @@ class AnthropicAgent:
 
         anthropic_stream = await self.anthropic.messages.create(
             max_tokens=1024,
-            messages=messages,
+            messages=list(reversed(messages)),
             model="claude-3-5-sonnet-20241022",
             stream=True,
         )
@@ -116,6 +118,7 @@ class AnthropicAgent:
                 },
                 bot_id,
             )
+        self.processing = False
 
     async def handle(self, message_stream_event: Any, message_id: str, bot_id: str):
         event_type = message_stream_event.type

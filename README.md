@@ -28,7 +28,8 @@ Frontend SDKs:
 
 Backend Examples:
 - [NodeJS](https://getstream.io/blog/nodejs-assistant/) implementation
-- Python implementation (coming soon)
+- [Python AI Chat](https://getstream.io/blog/python-assistant/) implementation
+
 
 You can use our pre-built OpenAI/Anthropic integrations or extend the Agent class to work with any external LLM provider.
 
@@ -86,6 +87,10 @@ These guides explore more of how AI can be used across our SDKs and products.
 - [How to Build an LLM-powered Chatbot For Your Documentation](https://getstream.io/blog/llm-chatbot-docs/)
 - [How to Build an AI bot Using Stream Chat, HuggingFace, and DialogGPT](https://getstream.io/blog/conversational-ai-flutter/)
 - [How to Build AI-Powered Chatbot Apps for Android Using Firebase](https://getstream.io/blog/ai-chat-firebase/)
+- [How to Add RAG-Based AI to Team Chat With Stream](https://getstream.io/blog/ai-team-chat/)
+- [How to Build an Agentic RAG System With OpenAI, LanceDB, and Phidata](https://getstream.io/blog/agentic-ai-rag/)
+- [How to Chat With Any Book Using Pinecone, OpenAI, and Stream](https://getstream.io/blog/ai-book-chat/)
+
 
 
 ## Contributing 🤔

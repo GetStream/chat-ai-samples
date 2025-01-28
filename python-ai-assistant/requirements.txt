@@ -27,6 +27,7 @@ httpx==0.28.1
 idna==3.10
 Jinja2==3.1.4
 jiter==0.8.0
+openai
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mdurl==0.1.2

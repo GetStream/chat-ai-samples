@@ -1,7 +1,9 @@
+"""The protocol for AI agents"""
+
 from abc import abstractmethod
 from enum import Enum
-from stream_chat import StreamChat, Channel
 from typing import Protocol
+from stream_chat import StreamChat, Channel
 
 
 class AIAgent(Protocol):
@@ -13,17 +15,10 @@ class AIAgent(Protocol):
     @abstractmethod
     async def dispose(self) -> None:
         """Clean up the agent resources."""
-        pass
-
-    @abstractmethod
-    def get_last_interaction(self) -> float:
-        """Get the timestamp of the last interaction."""
-        pass
 
     @abstractmethod
     def handle_message(self, event) -> None:
         """Handle a new message."""
-        pass
 
 
 class AgentPlatform(str, Enum):

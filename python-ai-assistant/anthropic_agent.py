@@ -1,37 +1,34 @@
-from anthropic import AsyncAnthropic
-from AntrophicResponseHandler import AnthropicResponseHandler
-from typing import List, Optional, Any
-from datetime import datetime
+"""Agent for using Anthropic API style agents"""
+
 import os
 import asyncio
+from typing import Any
+from anthropic import AsyncAnthropic
 from model import NewMessageRequest
 from helpers import create_bot_id
 
 
 class AnthropicAgent:
+    """Agent for using Anthropic API style agents"""
+
     def __init__(self, chat_client, channel):
-        self.anthropic: Optional[AsyncAnthropic] = None
-        self.handlers: List[AnthropicResponseHandler] = []
-        self.last_interaction_ts: float = datetime.now().timestamp()
-        self.chat_client = chat_client
-        self.channel = channel
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError("Anthropic API key is required")
         self.anthropic = AsyncAnthropic(api_key=api_key)
+        self.chat_client = chat_client
+        self.channel = channel
 
         self.processing = False
         self.message_text = ""
         self.chunk_counter = 0
 
     async def dispose(self):
+        """Dispose of the agent"""
         await self.chat_client.close()
-        self.handlers = []
-
-    def get_last_interaction(self) -> float:
-        return self.last_interaction_ts
 
     async def handle_message(self, event: NewMessageRequest):
+        """Handle a new message"""
         self.processing = True
         if not self.anthropic:
             print("Anthropic SDK is not initialized")
@@ -48,8 +45,6 @@ class AnthropicAgent:
             print("Skip handling empty message")
             self.processing = False
             return
-
-        self.last_interaction_ts = datetime.now().timestamp()
 
         channel_filters = {"cid": event.cid}
         message_filters = {"type": {"$eq": "regular"}}
@@ -121,6 +116,7 @@ class AnthropicAgent:
         self.processing = False
 
     async def handle(self, message_stream_event: Any, message_id: str, bot_id: str):
+        """Handle a message stream event"""
         event_type = message_stream_event.type
 
         if event_type == "content_block_start":

@@ -1,3 +1,10 @@
+"""
+This is the main file for the AI assistant.
+It is a FastAPI application that listens for messages from the client and responds to them.
+"""
+
+import os
+import json
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from stream_chat import StreamChatAsync
@@ -5,9 +12,7 @@ from dotenv import load_dotenv
 from model import StartAgentRequest, StopAgentRequest, NewMessageRequest
 from helpers import clean_channel_id, create_bot_id
 
-from AnthropicAgent import AnthropicAgent
-import os
-import json
+from openai_agent import OpenAIAgent
 
 load_dotenv()
 
@@ -36,6 +41,10 @@ agents = {}
 
 @app.get("/")
 async def root():
+    """
+    This is the root endpoint for the AI assistant.
+    It returns a message indicating that the server is running.
+    """
     return {
         "message": "GetStream AI Server is running",
         "apiKey": api_key,
@@ -45,6 +54,11 @@ async def root():
 
 @app.post("/start-ai-agent")
 async def start_ai_agent(request: StartAgentRequest, response: Response):
+    """
+    This endpoint starts an AI agent for a given channel.
+    It creates a bot user and adds it to the channel.
+    It also creates an agent and adds it to the agents dictionary.
+    """
     server_client = StreamChatAsync(api_key, api_secret)
 
     # Clean up channel id to remove the channel type - if necessary
@@ -78,7 +92,8 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
         return response
 
     # Create an agent
-    agent = AnthropicAgent(server_client, channel)
+    # agent = AnthropicAgent(server_client, channel)
+    agent = OpenAIAgent(server_client, channel)
 
     if bot_id in agents:
         print("Disposing agent")
@@ -91,6 +106,10 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
 
 @app.post("/stop-ai-agent")
 async def stop_ai_agent(request: StopAgentRequest):
+    """
+    This endpoint stops an AI agent for a given channel.
+    It removes the agent from the agents dictionary and closes the server client.
+    """
     server_client = StreamChatAsync(api_key, api_secret)
 
     bot_id = create_bot_id(request.channel_id)
@@ -107,6 +126,11 @@ async def stop_ai_agent(request: StopAgentRequest):
 
 @app.post("/new-message")
 async def new_message(request: NewMessageRequest):
+    """
+    This endpoint handles a new message from the client.
+    It cleans the channel id and creates a bot id.
+    It then checks if the bot id is in the agents dictionary and if it is, it handles the message.
+    """
     print(request)
     if not request.cid:
         return {"error": "Missing required fields", "code": 400}
@@ -125,6 +149,9 @@ async def new_message(request: NewMessageRequest):
 
 @app.get("/get-ai-agents")
 async def get_ai_agents():
+    """
+    This endpoint returns a list of all the AI agents.
+    """
     return {"agents": list(agents.keys())}
 
 

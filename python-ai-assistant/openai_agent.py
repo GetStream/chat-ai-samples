@@ -15,8 +15,10 @@ class OpenAIAgent:
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API key is required")
-        # self.openai = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         self.openai = AsyncOpenAI(api_key=api_key)
+        # By changing the base_url parameter, we can use e.g. the DeepSeek API, or even local models
+        # Example:
+        # self.openai = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
         self.chat_client = chat_client
         self.channel = channel
 
@@ -54,8 +56,18 @@ class OpenAIAgent:
                 self.chat_client, event.cid, 5
             )
 
-            if messages[0]["content"] != message:
-                messages.insert(0, {"role": "user", "content": message})
+            try:
+                if messages[0]["content"] != message:
+                    messages.insert(0, {"role": "user", "content": message})
+            except IndexError as error:
+                print("No messages found in channel: ", error)
+
+            # If the message has a parent_id it is part of a threaded message and
+            # we need to append the message to the messages list
+            if "parent_id" in event.message:
+                message_to_append = {"role": "user", "content": message["text"]}
+                print("Message to append: ", message_to_append)
+                messages.append({"role": "user", "content": message["text"]})
 
             bot_id = create_bot_id(channel_id=self.channel.id)
 
@@ -76,15 +88,22 @@ class OpenAIAgent:
                     )
 
                 openai_stream = await self.openai.chat.completions.create(
+                    max_tokens=1024,
+                    messages=list(reversed(messages)),
                     model="gpt-4o-mini",
-                    # model="deepseek-chat",
-                    messages=messages,
                     stream=True,
                 )
 
                 async for chunk in openai_stream:
-                    print("Chunk", chunk)
                     await self.handle(chunk, message_id, bot_id)
+
+                await self.channel.send_event(
+                    {
+                        "type": "ai_indicator.clear",
+                        "message_id": message_id,
+                    },
+                    bot_id,
+                )
 
             except Exception as error:
                 print("Error in message handling:", error)
@@ -174,4 +193,12 @@ class OpenAIAgent:
 
         except Exception as e:
             print(f"Error handling chunk: {str(e)}")
+            await self.channel.send_event(
+                {
+                    "type": "ai_indicator.update",
+                    "ai_state": "AI_STATE_ERROR",
+                    "message_id": message_id,
+                },
+                bot_id,
+            )
             raise

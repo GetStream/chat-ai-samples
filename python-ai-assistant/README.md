@@ -9,6 +9,8 @@ The project exposes three endpoints:
 
 Depending on your use-case, you can call these either on channel appearance or by tapping on a UI element (e.g. Ask AI button).
 
+> Warning: The usage of a Python backend requirese some changes to the React application if you want to test it. Specifically it is necessary to change the trigger of the AI agent button to listen to members of a channel instead of watchers. This is due to a limitation of the Python SDK to not support watchers as of now.
+
 ## Usage
 
 In order to run the server locally, you would need to perform the following steps:

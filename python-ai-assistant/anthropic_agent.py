@@ -5,7 +5,7 @@ import asyncio
 from typing import Any
 from anthropic import AsyncAnthropic
 from model import NewMessageRequest
-from helpers import create_bot_id
+from helpers import create_bot_id, get_last_messages_from_channel
 
 
 class AnthropicAgent:
@@ -25,7 +25,9 @@ class AnthropicAgent:
 
     async def dispose(self):
         """Dispose of the agent"""
+        self.channel = None
         await self.chat_client.close()
+        await self.anthropic.close()
 
     async def handle_message(self, event: NewMessageRequest):
         """Handle a new message"""
@@ -46,27 +48,13 @@ class AnthropicAgent:
             self.processing = False
             return
 
-        channel_filters = {"cid": event.cid}
-        message_filters = {"type": {"$eq": "regular"}}
-        sort = {"updated_at": -1}
-        message_search = await self.chat_client.search(
-            channel_filters, message_filters, sort, limit=5
-        )
+        messages = await get_last_messages_from_channel(self.chat_client, event.cid, 5)
 
-        messages = [
-            {
-                "content": message["message"]["text"].strip(),
-                "role": (
-                    "assistant"
-                    if message["message"]["user"]["id"].startswith("ai-bot")
-                    else "user"
-                ),
-            }
-            for message in message_search["results"]
-            if message["message"]["text"] != ""
-        ]
-        if messages[0]["content"] != message:
-            messages.insert(0, {"role": "user", "content": message})
+        try:
+            if messages[0]["content"] != message:
+                messages.insert(0, {"role": "user", "content": message})
+        except IndexError as error:
+            print("No messages found in channel: ", error)
 
         if "parent_id" in event.message:
             message_to_append = {"role": "user", "content": message["text"]}
@@ -90,21 +78,26 @@ class AnthropicAgent:
                     },
                     bot_id,
                 )
-        except Exception as error:
-            print("Failed to send ai indicator update", error)
 
-        anthropic_stream = await self.anthropic.messages.create(
-            max_tokens=1024,
-            messages=list(reversed(messages)),
-            model="claude-3-5-sonnet-20241022",
-            stream=True,
-        )
+            anthropic_stream = await self.anthropic.messages.create(
+                max_tokens=1024,
+                messages=list(reversed(messages)),
+                model="claude-3-5-sonnet-20241022",
+                stream=True,
+            )
 
-        try:
             async for message_stream_event in anthropic_stream:
                 await self.handle(message_stream_event, message_id, bot_id)
+
+            await self.channel.send_event(
+                {
+                    "type": "ai_indicator.clear",
+                    "message_id": message_id,
+                },
+                bot_id,
+            )
         except Exception as error:
-            print("Error handling message stream event", error)
+            print("Failed to send ai indicator update", error)
             await self.channel.send_event(
                 {
                     "type": "ai_indicator.update",
@@ -113,7 +106,8 @@ class AnthropicAgent:
                 },
                 bot_id,
             )
-        self.processing = False
+        finally:
+            self.processing = False
 
     async def handle(self, message_stream_event: Any, message_id: str, bot_id: str):
         """Handle a message stream event"""

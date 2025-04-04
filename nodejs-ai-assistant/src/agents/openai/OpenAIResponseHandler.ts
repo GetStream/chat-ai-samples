@@ -106,9 +106,15 @@ export class OpenAIResponseHandler {
         case 'thread.run.step.created':
           this.run_id = event.data.id;
           break;
+        case 'thread.run.failed':
+          const errorMessage =
+            event.data.last_error?.message ?? 'Thread run failed';
+          await this.handleError(new Error(errorMessage));
+          break;
       }
     } catch (error) {
       console.error('Error handling event:', error);
+      this.handleError(error as Error);
     }
   };
 
@@ -201,7 +207,7 @@ export class OpenAIResponseHandler {
     });
     await this.chatClient.partialUpdateMessage(this.message.id, {
       set: {
-        text: 'Error generating the message',
+        text: error.message ?? 'Error generating the message',
         message: error.toString(),
         generating: false,
       },

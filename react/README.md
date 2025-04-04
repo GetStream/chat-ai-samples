@@ -15,7 +15,7 @@ There's also an example that shows you how to present the different states of th
 
 ## Project overview
 
-A tutorial how to build the entire project can be found [here](TODO: add the link to the tutorial). See a demo video of what the project looks like below:
+A tutorial how to build the entire project can be found [here](https://getstream.io/blog/react-assistant/). See a demo video of what the project looks like below:
 
 https://github.com/user-attachments/assets/47afc01b-8e40-48a9-a28b-5cf61b7c2d3f
 

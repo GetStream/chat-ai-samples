@@ -59,7 +59,7 @@ export class OpenAIResponseHandler {
           console.log('Requires action');
           await this.channel.sendEvent({
             type: 'ai_indicator.update',
-            state: 'AI_STATE_EXTERNAL_SOURCES',
+            ai_state: 'AI_STATE_EXTERNAL_SOURCES',
             cid: cid,
             message_id: id,
           });
@@ -72,7 +72,7 @@ export class OpenAIResponseHandler {
         case 'thread.message.created':
           await this.channel.sendEvent({
             type: 'ai_indicator.update',
-            state: 'AI_STATE_GENERATING',
+            ai_state: 'AI_STATE_GENERATING',
             cid: cid,
             message_id: id,
           });
@@ -201,7 +201,7 @@ export class OpenAIResponseHandler {
   private handleError = async (error: Error) => {
     await this.channel.sendEvent({
       type: 'ai_indicator.update',
-      state: 'AI_STATE_ERROR',
+      ai_state: 'AI_STATE_ERROR',
       cid: this.message.cid,
       message_id: this.message.id,
     });

@@ -97,7 +97,7 @@ export class OpenAIAgent implements AIAgent {
 
     await this.channel.sendEvent({
       type: 'ai_indicator.update',
-      state: 'AI_STATE_THINKING',
+      ai_state: 'AI_STATE_THINKING',
       cid: channelMessage.cid,
       message_id: channelMessage.id,
     });

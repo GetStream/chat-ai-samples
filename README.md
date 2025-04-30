@@ -80,7 +80,7 @@ Select your preferred SDK to get started.
 * [How to Build an AI Assistant for iOS Using Swift UI](https://getstream.io/blog/ios-assistant/)
 * [How to Build an AI Assistant with Flutter](https://getstream.io/blog/flutter-assistant/)
 
-## AI Guides 📚
+## AI Guides 📚  
 These guides explore more of how AI can be used across our SDKs and products.
 
 - [How to Build an AI Chat Android App With Google’s Generative AI](https://getstream.io/blog/android-generative-ai/)
@@ -92,6 +92,33 @@ These guides explore more of how AI can be used across our SDKs and products.
 - [How to Chat With Any Book Using Pinecone, OpenAI, and Stream](https://getstream.io/blog/ai-book-chat/)
 
 
+## Community Writing 📝 
+Check out what the community has built using Stream.
+
+- [How to Build a Job Application and Interview Platform with Next.js, Stream, and Firebase](https://getstream.io/blog/job-app-interview-platform/)
+- [How We Built an AI Wine Sommelier App Using Stream Video & GPT](https://getstream.io/blog/ai-wine-sommelier/)
+- [How to Build Video Calling Into Your App With Amazon Chime, AWS Lambda & Stream](https://getstream.io/blog/video-calling-amazon-lambda-chime/)
+- [How to Add Real-Time Chat Translation Using Stream](https://getstream.io/blog/real-time-chat-translation/)
+- [How a Global Airline Streamlines Team Operations With Stream Chat](https://getstream.io/blog/airline-team-chat/)
+- [How to Build a RAG AI Chatbot with Stream](https://getstream.io/blog/rag-ai-chatbot/)
+- [How to Add Real-Time Chat to Your AWS Application](https://getstream.io/blog/aws-chat-app/)
+- [How to Add RAG-Based AI to Team Chat With Stream](https://getstream.io/blog/ai-team-chat/)
+
+
+## What Creators Are Building 🚀 
+Explore real-world apps built by developers using Stream SDKs, featured on YouTube.
+
+- [Build a ChatGPT Clone with Stream and Neon – Brad Traversy](https://youtu.be/VR3p7almo_c?feature=shared)  
+  A full-stack AI chatbot app with conversational context and auth, built from scratch by Brad Traversy.
+
+- [Build a Language Exchange Platform with Real-Time Chat & Video – Burak (Codesistency)](https://www.youtube.com/watch?v=ZuwigEmwsTM)  
+  A multilingual video calling platform using Stream, JWT auth, and DaisyUI themes.
+
+- [How to Build a Remote Interview Platform with Stream – Burak (Codesistency)](https://youtu.be/xEnnRNH_lyw?si=UD2M4PDXzMYakpns)  
+  A remote interview app built with React, TypeScript, Tailwind, and Stream Video SDK designed for remote hiring use cases.
+
+- [Build a React Native Mental Health App with Stream Chat & Video – Simon](https://youtu.be/A8gJFybTPr0?si=aeWu1Ne9twoWWvha)  
+  A cross-platform app for therapy and support sessions with integrated real-time messaging and video calling.
 
 ## Contributing 🤔
 

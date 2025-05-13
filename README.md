@@ -95,6 +95,10 @@ These guides explore more of how AI can be used across our SDKs and products.
 ## Community Writing 📝 
 Check out what the community has built using Stream.
 
+- [How to Build a Therapy Marketplace Using Next.js and Firebase](https://getstream.io/blog/build-therapy-app/)
+- [How to Build a React Native Mental Health App with Stream Chat & Video Call](https://getstream.io/blog/mental-health-react-native/)
+- [How to Build a Remote Interview App with React & Next.js](https://getstream.io/blog/interview-app-react-nextjs/)
+- [How to Implement Context-Aware AI Responses in Your Chat App](https://getstream.io/blog/ai-chat-memory/)
 - [How to Build a Job Application and Interview Platform with Next.js, Stream, and Firebase](https://getstream.io/blog/job-app-interview-platform/)
 - [How We Built an AI Wine Sommelier App Using Stream Video & GPT](https://getstream.io/blog/ai-wine-sommelier/)
 - [How to Build Video Calling Into Your App With Amazon Chime, AWS Lambda & Stream](https://getstream.io/blog/video-calling-amazon-lambda-chime/)

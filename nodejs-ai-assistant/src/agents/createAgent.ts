@@ -13,7 +13,7 @@ export const createAgent = async (
   const client = new StreamChat(apiKey, { allowServerSideConnect: true });
   const token = serverClient.createToken(user_id);
   await client.connectUser({ id: user_id }, token);
-  console.log(`User ${user_id} connected successfully.`);
+  console.log(`User ${user_id} [${platform}] connected successfully.`);
 
   const channel = client.channel(channel_type, channel_id);
   await channel.watch();

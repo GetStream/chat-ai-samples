@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { AIAgent } from './agents/types';
+import { AgentPlatform, AIAgent } from './agents/types';
 import { createAgent } from './agents/createAgent';
 import { apiKey, serverClient } from './serverClient';
 
@@ -42,7 +42,7 @@ app.post('/start-ai-agent', async (req, res) => {
   const {
     channel_id,
     channel_type = 'messaging',
-    platform = 'anthropic',
+    platform = AgentPlatform.ANTHROPIC
   } = req.body;
 
   // Simple validation

@@ -20,8 +20,8 @@ import MyChannelHeader from './MyChannelHeader';
 import MyAIStateIndicator from './MyAIStateIndicator';
 
 // your Stream app information
-const apiKey = process.env.STREAM_API_KEY;
-const userToken = process.env.STREAM_TOKEN;
+const apiKey = import.meta.env.VITE_STREAM_API_KEY as string | undefined;
+const userToken = import.meta.env.VITE_STREAM_TOKEN as string | undefined;
 const userId = 'anakin_skywalker';
 const userName = 'Anakin Skywalker';
 

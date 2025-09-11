@@ -19,13 +19,13 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "openai": "^4.73.1",
-    "stream-chat": "^8.46.0"
+    "openai": "^5.20.1",
+    "stream-chat": "^9.19.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
-    "prettier": "^3.4.1",
-    "typescript": "^5.7.2"
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
   }
 }

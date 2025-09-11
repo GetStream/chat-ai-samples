@@ -1,28 +1,42 @@
 import axios from 'axios';
 import OpenAI from 'openai';
-import type { AssistantStream } from 'openai/lib/AssistantStream';
 import type { Channel, MessageResponse, StreamChat } from 'stream-chat';
+import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
 export class OpenAIResponseHandler {
   private message_text = '';
   private chunk_counter = 0;
-  private run_id = '';
+  private aborted = false;
+  private controller: AbortController | null = null;
+  private responseId: string | null = null;
+  private pendingToolArgs: Record<string, string> = {};
+  private functionCalls: Record<string, { name: string; call_id: string }> = {};
+  private continuationPending = false;
+  private continuationActive = false;
+  private currentIndicator?:
+    | 'AI_STATE_GENERATING'
+    | 'AI_STATE_EXTERNAL_SOURCES';
+  private indicatorCleared = false;
+  private finalized = false;
+  private pendingUpdateTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastUpdatePromise: Promise<void> = Promise.resolve();
+  private readonly updateIntervalMs = 200;
 
   constructor(
     private readonly openai: OpenAI,
-    private readonly openAiThread: OpenAI.Beta.Threads.Thread,
-    private readonly assistantStream: AssistantStream,
     private readonly chatClient: StreamChat,
     private readonly channel: Channel,
     private readonly message: MessageResponse,
+    private readonly input: ResponseInput,
+    private readonly tools: Tool[],
+    private readonly previousResponseId: string | undefined,
+    private readonly onResponseId: (id: string) => void,
   ) {
     this.chatClient.on('ai_indicator.stop', this.handleStopGenerating);
   }
 
   run = async () => {
-    for await (const event of this.assistantStream) {
-      await this.handle(event);
-    }
+    await this.streamResponse();
   };
 
   dispose = () => {
@@ -31,134 +45,140 @@ export class OpenAIResponseHandler {
 
   private handleStopGenerating = async () => {
     console.log('Stop generating');
-    if (!this.openai || !this.openAiThread) {
-      console.log('OpenAI not initialized');
-      return;
+    this.aborted = true;
+    try {
+      this.controller?.abort();
+    } catch (e) {
+      // no-op
     }
-
-    this.openai.beta.threads.runs.cancel(this.openAiThread.id, this.run_id);
-    await this.chatClient.partialUpdateMessage(this.message.id, {
-      set: { generating: false },
-    });
-    await this.channel.sendEvent({
-      type: 'ai_indicator.clear',
-      cid: this.message.cid,
-      message_id: this.message.id,
-    });
+    await this.finalizeMessage();
   };
 
-  private handle = async (
-    event: OpenAI.Beta.Assistants.AssistantStreamEvent,
-  ) => {
+  // Stream from the Responses API via the official SDK
+  private streamResponse = async () => {
+    this.controller = new AbortController();
+
+    const stream = this.openai.responses.stream(
+      {
+        model: 'gpt-4o-mini',
+        input: this.input,
+        tools: this.tools,
+        previous_response_id: this.previousResponseId,
+      },
+      { signal: this.controller.signal },
+    );
+
     try {
-      // Retrieve events that are denoted with 'requires_action'
-      // since these will have our tool_calls
-      const { cid, id } = this.message;
-      switch (event.event) {
-        case 'thread.run.requires_action':
-          console.log('Requires action');
-          await this.channel.sendEvent({
-            type: 'ai_indicator.update',
-            ai_state: 'AI_STATE_EXTERNAL_SOURCES',
-            cid: cid,
-            message_id: id,
-          });
-          await this.handleRequiresAction(
-            event.data,
-            event.data.id,
-            event.data.thread_id,
-          );
-          break;
-        case 'thread.message.created':
-          await this.channel.sendEvent({
-            type: 'ai_indicator.update',
-            ai_state: 'AI_STATE_GENERATING',
-            cid: cid,
-            message_id: id,
-          });
-          break;
-        case 'thread.message.delta':
-          const content = event.data.delta.content;
-          if (!content || content[0]?.type !== 'text') return;
-          this.message_text += content[0].text?.value ?? '';
-          if (
-            this.chunk_counter % 15 === 0 ||
-            (this.chunk_counter < 8 && this.chunk_counter % 2 === 0)
-          ) {
-            const text = this.message_text;
-            await this.chatClient.partialUpdateMessage(id, {
-              set: { text, generating: true },
-            });
-          }
-          this.chunk_counter += 1;
-          break;
-        case 'thread.message.completed':
-          const text = this.message_text;
-          await this.chatClient.partialUpdateMessage(id, {
-            set: { text, generating: false },
-          });
-          await this.channel.sendEvent({
-            type: 'ai_indicator.clear',
-            cid: cid,
-            message_id: id,
-          });
-          break;
-        case 'thread.run.step.created':
-          this.run_id = event.data.id;
-          break;
-        case 'thread.run.failed':
-          const errorMessage =
-            event.data.last_error?.message ?? 'Thread run failed';
-          await this.handleError(new Error(errorMessage));
-          break;
+      for await (const event of stream) {
+        await this.handleEvent(event);
       }
-    } catch (error) {
-      console.error('Error handling event:', error);
-      this.handleError(error as Error);
+    } catch (err) {
+      if (!this.aborted) {
+        await this.handleError(err as Error);
+      }
     }
   };
 
-  private handleRequiresAction = async (
-    data: OpenAI.Beta.Threads.Runs.Run,
-    runId: string,
-    threadId: string,
-  ) => {
-    if (!data.required_action || !data.required_action.submit_tool_outputs) {
-      console.log('No tool outputs to submit');
-      return;
-    }
-    try {
-      const toolOutputs = await Promise.all(
-        data.required_action.submit_tool_outputs.tool_calls.map(
-          async (toolCall) => {
-            if (toolCall.function.name !== 'getCurrentTemperature') return;
+  private handleEvent = async (event: OpenAI.Responses.ResponseStreamEvent) => {
+    switch (event.type) {
+      case 'response.created':
+        const rid = event.response.id;
+        if (rid) {
+          this.responseId = rid;
+          this.onResponseId(rid);
+        }
+        break;
 
-            const argumentsString = toolCall.function.arguments;
-            console.log('Arguments: ', argumentsString);
-            const args = JSON.parse(argumentsString);
+      case 'response.output_item.added':
+        const item = event.item;
+        if (item.type === 'function_call' && item.id) {
+          this.functionCalls[item.id] = {
+            name: item.name,
+            call_id: item.call_id,
+          };
+        }
+        break;
+
+      case 'response.output_text.delta':
+        if (!event.delta) break;
+        await this.updateIndicator('AI_STATE_GENERATING');
+        this.message_text += event.delta;
+        this.chunk_counter += 1;
+        this.schedulePartialUpdate();
+        break;
+
+      case 'response.completed':
+        if (!this.continuationPending && !this.continuationActive) {
+          await this.finalizeMessage();
+        }
+        break;
+
+      case 'response.function_call_arguments.delta': {
+        const { delta, item_id: toolItemId } = event;
+        if (!toolItemId || !delta) break;
+        this.pendingToolArgs[toolItemId] =
+          (this.pendingToolArgs[toolItemId] ?? '') + delta;
+        // Optional: show external sources indicator
+        await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
+        break;
+      }
+
+      case 'response.function_call_arguments.done': {
+        const toolItemId = event.item_id;
+        if (!toolItemId) break;
+        const { name: functionName, call_id } =
+          this.functionCalls[toolItemId] || {};
+
+        const argsStr = this.pendingToolArgs[toolItemId] ?? '{}';
+        delete this.pendingToolArgs[toolItemId];
+
+        let output = '';
+        if (functionName === 'getCurrentTemperature') {
+          try {
+            const args = JSON.parse(argsStr);
             const location = args.location as string;
             const temperature = await this.getCurrentTemperature(location);
-            const temperatureString = temperature.toString();
-            return {
-              tool_call_id: toolCall.id,
-              output: temperatureString,
-            };
-          },
-        ),
-      );
-      // Submit all the tool outputs at the same time
-      await this.submitToolOutputs(
-        toolOutputs.filter((t) => !!t),
-        runId,
-        threadId,
-      );
-    } catch (error) {
-      console.error('Error processing required action:', error);
-      this.openai.beta.threads.runs.cancel(threadId, runId);
-      await this.handleError(error as Error);
+            output = String(temperature);
+          } catch (e) {
+            output = 'NaN';
+          }
+        }
+
+        // Continue the response by creating a new stream with previous_response_id
+        if (this.responseId && call_id) {
+          this.continuationPending = true;
+          const continuation = this.openai.responses.stream(
+            {
+              model: 'gpt-4o-mini',
+              previous_response_id: this.responseId,
+              tools: this.tools,
+              input: [{ type: 'function_call_output', call_id, output }],
+            },
+            { signal: this.controller?.signal },
+          );
+          // Iterate continuation and mark active so we don't finalize early
+          this.continuationActive = true;
+          this.continuationPending = false;
+          for await (const e of continuation) {
+            await this.handleEvent(e);
+          }
+          this.continuationActive = false;
+          // Ensure we finalize with the full accumulated text after continuation
+          if (!this.aborted) {
+            await this.finalizeMessage();
+          }
+        }
+        break;
+      }
+
+      case 'error':
+        const msg = event.message ?? 'OpenAI response error';
+        await this.handleError(new Error(msg));
+        break;
     }
   };
 
+  // getCurrentTemperature is used by the tool-calling flow
   private getCurrentTemperature = async (location: string) => {
     const apiKey = process.env.OPENWEATHER_API_KEY;
     if (!apiKey) {
@@ -177,29 +197,13 @@ export class OpenAIResponseHandler {
     return data.main.temp;
   };
 
-  private submitToolOutputs = async (
-    toolOutputs: { output: string; tool_call_id: string }[],
-    runId: string,
-    threadId: string,
-  ) => {
-    try {
-      // Use the submitToolOutputsStream helper
-      const stream = this.openai.beta.threads.runs.submitToolOutputsStream(
-        threadId,
-        runId,
-        { tool_outputs: toolOutputs },
-      );
-      for await (const event of stream) {
-        await this.handle(event);
-      }
-    } catch (error) {
-      console.error('Error submitting tool outputs:', error);
-      await this.handleError(error as Error);
-    }
-  };
-
   private handleError = async (error: Error) => {
-    await this.channel.sendEvent({
+    this.finalized = true;
+    if (this.pendingUpdateTimer) {
+      clearTimeout(this.pendingUpdateTimer);
+      this.pendingUpdateTimer = null;
+    }
+    await this.safeSendEvent({
       type: 'ai_indicator.update',
       ai_state: 'AI_STATE_ERROR',
       cid: this.message.cid,
@@ -208,9 +212,93 @@ export class OpenAIResponseHandler {
     await this.chatClient.partialUpdateMessage(this.message.id, {
       set: {
         text: error.message ?? 'Error generating the message',
-        message: error.toString(),
         generating: false,
       },
     });
   };
+
+  private schedulePartialUpdate() {
+    if (this.finalized) return;
+    if (this.pendingUpdateTimer) return;
+    this.pendingUpdateTimer = setTimeout(() => {
+      this.pendingUpdateTimer = null;
+      void this.flushPartialUpdate();
+    }, this.updateIntervalMs);
+  }
+
+  private async flushPartialUpdate() {
+    if (this.finalized) return;
+    const text = this.message_text;
+    const id = this.message.id;
+    this.lastUpdatePromise = this.lastUpdatePromise.then(() =>
+      this.chatClient
+        .partialUpdateMessage(id, {
+          set: { text, generating: true },
+        })
+        .then(() => undefined),
+    );
+    await this.lastUpdatePromise;
+  }
+
+  private async updateIndicator(
+    state: 'AI_STATE_GENERATING' | 'AI_STATE_EXTERNAL_SOURCES',
+  ) {
+    if (this.currentIndicator === state) return;
+    this.currentIndicator = state;
+    this.indicatorCleared = false;
+    await this.safeSendEvent({
+      type: 'ai_indicator.update',
+      ai_state: state,
+      cid: this.message.cid,
+      message_id: this.message.id,
+    });
+  }
+
+  private async clearIndicator() {
+    if (this.indicatorCleared) return;
+    this.currentIndicator = undefined;
+    this.indicatorCleared = true;
+    await this.safeSendEvent({
+      type: 'ai_indicator.clear',
+      cid: this.message.cid,
+      message_id: this.message.id,
+    });
+  }
+
+  private async safeSendEvent(event: Record<string, unknown>) {
+    const maxAttempts = 5;
+    let delay = 100;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.channel.sendEvent(event as any);
+        return;
+      } catch (err) {
+        const status = (err as any)?.status || (err as any)?.response?.status;
+        const retryable = status === 429 || (status >= 500 && status < 600);
+        if (!retryable || attempt === maxAttempts) {
+          return; // Swallow to avoid breaking generation flow on indicator errors
+        }
+        await new Promise((r) =>
+          setTimeout(r, delay + Math.floor(Math.random() * 50)),
+        );
+        delay *= 2;
+      }
+    }
+  }
+
+  private async finalizeMessage() {
+    if (this.finalized) return;
+    this.finalized = true;
+    if (this.pendingUpdateTimer) {
+      clearTimeout(this.pendingUpdateTimer);
+      this.pendingUpdateTimer = null;
+    }
+    // Wait for any in-flight partial updates to settle, then apply final
+    await this.lastUpdatePromise.catch(() => Promise.resolve());
+    const text = this.message_text;
+    await this.chatClient.partialUpdateMessage(this.message.id, {
+      set: { text, generating: false },
+    });
+    await this.clearIndicator();
+  }
 }

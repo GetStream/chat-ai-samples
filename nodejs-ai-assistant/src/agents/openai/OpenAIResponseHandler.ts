@@ -1,6 +1,7 @@
 import axios from 'axios';
 import OpenAI from 'openai';
 import type { Channel, MessageResponse, StreamChat } from 'stream-chat';
+import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
 export class OpenAIResponseHandler {
   private message_text = '';
@@ -12,7 +13,9 @@ export class OpenAIResponseHandler {
   private functionCalls: Record<string, { name: string; call_id: string }> = {};
   private continuationPending = false;
   private continuationActive = false;
-  private currentIndicator?: 'AI_STATE_GENERATING' | 'AI_STATE_EXTERNAL_SOURCES';
+  private currentIndicator?:
+    | 'AI_STATE_GENERATING'
+    | 'AI_STATE_EXTERNAL_SOURCES';
   private indicatorCleared = false;
   private finalized = false;
   private pendingUpdateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -24,10 +27,10 @@ export class OpenAIResponseHandler {
     private readonly chatClient: StreamChat,
     private readonly channel: Channel,
     private readonly message: MessageResponse,
-    private readonly input: unknown[],
-    private readonly tools: unknown[],
+    private readonly input: ResponseInput,
+    private readonly tools: Tool[],
     private readonly previousResponseId: string | undefined,
-    private readonly onResponseId?: (id: string) => void,
+    private readonly onResponseId: (id: string) => void,
   ) {
     this.chatClient.on('ai_indicator.stop', this.handleStopGenerating);
   }
@@ -54,22 +57,20 @@ export class OpenAIResponseHandler {
   // Stream from the Responses API via the official SDK
   private streamResponse = async () => {
     this.controller = new AbortController();
-    const params: any = {
-      model: 'gpt-4o-mini',
-      input: this.input as any,
-      tools: this.tools as any,
-    };
-    if (this.previousResponseId) {
-      params.previous_response_id = this.previousResponseId;
-    }
-    const stream: AsyncIterable<any> = (this.openai as any).responses.stream(
-      params,
-      { signal: this.controller.signal } as any,
+
+    const stream = this.openai.responses.stream(
+      {
+        model: 'gpt-4o-mini',
+        input: this.input,
+        tools: this.tools,
+        previous_response_id: this.previousResponseId,
+      },
+      { signal: this.controller.signal },
     );
 
     try {
-      for await (const event of stream as any) {
-        await this.handleEvent(event as any);
+      for await (const event of stream) {
+        await this.handleEvent(event);
       }
     } catch (err) {
       if (!this.aborted) {
@@ -78,125 +79,106 @@ export class OpenAIResponseHandler {
     }
   };
 
-  private handleEvent = async (event: any) => {
-    const kind = event?.type ?? event?.event;
-    const { cid, id } = this.message;
-    try {
-      switch (kind) {
-        case 'response.created': {
-          const rid = event?.response?.id ?? event?.id;
-          if (rid) this.responseId = rid;
-          if (rid && this.onResponseId) this.onResponseId(rid);
-          break;
+  private handleEvent = async (event: OpenAI.Responses.ResponseStreamEvent) => {
+    switch (event.type) {
+      case 'response.created':
+        const rid = event.response.id;
+        if (rid) {
+          this.responseId = rid;
+          this.onResponseId(rid);
         }
-        case 'response.output_item.added': {
-          const item = event?.item;
-          if (item?.type === 'function_call') {
-            const itemId: string = item.id;
-            const name: string = item.name;
-            const call_id: string = item.call_id;
-            if (itemId && call_id) {
-              this.functionCalls[itemId] = { name, call_id };
-            }
+        break;
+
+      case 'response.output_item.added':
+        const item = event.item;
+        if (item.type === 'function_call' && item.id) {
+          this.functionCalls[item.id] = {
+            name: item.name,
+            call_id: item.call_id,
+          };
+        }
+        break;
+
+      case 'response.output_text.delta':
+        if (!event.delta) break;
+        await this.updateIndicator('AI_STATE_GENERATING');
+        this.message_text += event.delta;
+        this.chunk_counter += 1;
+        this.schedulePartialUpdate();
+        break;
+
+      case 'response.completed':
+        if (!this.continuationPending && !this.continuationActive) {
+          await this.finalizeMessage();
+        }
+        break;
+
+      case 'response.function_call_arguments.delta': {
+        const { delta, item_id: toolItemId } = event;
+        if (!toolItemId || !delta) break;
+        this.pendingToolArgs[toolItemId] =
+          (this.pendingToolArgs[toolItemId] ?? '') + delta;
+        // Optional: show external sources indicator
+        await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
+        break;
+      }
+
+      case 'response.function_call_arguments.done': {
+        const toolItemId = event.item_id;
+        if (!toolItemId) break;
+        const { name: functionName, call_id } =
+          this.functionCalls[toolItemId] || {};
+
+        const argsStr = this.pendingToolArgs[toolItemId] ?? '{}';
+        delete this.pendingToolArgs[toolItemId];
+
+        let output = '';
+        if (functionName === 'getCurrentTemperature') {
+          try {
+            const args = JSON.parse(argsStr);
+            const location = args.location as string;
+            const temperature = await this.getCurrentTemperature(location);
+            output = String(temperature);
+          } catch (e) {
+            output = 'NaN';
           }
-          break;
         }
-        case 'response.output_text.delta': {
-          const delta: string = event?.delta ?? '';
-          if (!delta) break;
-          await this.updateIndicator('AI_STATE_GENERATING');
-          this.message_text += delta;
-          this.chunk_counter += 1;
-          this.schedulePartialUpdate();
-          break;
-        }
-        case 'response.completed': {
-          if (!this.continuationPending && !this.continuationActive) {
+
+        // Continue the response by creating a new stream with previous_response_id
+        if (this.responseId && call_id) {
+          this.continuationPending = true;
+          const continuation = this.openai.responses.stream(
+            {
+              model: 'gpt-4o-mini',
+              previous_response_id: this.responseId,
+              tools: this.tools,
+              input: [{ type: 'function_call_output', call_id, output }],
+            },
+            { signal: this.controller?.signal },
+          );
+          // Iterate continuation and mark active so we don't finalize early
+          this.continuationActive = true;
+          this.continuationPending = false;
+          for await (const e of continuation) {
+            await this.handleEvent(e);
+          }
+          this.continuationActive = false;
+          // Ensure we finalize with the full accumulated text after continuation
+          if (!this.aborted) {
             await this.finalizeMessage();
           }
-          break;
         }
-        case 'response.function_call_arguments.delta': {
-          const toolItemId: string = event?.item_id ?? event?.id;
-          const delta: string = event?.delta ?? '';
-          if (!toolItemId || !delta) break;
-          this.pendingToolArgs[toolItemId] =
-            (this.pendingToolArgs[toolItemId] ?? '') + delta;
-          // Optional: show external sources indicator
-          await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
-          break;
-        }
-        case 'response.function_call_arguments.done': {
-          const toolItemId: string = event?.item_id ?? event?.id;
-          if (!toolItemId) break;
-          const fnMeta = this.functionCalls[toolItemId];
-          const functionName: string | undefined = fnMeta?.name;
-          const call_id: string | undefined = fnMeta?.call_id;
-          const argsStr = this.pendingToolArgs[toolItemId] ?? '{}';
-          delete this.pendingToolArgs[toolItemId];
-          let output = '';
-          if (functionName === 'getCurrentTemperature') {
-            try {
-              const args = JSON.parse(argsStr);
-              const location = args.location as string;
-              const temperature = await this.getCurrentTemperature(location);
-              output = String(temperature);
-            } catch (e) {
-              output = 'NaN';
-            }
-          } else {
-            output = '';
-          }
+        break;
+      }
 
-          // Continue the response by creating a new stream with previous_response_id
-          if (this.responseId && call_id) {
-            this.continuationPending = true;
-            const continuation: AsyncIterable<any> = (this.openai as any).responses.stream(
-              {
-                model: 'gpt-4o-mini',
-                previous_response_id: this.responseId,
-                tools: this.tools as any,
-                input: [
-                  {
-                    type: 'function_call_output',
-                    call_id,
-                    output,
-                  },
-                ],
-              },
-              { signal: this.controller?.signal } as any,
-            );
-            // Iterate continuation and mark active so we don't finalize early
-            this.continuationActive = true;
-            this.continuationPending = false;
-            for await (const tevent of continuation as any) {
-              await this.handleEvent(tevent as any);
-            }
-            this.continuationActive = false;
-            // Ensure we finalize with the full accumulated text after continuation
-            if (!this.aborted) {
-              await this.finalizeMessage();
-            }
-          }
-          break;
-        }
-        case 'response.error': {
-          const msg = event?.error?.message ?? event?.data?.error?.message ?? 'OpenAI response error';
-          await this.handleError(new Error(msg));
-          break;
-        }
-        default:
-          break;
-      }
-    } catch (error) {
-      if (!this.aborted) {
-        await this.handleError(error as Error);
-      }
+      case 'error':
+        const msg = event.message ?? 'OpenAI response error';
+        await this.handleError(new Error(msg));
+        break;
     }
   };
 
   // getCurrentTemperature is used by the tool-calling flow
-
   private getCurrentTemperature = async (location: string) => {
     const apiKey = process.env.OPENWEATHER_API_KEY;
     if (!apiKey) {
@@ -230,7 +212,6 @@ export class OpenAIResponseHandler {
     await this.chatClient.partialUpdateMessage(this.message.id, {
       set: {
         text: error.message ?? 'Error generating the message',
-        message: error.toString(),
         generating: false,
       },
     });
@@ -259,7 +240,9 @@ export class OpenAIResponseHandler {
     await this.lastUpdatePromise;
   }
 
-  private async updateIndicator(state: 'AI_STATE_GENERATING' | 'AI_STATE_EXTERNAL_SOURCES') {
+  private async updateIndicator(
+    state: 'AI_STATE_GENERATING' | 'AI_STATE_EXTERNAL_SOURCES',
+  ) {
     if (this.currentIndicator === state) return;
     this.currentIndicator = state;
     this.indicatorCleared = false;
@@ -295,7 +278,9 @@ export class OpenAIResponseHandler {
         if (!retryable || attempt === maxAttempts) {
           return; // Swallow to avoid breaking generation flow on indicator errors
         }
-        await new Promise((r) => setTimeout(r, delay + Math.floor(Math.random() * 50)));
+        await new Promise((r) =>
+          setTimeout(r, delay + Math.floor(Math.random() * 50)),
+        );
         delay *= 2;
       }
     }

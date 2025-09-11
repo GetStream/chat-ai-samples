@@ -1,7 +1,8 @@
 import OpenAI from 'openai';
 import { OpenAIResponseHandler } from './OpenAIResponseHandler';
 import type { AIAgent } from '../types';
-import type { Channel, DefaultGenerics, Event, StreamChat } from 'stream-chat';
+import type { Channel, Event, StreamChat } from 'stream-chat';
+import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
 export class OpenAIAgent implements AIAgent {
   private openai?: OpenAI;
@@ -36,7 +37,7 @@ export class OpenAIAgent implements AIAgent {
     this.chatClient.on('message.new', this.handleMessage);
   };
 
-  private handleMessage = async (e: Event<DefaultGenerics>) => {
+  private handleMessage = async (e: Event) => {
     if (!this.openai) {
       console.log('OpenAI not initialized');
       return;
@@ -68,12 +69,12 @@ export class OpenAIAgent implements AIAgent {
     // Conversation state is maintained via previous_response_id.
     const systemPrompt =
       'You are an AI assistant. Help users with their questions. Only call the getCurrentTemperature tool if the user explicitly asks for the current temperature for a specific location.';
-    const input = [
+    const input: ResponseInput = [
       { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
       { role: 'user', content: [{ type: 'input_text', text: message }] },
     ];
 
-    const tools = [
+    const tools: Tool[] = [
       {
         type: 'function',
         name: 'getCurrentTemperature',
@@ -128,7 +129,9 @@ export class OpenAIAgent implements AIAgent {
         if (!retryable || attempt === maxAttempts) {
           throw err; // propagate initial failure if non-retryable
         }
-        await new Promise((r) => setTimeout(r, delay + Math.floor(Math.random() * 50)));
+        await new Promise((r) =>
+          setTimeout(r, delay + Math.floor(Math.random() * 50)),
+        );
         delay *= 2;
       }
     }

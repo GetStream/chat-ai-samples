@@ -23,7 +23,7 @@ export default function MyChannelHeader() {
     await fetch(`http://127.0.0.1:3000/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel_id: channel.id, platform: 'openai' }),
+      body: JSON.stringify({ channel_id: channel.id, platform: 'anthropic' }),
     });
   }
 }

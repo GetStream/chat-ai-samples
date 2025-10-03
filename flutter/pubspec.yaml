@@ -12,8 +12,8 @@ dependencies:
   flutter:
     sdk: flutter
   dio: ^5.7.0
-  stream_chat: ^8.3.0
-  stream_chat_flutter: ^8.3.0
+  stream_chat: ^9.17.0
+  stream_chat_flutter: ^9.17.0
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,12 @@
 import axios from 'axios';
 import OpenAI from 'openai';
-import type { Channel, MessageResponse, StreamChat } from 'stream-chat';
-import { ResponseInput, Tool } from 'openai/resources/responses/responses';
+import { Readable } from 'stream';
+import type { Attachment, Channel, MessageResponse, StreamChat } from 'stream-chat';
+import {
+  ResponseInput,
+  ResponseInputText,
+  Tool,
+} from 'openai/resources/responses/responses';
 
 export class OpenAIResponseHandler {
   private message_text = '';
@@ -21,6 +26,7 @@ export class OpenAIResponseHandler {
   private pendingUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   private lastUpdatePromise: Promise<void> = Promise.resolve();
   private readonly updateIntervalMs = 200;
+  private mode: 'text' | 'image' = 'text';
 
   constructor(
     private readonly openai: OpenAI,
@@ -36,7 +42,12 @@ export class OpenAIResponseHandler {
   }
 
   run = async () => {
-    await this.streamResponse();
+    this.mode = this.shouldGenerateImageRequest() ? 'image' : 'text';
+    if (this.mode === 'image') {
+      await this.generateImage();
+    } else {
+      await this.streamResponse();
+    }
   };
 
   dispose = () => {
@@ -51,6 +62,19 @@ export class OpenAIResponseHandler {
     } catch (e) {
       // no-op
     }
+    if (this.mode === 'image') {
+      if (!this.finalized) {
+        await this.chatClient.partialUpdateMessage(this.message.id, {
+          set: {
+            text: 'Image generation stopped.',
+            generating: false,
+          },
+        });
+        await this.clearIndicator();
+        this.finalized = true;
+      }
+      return;
+    }
     await this.finalizeMessage();
   };
 
@@ -60,7 +84,7 @@ export class OpenAIResponseHandler {
 
     const stream = this.openai.responses.stream(
       {
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         input: this.input,
         tools: this.tools,
         previous_response_id: this.previousResponseId,
@@ -149,7 +173,7 @@ export class OpenAIResponseHandler {
           this.continuationPending = true;
           const continuation = this.openai.responses.stream(
             {
-              model: 'gpt-4o-mini',
+              model: 'gpt-4o',
               previous_response_id: this.responseId,
               tools: this.tools,
               input: [{ type: 'function_call_output', call_id, output }],
@@ -300,5 +324,126 @@ export class OpenAIResponseHandler {
       set: { text, generating: false },
     });
     await this.clearIndicator();
+  }
+
+  private shouldGenerateImageRequest() {
+    if (this.hasUserImageInput()) return false;
+    const userInputs = this.getUserInputTexts();
+    if (!userInputs.length) return false;
+    return userInputs.some((text) => {
+      const normalized = text.toLowerCase();
+      const hasImageKeyword = /\b(image|picture|art|artwork|illustration|logo|icon|graphic|photo|photograph|painting)\b/.test(
+        normalized,
+      );
+      const hasActionKeyword = /\b(generate|create|draw|design|make|produce|render|sketch|imagine)\b/.test(
+        normalized,
+      );
+      const hasCommandPrefix = /^(!image|image:)/.test(normalized.trim());
+      return (hasImageKeyword && hasActionKeyword) || hasCommandPrefix;
+    });
+  }
+
+  private getUserInputTexts(): string[] {
+    return this.input.flatMap((item) => {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'role' in item &&
+        item.role === 'user' &&
+        'content' in item &&
+        Array.isArray(item.content)
+      ) {
+        return item.content
+          .filter(
+            (content): content is ResponseInputText =>
+              content?.type === 'input_text',
+          )
+          .map((content) => content.text);
+      }
+      return [];
+    });
+  }
+
+  private buildImagePrompt(): string {
+    const userInputs = this.getUserInputTexts();
+    if (!userInputs.length) return '';
+    const latest = userInputs[userInputs.length - 1];
+    const cleaned = latest.replace(/^(!image|image:)\s*/i, '').trim();
+    return cleaned.length > 0 ? cleaned : latest;
+  }
+
+  private hasUserImageInput(): boolean {
+    return this.input.some((item) => {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        'role' in item &&
+        item.role === 'user' &&
+        'content' in item &&
+        Array.isArray(item.content)
+      ) {
+        return item.content.some(
+          (content) => content?.type === 'input_image' && !!content,
+        );
+      }
+      return false;
+    });
+  }
+
+  private async generateImage() {
+    this.controller = new AbortController();
+    try {
+      await this.updateIndicator('AI_STATE_GENERATING');
+      const prompt = this.buildImagePrompt();
+      if (!prompt) {
+        throw new Error('No prompt provided for image generation.');
+      }
+
+      const response = await this.openai.images.generate(
+        {
+          model: 'gpt-image-1',
+          prompt,
+          size: '1024x1024',
+        },
+        { signal: this.controller.signal },
+      );
+
+      const imageData = response.data?.[0]?.b64_json;
+      if (!imageData) {
+        throw new Error('Image generation failed: missing image data.');
+      }
+
+      const imageBuffer = Buffer.from(imageData, 'base64');
+      const imageStream = Readable.from(imageBuffer);
+      const uploadResponse = await this.channel.sendImage(
+        imageStream,
+        'generated-image.png',
+        'image/png',
+      );
+
+      const attachment: Attachment = {
+        type: 'image',
+        image_url: uploadResponse.file,
+        thumb_url: uploadResponse.thumb_url ?? uploadResponse.file,
+        fallback: prompt,
+      };
+
+      const messageText = `Generated image for prompt: "${prompt}"`;
+      this.message_text = messageText;
+      await this.chatClient.partialUpdateMessage(this.message.id, {
+        set: {
+          text: messageText,
+          attachments: [attachment],
+          generating: false,
+        },
+      });
+      this.finalized = true;
+      await this.clearIndicator();
+    } catch (error) {
+      if (this.aborted) {
+        return;
+      }
+      await this.handleError(error as Error);
+    }
   }
 }

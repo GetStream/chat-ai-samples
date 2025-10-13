@@ -2,7 +2,12 @@ import OpenAI from 'openai';
 import { OpenAIResponseHandler } from './OpenAIResponseHandler';
 import type { AIAgent } from '../types';
 import type { Channel, Event, StreamChat } from 'stream-chat';
-import { ResponseInput, Tool } from 'openai/resources/responses/responses';
+import {
+  ResponseInput,
+  ResponseInputImage,
+  ResponseInputText,
+  Tool,
+} from 'openai/resources/responses/responses';
 
 export class OpenAIAgent implements AIAgent {
   private openai?: OpenAI;
@@ -48,8 +53,19 @@ export class OpenAIAgent implements AIAgent {
       return;
     }
 
-    const message = e.message.text;
-    if (!message) return;
+    const text = e.message.text ?? '';
+    const attachments = e.message.attachments ?? [];
+    const imageAttachments = attachments.filter((attachment) => {
+      if (!attachment) return false;
+      const hasImageType =
+        attachment.type === 'image' ||
+        (!!attachment.mime_type && attachment.mime_type.startsWith('image/'));
+      const hasUrl =
+        attachment.image_url || attachment.asset_url || attachment.thumb_url;
+      return Boolean(hasImageType && hasUrl);
+    });
+
+    if (!text.trim() && imageAttachments.length === 0) return;
 
     this.lastInteractionTs = Date.now();
 
@@ -69,9 +85,32 @@ export class OpenAIAgent implements AIAgent {
     // Conversation state is maintained via previous_response_id.
     const systemPrompt =
       'You are an AI assistant. Help users with their questions. Only call the getCurrentTemperature tool if the user explicitly asks for the current temperature for a specific location.';
+    const userContent: (ResponseInputText | ResponseInputImage)[] = [];
+    if (text.trim().length > 0) {
+      userContent.push({ type: 'input_text', text });
+    }
+    for (const attachment of imageAttachments) {
+      const imageUrl =
+        attachment.image_url ?? attachment.asset_url ?? attachment.thumb_url;
+      if (!imageUrl) continue;
+      userContent.push({
+        type: 'input_image',
+        image_url: imageUrl,
+        detail: 'high',
+      });
+    }
+
+    if (userContent.length === 0) {
+      userContent.push({
+        type: 'input_text',
+        text:
+          'The user sent an image with no description. Provide helpful observations.',
+      });
+    }
+
     const input: ResponseInput = [
       { role: 'system', content: [{ type: 'input_text', text: systemPrompt }] },
-      { role: 'user', content: [{ type: 'input_text', text: message }] },
+      { role: 'user', content: userContent },
     ];
 
     const tools: Tool[] = [

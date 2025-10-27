@@ -45,6 +45,24 @@ npm start
 
 This will start listening for requests on localhost:3000.
 
+### Python implementation
+
+A Python port of the same server lives in the `python/` directory and mirrors the Node.js functionality using FastAPI plus the Stream Chat, OpenAI, and Anthropic Python SDKs.
+
+1. (Optional) Create and activate a virtual environment:
+   ```
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+2. Install dependencies:
+   ```
+   pip install -r python/requirements.txt
+   ```
+3. Start the FastAPI app (defaults to port 8000; use `--port 3000` to align with the Node.js sample):
+   ```
+   uvicorn python.app:app --reload --port 3000
+   ```
+
 ## Starting the AI Agent
 
 When `start-ai-agent` endpoint is called the following happens:

@@ -184,10 +184,13 @@ struct CustomTrailingComposerView: View {
                     Image(systemName: "stop.circle.fill")
                 }
             } else {
-                SendMessageButton(
-                    enabled: viewModel.sendButtonEnabled,
-                    onTap: onTap
-                )
+                HStack {
+                    TranscribeSpeechButton()
+                    SendMessageButton(
+                        enabled: viewModel.sendButtonEnabled,
+                        onTap: onTap
+                    )
+                }
             }
         }
         .padding(.bottom, 8)

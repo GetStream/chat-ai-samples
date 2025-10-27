@@ -8,11 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		84231DCD2CF533D5000BD929 /* StreamChatSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 84231DCC2CF533D5000BD929 /* StreamChatSwiftUI */; };
-		84E46A232CF605F9000CBDDE /* StreamChatAI in Frameworks */ = {isa = PBXBuildFile; productRef = 84E46A222CF605F9000CBDDE /* StreamChatAI */; };
 		84E46A3C2CFDD4DB000CBDDE /* StreamChatAI in Frameworks */ = {isa = PBXBuildFile; productRef = 84231DE92CF53E7E000BD929 /* StreamChatAI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		84198D612E97FF38009E3FB0 /* StreamChatAI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = StreamChatAI; path = /Users/martinmitrevski/workspace/StreamChatAI; sourceTree = "<absolute>"; };
 		84231DB82CF53342000BD929 /* StreamChatAIAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = StreamChatAIAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -43,7 +43,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				84E46A3C2CFDD4DB000CBDDE /* StreamChatAI in Frameworks */,
-				84E46A232CF605F9000CBDDE /* StreamChatAI in Frameworks */,
 				84231DCD2CF533D5000BD929 /* StreamChatSwiftUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -54,6 +53,7 @@
 		84231DAF2CF53342000BD929 = {
 			isa = PBXGroup;
 			children = (
+				84198D612E97FF38009E3FB0 /* StreamChatAI */,
 				84231DBA2CF53342000BD929 /* StreamChatAIAssistant */,
 				84231DE82CF53E7E000BD929 /* Frameworks */,
 				84231DB92CF53342000BD929 /* Products */,
@@ -97,7 +97,6 @@
 			packageProductDependencies = (
 				84231DCC2CF533D5000BD929 /* StreamChatSwiftUI */,
 				84231DE92CF53E7E000BD929 /* StreamChatAI */,
-				84E46A222CF605F9000CBDDE /* StreamChatAI */,
 			);
 			productName = StreamChatAIAssistant;
 			productReference = 84231DB82CF53342000BD929 /* StreamChatAIAssistant.app */;
@@ -129,7 +128,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				84231DCB2CF533D5000BD929 /* XCRemoteSwiftPackageReference "stream-chat-swiftui" */,
-				84E46A212CF605F9000CBDDE /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 84231DB92CF53342000BD929 /* Products */;
@@ -293,6 +291,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera needed for adding images to the chat.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mic needed for adding videos to the chat.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo access needed.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition access needed for transcribing questions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -337,6 +336,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera needed for adding images to the chat.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mic needed for adding videos to the chat.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo access needed.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Speech recognition access needed for transcribing questions.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -396,14 +396,6 @@
 				minimumVersion = 4.68.0;
 			};
 		};
-		84E46A212CF605F9000CBDDE /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/GetStream/stream-chat-swift-ai.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.3.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -414,11 +406,6 @@
 		};
 		84231DE92CF53E7E000BD929 /* StreamChatAI */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = StreamChatAI;
-		};
-		84E46A222CF605F9000CBDDE /* StreamChatAI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 84E46A212CF605F9000CBDDE /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */;
 			productName = StreamChatAI;
 		};
 /* End XCSwiftPackageProductDependency section */

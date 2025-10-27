@@ -1,0 +1,8 @@
+anthropic>=0.29.0
+fastapi>=0.110.0
+python-dotenv>=1.0.0
+stream-chat>=4.26.0
+openai>=1.40.0
+uvicorn[standard]>=0.29.0
+httpx>=0.27.0
+aiohttp>=3.9.0

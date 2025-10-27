@@ -10,7 +10,7 @@ import Foundation
 class StreamAIChatService {
     static let shared = StreamAIChatService()
     
-    private let baseURL = "https://stream-nodejs-ai-e5d85ed5ce6f.herokuapp.com"
+    private let baseURL = "http://localhost:3000"
 
     private let jsonEncoder = JSONEncoder()
     
@@ -43,8 +43,10 @@ class StreamAIChatService {
 
 struct AIAgentRequest: Encodable {
     let channelId: String
+    let platform: String = "openai"
     
     enum CodingKeys: String, CodingKey {
         case channelId = "channel_id"
+        case platform
     }
 }

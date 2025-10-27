@@ -1,12 +1,22 @@
 import axios from 'axios';
 import OpenAI from 'openai';
 import { Readable } from 'stream';
-import type { Attachment, Channel, MessageResponse, StreamChat } from 'stream-chat';
+import type {
+  Attachment,
+  Channel,
+  Event,
+  MessageResponse,
+  StreamChat,
+} from 'stream-chat';
 import {
   ResponseInput,
   ResponseInputText,
   Tool,
 } from 'openai/resources/responses/responses';
+
+type ClientToolResult =
+  | { status: 'success'; data: unknown }
+  | { status: 'error'; error: string };
 
 export class OpenAIResponseHandler {
   private message_text = '';
@@ -16,6 +26,10 @@ export class OpenAIResponseHandler {
   private responseId: string | null = null;
   private pendingToolArgs: Record<string, string> = {};
   private functionCalls: Record<string, { name: string; call_id: string }> = {};
+  private clientToolRequests = new Map<
+    string,
+    { resolve: (result: ClientToolResult) => void; timeout: ReturnType<typeof setTimeout> | null }
+  >();
   private continuationPending = false;
   private continuationActive = false;
   private currentIndicator?:
@@ -26,6 +40,8 @@ export class OpenAIResponseHandler {
   private pendingUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   private lastUpdatePromise: Promise<void> = Promise.resolve();
   private readonly updateIntervalMs = 200;
+  private readonly defaultClientToolTimeoutMs = 2 * 60 * 1000;
+  private readonly maxClientToolTimeoutMs = 10 * 60 * 1000;
   private mode: 'text' | 'image' = 'text';
 
   constructor(
@@ -39,6 +55,7 @@ export class OpenAIResponseHandler {
     private readonly onResponseId: (id: string) => void,
   ) {
     this.chatClient.on('ai_indicator.stop', this.handleStopGenerating);
+    this.chatClient.on('ai_tool.resolve', this.handleClientToolResolve);
   }
 
   run = async () => {
@@ -52,11 +69,14 @@ export class OpenAIResponseHandler {
 
   dispose = () => {
     this.chatClient.off('ai_indicator.stop', this.handleStopGenerating);
+    this.chatClient.off('ai_tool.resolve', this.handleClientToolResolve);
+    this.rejectPendingClientTools('Handler disposed');
   };
 
   private handleStopGenerating = async () => {
     console.log('Stop generating');
     this.aborted = true;
+    this.rejectPendingClientTools('Generation stopped by user.');
     try {
       this.controller?.abort();
     } catch (e) {
@@ -166,6 +186,16 @@ export class OpenAIResponseHandler {
           } catch (e) {
             output = 'NaN';
           }
+        } else if (functionName === 'callClientTool') {
+          try {
+            output = await this.callClientTool(call_id, argsStr);
+          } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : 'Failed to execute client tool.';
+            output = JSON.stringify({ status: 'error', error: message });
+          }
         }
 
         // Continue the response by creating a new stream with previous_response_id
@@ -202,6 +232,202 @@ export class OpenAIResponseHandler {
     }
   };
 
+  private async callClientTool(
+    callId: string | undefined,
+    rawArgs: string,
+  ): Promise<string> {
+    if (!callId) {
+      return JSON.stringify({
+        status: 'error',
+        error: 'Missing call_id for client tool invocation.',
+      });
+    }
+
+    if (this.aborted) {
+      return JSON.stringify({
+        status: 'error',
+        error: 'Generation stopped by user.',
+      });
+    }
+
+    let parsedArgs: {
+      name?: unknown;
+      arguments?: unknown;
+      timeout_ms?: unknown;
+    } = {};
+    if (rawArgs && rawArgs.trim().length > 0) {
+      try {
+        parsedArgs = JSON.parse(rawArgs);
+      } catch {
+        return JSON.stringify({
+          status: 'error',
+          error: 'Invalid JSON arguments supplied to callClientTool.',
+        });
+      }
+    }
+
+    const toolName =
+      typeof parsedArgs.name === 'string' && parsedArgs.name.trim().length > 0
+        ? parsedArgs.name.trim()
+        : null;
+    if (!toolName) {
+      return JSON.stringify({
+        status: 'error',
+        error: 'The callClientTool function requires a "name" property.',
+      });
+    }
+
+    const timeoutValue =
+      typeof parsedArgs.timeout_ms === 'number' &&
+      Number.isFinite(parsedArgs.timeout_ms)
+        ? parsedArgs.timeout_ms
+        : undefined;
+    const timeoutMs = timeoutValue
+      ? Math.max(
+          1000,
+          Math.min(timeoutValue, this.maxClientToolTimeoutMs),
+        )
+      : this.defaultClientToolTimeoutMs;
+
+    const resultPromise = new Promise<ClientToolResult>((resolve) => {
+      const timeout = setTimeout(() => {
+        this.resolveClientToolRequest(callId, {
+          status: 'error',
+          error: `Timed out waiting for client tool "${toolName}" to resolve.`,
+        });
+      }, timeoutMs);
+      this.clientToolRequests.set(callId, { resolve, timeout });
+    });
+
+    try {
+      await this.sendToolRequestEvent({
+        type: 'ai_tool.execute',
+        cid: this.message.cid,
+        message_id: this.message.id,
+        call_id: callId,
+        response_id: this.responseId,
+        tool_name: toolName,
+        arguments: parsedArgs.arguments ?? null,
+        raw_arguments: rawArgs,
+      });
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to send client tool execution request.';
+      this.resolveClientToolRequest(callId, {
+        status: 'error',
+        error: errorMessage,
+      });
+    }
+
+    const result = await resultPromise;
+    const payload =
+      result.status === 'success'
+        ? { status: 'success', result: result.data ?? null }
+        : { status: 'error', error: result.error };
+    try {
+      return JSON.stringify(payload);
+    } catch {
+      return JSON.stringify({
+        status: 'error',
+        error: 'Failed to serialize client tool result.',
+      });
+    }
+  }
+
+  private handleClientToolResolve = (event: Event) => {
+    const eventType = (event as any).type as string | undefined;
+    if (eventType !== 'ai_tool.resolve') return;
+    if (event.cid && event.cid !== this.message.cid) return;
+    const messageId = (event as any).message_id as string | undefined;
+    if (messageId && messageId !== this.message.id) return;
+
+    const callId =
+      ((event as any).call_id as string | undefined) ??
+      ((event as any).tool_call_id as string | undefined);
+    if (!callId) return;
+
+    const statusRaw = (event as any).status;
+    const normalizedStatus =
+      typeof statusRaw === 'string' ? statusRaw.toLowerCase() : undefined;
+    const status =
+      normalizedStatus === 'error' ||
+      normalizedStatus === 'failed' ||
+      normalizedStatus === 'failure' ||
+      (normalizedStatus === undefined && (event as any).error !== undefined)
+        ? 'error'
+        : 'success';
+    if (status === 'error') {
+      const errorPayload = (event as any).error ?? (event as any).message;
+      const errorMessage =
+        typeof errorPayload === 'string'
+          ? errorPayload
+          : JSON.stringify(errorPayload ?? 'Unknown error');
+      this.resolveClientToolRequest(callId, {
+        status: 'error',
+        error: errorMessage,
+      });
+      return;
+    }
+
+    const result =
+      (event as any).result ??
+      (event as any).output ??
+      (event as any).data ??
+      null;
+    this.resolveClientToolRequest(callId, {
+      status: 'success',
+      data: result,
+    });
+  };
+
+  private resolveClientToolRequest(
+    callId: string,
+    result: ClientToolResult,
+  ): void {
+    const entry = this.clientToolRequests.get(callId);
+    if (!entry) return;
+    if (entry.timeout) {
+      clearTimeout(entry.timeout);
+      entry.timeout = null;
+    }
+    this.clientToolRequests.delete(callId);
+    entry.resolve(result);
+  }
+
+  private rejectPendingClientTools(reason: string): void {
+    if (this.clientToolRequests.size === 0) return;
+    const pendingCallIds = Array.from(this.clientToolRequests.keys());
+    for (const callId of pendingCallIds) {
+      this.resolveClientToolRequest(callId, {
+        status: 'error',
+        error: reason,
+      });
+    }
+  }
+
+  private async sendToolRequestEvent(event: Record<string, unknown>) {
+    const maxAttempts = 5;
+    let delay = 100;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.channel.sendEvent(event as any);
+        return;
+      } catch (err) {
+        const status = (err as any)?.status || (err as any)?.response?.status;
+        const retryable = status === 429 || (status >= 500 && status < 600);
+        if (!retryable || attempt === maxAttempts) {
+          throw err;
+        }
+        await new Promise((r) =>
+          setTimeout(r, delay + Math.floor(Math.random() * 50)),
+        );
+        delay *= 2;
+      }
+    }
+  }
+
   // getCurrentTemperature is used by the tool-calling flow
   private getCurrentTemperature = async (location: string) => {
     const apiKey = process.env.OPENWEATHER_API_KEY;
@@ -223,6 +449,7 @@ export class OpenAIResponseHandler {
 
   private handleError = async (error: Error) => {
     this.finalized = true;
+    this.rejectPendingClientTools(error.message ?? 'Unknown error.');
     if (this.pendingUpdateTimer) {
       clearTimeout(this.pendingUpdateTimer);
       this.pendingUpdateTimer = null;

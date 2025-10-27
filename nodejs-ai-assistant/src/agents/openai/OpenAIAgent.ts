@@ -84,7 +84,7 @@ export class OpenAIAgent implements AIAgent {
     // Provide a system prompt and the latest user message.
     // Conversation state is maintained via previous_response_id.
     const systemPrompt =
-      'You are an AI assistant. Help users with their questions. Only call the getCurrentTemperature tool if the user explicitly asks for the current temperature for a specific location.';
+      'You are an AI assistant. Help users with their questions. Only call the getCurrentTemperature tool if the user explicitly asks for the current temperature for a specific location. Use the callClientTool function whenever the connected client should handle a request locally and provide its result back to you.';
     const userContent: (ResponseInputText | ResponseInputImage)[] = [];
     if (text.trim().length > 0) {
       userContent.push({ type: 'input_text', text });
@@ -135,6 +135,36 @@ export class OpenAIAgent implements AIAgent {
             },
           },
           required: ['location', 'unit'],
+        },
+      },
+      {
+        type: 'function',
+        name: 'callClientTool',
+        description:
+          'Request the connected client application to execute a local tool and return its result.',
+        strict: true,
+        parameters: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            name: {
+              type: 'string',
+              description:
+                'Identifier of the client-side tool to invoke, e.g. "generate_preview".',
+            },
+            arguments: {
+              type: 'object',
+              additionalProperties: true,
+              description:
+                'JSON object containing any arguments the client tool expects.',
+            },
+            timeout_ms: {
+              type: 'number',
+              description:
+                'Optional timeout in milliseconds after which the call can be considered failed.',
+            },
+          },
+          required: ['name'],
         },
       },
     ];

@@ -12,4 +12,6 @@ export interface AIAgent {
 export enum AgentPlatform {
   ANTHROPIC = 'anthropic',
   OPENAI = 'openai',
+  GEMINI = 'gemini',
+  XAI = 'xai',
 }

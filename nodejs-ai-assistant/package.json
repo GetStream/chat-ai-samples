@@ -15,12 +15,17 @@
   "author": "GetStream.io",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
+    "@ai-sdk/anthropic": "^1.1.15",
+    "@ai-sdk/google": "^1.1.15",
+    "@ai-sdk/openai": "^1.1.15",
+    "@ai-sdk/xai": "^1.1.15",
+    "ai": "^3.3.15",
+    "axios": "^1.7.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "openai": "^5.20.1",
-    "stream-chat": "^9.19.0"
+    "stream-chat": "^9.19.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

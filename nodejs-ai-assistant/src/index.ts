@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { generateText } from 'ai';
 import { AgentPlatform, AIAgent } from './agents/types';
 import { createAgent } from './agents/createAgent';
 import { apiKey, serverClient } from './serverClient';
+import { createModelForPlatform } from './agents/VercelAIAgent';
 
 const app = express();
 app.use(express.json());
@@ -126,6 +128,50 @@ app.post('/stop-ai-agent', async (req, res) => {
     res
       .status(500)
       .json({ error: 'Failed to stop AI Agent', reason: errorMessage });
+  }
+});
+
+app.post('/summarize', async (req, res) => {
+  const { text, platform = AgentPlatform.ANTHROPIC } = req.body ?? {};
+
+  if (typeof text !== 'string' || text.trim().length === 0) {
+    res.status(400).json({ error: 'Missing or invalid text to summarize' });
+    return;
+  }
+
+  const platformValue =
+    typeof platform === 'string'
+      ? (platform.toLowerCase() as AgentPlatform)
+      : platform;
+
+  const resolvedPlatform = Object.values(AgentPlatform).find(
+    (value) => value === platformValue,
+  );
+
+  if (!resolvedPlatform) {
+    res.status(400).json({ error: 'Unsupported platform' });
+    return;
+  }
+
+  try {
+    const model = createModelForPlatform(resolvedPlatform);
+    const { text: rawSummary } = await generateText({
+      model,
+      prompt: `Write a short, catchy title of at most six words that captures the main idea of the following text. Respond with the title only.\n\nText:\n${text}`,
+    });
+
+    const summary = rawSummary
+      .trim()
+      .replace(/^[“”"']+/, '')
+      .replace(/[“”"']+$/, '');
+
+    res.json({ summary });
+  } catch (error) {
+    const message = (error as Error).message;
+    console.error('Failed to summarize text', message);
+    res
+      .status(500)
+      .json({ error: 'Failed to summarize text', reason: message });
   }
 });
 

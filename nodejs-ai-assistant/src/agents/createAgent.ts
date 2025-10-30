@@ -62,6 +62,7 @@ export const createAgent = async (
   platform: AgentPlatform,
   channel_type: string,
   channel_id: string,
+  model?: string,
 ): Promise<AIAgent> => {
   const client = new StreamChat(apiKey, { allowServerSideConnect: true });
   const token = serverClient.createToken(user_id);
@@ -76,5 +77,6 @@ export const createAgent = async (
     channel,
     platform,
     createDefaultTools(),
+    model,
   );
 };

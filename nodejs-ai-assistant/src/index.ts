@@ -44,7 +44,8 @@ app.post('/start-ai-agent', async (req, res) => {
   const {
     channel_id,
     channel_type = 'messaging',
-    platform = AgentPlatform.ANTHROPIC
+    platform = AgentPlatform.ANTHROPIC,
+    model,
   } = req.body;
 
   // Simple validation
@@ -80,11 +81,28 @@ app.post('/start-ai-agent', async (req, res) => {
 
       await channel.watch();
 
+      const platformValue =
+        typeof platform === 'string'
+          ? (platform.toLowerCase() as AgentPlatform)
+          : platform;
+      const resolvedPlatform = Object.values(AgentPlatform).find(
+        (value) => value === platformValue,
+      );
+      if (!resolvedPlatform) {
+        res.status(400).json({ error: 'Unsupported platform' });
+        return;
+      }
+      const modelId =
+        typeof model === 'string' && model.trim().length > 0
+          ? model.trim()
+          : undefined;
+
       const agent = await createAgent(
         user_id,
-        platform,
+        resolvedPlatform,
         channel_type,
         channel_id_updated,
+        modelId,
       );
 
       await agent.init();
@@ -132,7 +150,7 @@ app.post('/stop-ai-agent', async (req, res) => {
 });
 
 app.post('/summarize', async (req, res) => {
-  const { text, platform = AgentPlatform.ANTHROPIC } = req.body ?? {};
+  const { text, platform = AgentPlatform.ANTHROPIC, model } = req.body ?? {};
 
   if (typeof text !== 'string' || text.trim().length === 0) {
     res.status(400).json({ error: 'Missing or invalid text to summarize' });
@@ -147,16 +165,18 @@ app.post('/summarize', async (req, res) => {
   const resolvedPlatform = Object.values(AgentPlatform).find(
     (value) => value === platformValue,
   );
-
   if (!resolvedPlatform) {
     res.status(400).json({ error: 'Unsupported platform' });
     return;
   }
 
+  const modelId =
+    typeof model === 'string' && model.trim().length > 0 ? model.trim() : undefined;
+
   try {
-    const model = createModelForPlatform(resolvedPlatform);
+    const languageModel = createModelForPlatform(resolvedPlatform, modelId);
     const { text: rawSummary } = await generateText({
-      model,
+      model: languageModel,
       prompt: `Write a short, catchy title of at most six words that captures the main idea of the following text. Respond with the title only.\n\nText:\n${text}`,
     });
 

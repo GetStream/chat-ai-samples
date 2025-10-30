@@ -36,7 +36,11 @@ export interface AgentTool {
 
 export const createModelForPlatform = (
   platform: AgentPlatform,
+  modelOverride?: string,
 ): StreamLanguageModel => {
+  const modelId = typeof modelOverride === 'string' && modelOverride.trim()
+    ? modelOverride.trim()
+    : undefined;
   switch (platform) {
     case AgentPlatform.OPENAI: {
       const apiKey = process.env.OPENAI_API_KEY;
@@ -44,7 +48,7 @@ export const createModelForPlatform = (
         throw new Error('OpenAI API key is required');
       }
       const openai = createOpenAI({ apiKey });
-      return openai('gpt-4o-mini') as StreamLanguageModel;
+      return openai(modelId ?? 'gpt-4o-mini') as StreamLanguageModel;
     }
     case AgentPlatform.ANTHROPIC: {
       const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -52,7 +56,9 @@ export const createModelForPlatform = (
         throw new Error('Anthropic API key is required');
       }
       const anthropic = createAnthropic({ apiKey });
-      return anthropic('claude-3-5-sonnet-20241022') as StreamLanguageModel;
+      return anthropic(
+        modelId ?? 'claude-3-5-sonnet-20241022',
+      ) as StreamLanguageModel;
     }
     case AgentPlatform.GEMINI: {
       const apiKey =
@@ -62,7 +68,7 @@ export const createModelForPlatform = (
         throw new Error('Gemini API key is required');
       }
       const google = createGoogleGenerativeAI({ apiKey });
-      return google('gemini-1.5-flash') as StreamLanguageModel;
+      return google(modelId ?? 'gemini-1.5-flash') as StreamLanguageModel;
     }
     case AgentPlatform.XAI: {
       const apiKey = process.env.XAI_API_KEY;
@@ -70,7 +76,7 @@ export const createModelForPlatform = (
         throw new Error('xAI API key is required');
       }
       const xai = createXai({ apiKey });
-      return xai('grok-beta') as StreamLanguageModel;
+      return xai(modelId ?? 'grok-beta') as StreamLanguageModel;
     }
     default:
       throw new Error(`Unsupported AI platform: ${platform}`);
@@ -81,16 +87,22 @@ export class VercelAIAgent implements AIAgent {
   private model?: StreamLanguageModel;
   private lastInteractionTs = Date.now();
   private handlers = new Set<VercelResponseHandler>();
+  private readonly tools: AgentTool[];
+  private readonly modelOverride?: string;
 
   constructor(
     readonly chatClient: StreamChat,
     readonly channel: Channel,
     private readonly platform: AgentPlatform,
-    private readonly tools: AgentTool[] = [],
-  ) {}
+    tools: AgentTool[] = [],
+    modelOverride?: string,
+  ) {
+    this.tools = tools ?? [];
+    this.modelOverride = modelOverride;
+  }
 
   init = async () => {
-    this.model = createModelForPlatform(this.platform);
+    this.model = createModelForPlatform(this.platform, this.modelOverride);
     this.chatClient.on('message.new', this.handleMessage);
   };
 

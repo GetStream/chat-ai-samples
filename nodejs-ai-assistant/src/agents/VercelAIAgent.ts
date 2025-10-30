@@ -1,11 +1,10 @@
-import axios from 'axios';
-import type { CoreMessage } from 'ai';
+import type { CoreMessage, CoreTool } from 'ai';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
-import { z } from 'zod';
+import type { ZodTypeAny } from 'zod';
 import type {
   Channel,
   Event,
@@ -24,13 +23,16 @@ type IndicatorState =
   | 'AI_STATE_EXTERNAL_SOURCES'
   | 'AI_STATE_ERROR';
 
-interface TemperatureToolArgs {
-  location: string;
-  unit: 'Celsius' | 'Fahrenheit';
-}
-
 type StreamTextOptions = Parameters<typeof streamText>[0];
 type StreamLanguageModel = NonNullable<StreamTextOptions['model']>;
+
+export interface AgentTool {
+  name: string;
+  description: string;
+  parameters: ZodTypeAny;
+  execute: (args: any) => Promise<string> | string;
+  showExternalSourcesIndicator?: boolean;
+}
 
 export const createModelForPlatform = (
   platform: AgentPlatform,
@@ -84,6 +86,7 @@ export class VercelAIAgent implements AIAgent {
     readonly chatClient: StreamChat,
     readonly channel: Channel,
     private readonly platform: AgentPlatform,
+    private readonly tools: AgentTool[] = [],
   ) {}
 
   init = async () => {
@@ -162,7 +165,7 @@ export class VercelAIAgent implements AIAgent {
       channelMessage,
       messages,
       (event) => this.safeSendEvent(event),
-      (location, unit) => this.getCurrentTemperature(location, unit),
+      this.tools,
     );
 
     this.handlers.add(handler);
@@ -200,33 +203,6 @@ export class VercelAIAgent implements AIAgent {
     }
   }
 
-  private async getCurrentTemperature(
-    location: string,
-    unit: 'Celsius' | 'Fahrenheit',
-  ) {
-    const apiKey = process.env.OPENWEATHER_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        'OpenWeatherMap API key is missing. Set it in the environment variables.',
-      );
-    }
-
-    const encodedLocation = encodeURIComponent(location);
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedLocation}&units=metric&appid=${apiKey}`;
-
-    const response = await axios.get(url);
-    const { data } = response;
-    const temperatureCelsius: number | undefined = data?.main?.temp;
-
-    if (typeof temperatureCelsius !== 'number') {
-      throw new Error('Temperature data not found in the API response.');
-    }
-
-    if (unit === 'Fahrenheit') {
-      return (temperatureCelsius * 9) / 5 + 32;
-    }
-    return temperatureCelsius;
-  }
 }
 
 class VercelResponseHandler {
@@ -240,6 +216,7 @@ class VercelResponseHandler {
   private lastUpdatePromise: Promise<void> = Promise.resolve();
   private readonly updateIntervalMs = 200;
   private disposed = false;
+  private readonly tools: AgentTool[];
 
   constructor(
     private readonly model: StreamLanguageModel,
@@ -248,43 +225,28 @@ class VercelResponseHandler {
     private readonly message: MessageResponse,
     private readonly messages: CoreMessage[],
     private readonly sendEvent: (event: Record<string, unknown>) => Promise<void>,
-    private readonly temperatureFetcher: (
-      location: string,
-      unit: 'Celsius' | 'Fahrenheit',
-    ) => Promise<number>,
+    tools: AgentTool[],
   ) {
     this.chatClient.on('ai_indicator.stop', this.handleStopGenerating);
+    this.tools = tools;
   }
 
   run = async () => {
     this.controller = new AbortController();
 
     try {
-      const result = await streamText({
+      const toolDefinitions = this.buildToolDefinitions();
+      const streamOptions = {
         model: this.model,
         messages: this.messages,
-        toolChoice: 'auto',
-        tools: {
-          getCurrentTemperature: {
-            description:
-              'Get the current temperature for a specific location using the OpenWeatherMap API.',
-            parameters: z.object({
-              location: z
-                .string()
-                .describe('City and state, e.g., San Francisco, CA'),
-              unit: z
-                .enum(['Celsius', 'Fahrenheit'])
-                .describe('Infer the unit from the user request'),
-            }),
-            execute: async ({ location, unit }: TemperatureToolArgs) => {
-              await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
-              const temperature = await this.temperatureFetcher(location, unit);
-              return `${temperature.toFixed(1)}°${unit === 'Celsius' ? 'C' : 'F'}`;
-            },
-          },
-        },
         abortSignal: this.controller.signal,
-      });
+      } as Parameters<typeof streamText>[0];
+      if (toolDefinitions) {
+        (streamOptions as any).toolChoice = 'auto';
+        (streamOptions as any).tools = toolDefinitions;
+      }
+
+      const result = await streamText(streamOptions);
 
       await this.consumeStream(result);
       if (!this.aborted) {
@@ -300,6 +262,32 @@ class VercelResponseHandler {
       await this.dispose();
     }
   };
+
+  private buildToolDefinitions(): Record<string, CoreTool<any, any>> | null {
+    if (!this.tools.length) {
+      return null;
+    }
+    return this.tools.reduce<Record<string, CoreTool<any, any>>>(
+      (acc, tool) => {
+        acc[tool.name] = {
+          description: tool.description,
+          parameters: tool.parameters,
+          execute: async (args: unknown) => {
+            if (tool.showExternalSourcesIndicator !== false) {
+              await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
+            }
+            const result = await tool.execute(args);
+            if (typeof result === 'string') {
+              return result;
+            }
+            return JSON.stringify(result);
+          },
+        };
+        return acc;
+      },
+      {},
+    );
+  }
 
   dispose = async () => {
     if (this.disposed) return;

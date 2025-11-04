@@ -4,7 +4,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
-import type { ZodTypeAny } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 import type {
   Channel,
   Event,
@@ -14,8 +14,9 @@ import type {
 import type { AIAgent } from './types';
 import { AgentPlatform } from './types';
 
-const SYSTEM_PROMPT =
-  'You are an AI assistant. Help users with their questions. Only call the getCurrentTemperature tool if the user explicitly asks for the current temperature for a specific location.';
+const BASE_SYSTEM_PROMPT =
+  'You are an AI assistant. Help users with their questions. When client-provided tools are available, only invoke them when the user intent clearly matches the tool instructions.';
+const CLIENT_TOOL_EVENT = 'custom_client_tool_invocation';
 
 type IndicatorState =
   | 'AI_STATE_THINKING'
@@ -26,11 +27,37 @@ type IndicatorState =
 type StreamTextOptions = Parameters<typeof streamText>[0];
 type StreamLanguageModel = NonNullable<StreamTextOptions['model']>;
 
+export interface ToolExecutionContext {
+  channel: Channel;
+  message: MessageResponse;
+  sendEvent: (event: Record<string, unknown>) => Promise<void>;
+}
+
 export interface AgentTool {
   name: string;
   description: string;
+  instructions?: string;
   parameters: ZodTypeAny;
-  execute: (args: any) => Promise<string> | string;
+  execute: (args: unknown, context: ToolExecutionContext) => Promise<string> | string;
+  showExternalSourcesIndicator?: boolean;
+}
+
+export interface JsonSchemaDefinition {
+  type?: string;
+  description?: string;
+  enum?: Array<string | number | boolean>;
+  properties?: Record<string, JsonSchemaDefinition>;
+  items?: JsonSchemaDefinition | JsonSchemaDefinition[];
+  required?: string[];
+  additionalProperties?: boolean | JsonSchemaDefinition;
+  [key: string]: unknown;
+}
+
+export interface ClientToolDefinition {
+  name: string;
+  description: string;
+  instructions?: string;
+  parameters?: JsonSchemaDefinition;
   showExternalSourcesIndicator?: boolean;
 }
 
@@ -87,7 +114,8 @@ export class VercelAIAgent implements AIAgent {
   private model?: StreamLanguageModel;
   private lastInteractionTs = Date.now();
   private handlers = new Set<VercelResponseHandler>();
-  private readonly tools: AgentTool[];
+  private readonly coreTools: AgentTool[];
+  private clientTools: AgentTool[] = [];
   private readonly modelOverride?: string;
 
   constructor(
@@ -97,7 +125,7 @@ export class VercelAIAgent implements AIAgent {
     tools: AgentTool[] = [],
     modelOverride?: string,
   ) {
-    this.tools = tools ?? [];
+    this.coreTools = tools ?? [];
     this.modelOverride = modelOverride;
   }
 
@@ -116,6 +144,67 @@ export class VercelAIAgent implements AIAgent {
   };
 
   getLastInteraction = (): number => this.lastInteractionTs;
+
+  setClientTools = (tools: AgentTool[]) => {
+    this.clientTools = tools ?? [];
+  };
+
+  setClientToolDefinitions = (definitions: ClientToolDefinition[]) => {
+    const tools = (definitions ?? []).map((definition) =>
+      this.createClientTool(definition),
+    );
+    this.setClientTools(tools);
+  };
+
+  private getActiveTools(): AgentTool[] {
+    return [...this.coreTools, ...this.clientTools];
+  }
+
+  private createClientTool(definition: ClientToolDefinition): AgentTool {
+    const parameters =
+      jsonSchemaToZod(definition.parameters) ?? z.object({}).passthrough();
+    return {
+      name: definition.name,
+      description: definition.description,
+      instructions: definition.instructions,
+      parameters,
+      showExternalSourcesIndicator: definition.showExternalSourcesIndicator,
+      execute: async (args, context) => {
+        console.log(
+          `[ClientTool] Dispatching ${definition.name} with args:`,
+          args,
+        );
+        await context.sendEvent({
+          type: CLIENT_TOOL_EVENT,
+          cid: context.message.cid,
+          message_id: context.message.id,
+          channel_id: context.channel.id,
+          channel_type: context.channel.type,
+          tool: {
+            name: definition.name,
+            description: definition.description,
+            instructions: definition.instructions,
+            parameters: definition.parameters ?? null,
+          },
+          args: args ?? {},
+        });
+        return `Client tool "${definition.name}" invocation dispatched.`;
+      },
+    };
+  }
+
+  private getSystemPrompt(): string {
+    const instructions = this.getActiveTools()
+      .map((tool) => tool.instructions?.trim())
+      .filter((value): value is string => Boolean(value));
+    if (!instructions.length) {
+      return BASE_SYSTEM_PROMPT;
+    }
+    const formatted = instructions
+      .map((line) => `- ${line}`)
+      .join('\n');
+    return `${BASE_SYSTEM_PROMPT}\n\nTool usage guidelines:\n${formatted}`;
+  }
 
   private handleMessage = async (event: Event) => {
     if (!this.model) {
@@ -154,7 +243,7 @@ export class VercelAIAgent implements AIAgent {
     }
 
     const messages: CoreMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: this.getSystemPrompt() },
       ...history,
     ];
 
@@ -177,7 +266,7 @@ export class VercelAIAgent implements AIAgent {
       channelMessage,
       messages,
       (event) => this.safeSendEvent(event),
-      this.tools,
+      () => this.getActiveTools(),
     );
 
     this.handlers.add(handler);
@@ -202,9 +291,10 @@ export class VercelAIAgent implements AIAgent {
         const status = (err as any)?.status || (err as any)?.response?.status;
         const retryable = status === 429 || (status >= 500 && status < 600);
         if (!retryable || attempt === maxAttempts) {
-          if (retryable) {
-            console.warn('Failed to send event after retries', err);
-          }
+          const label = retryable
+            ? 'Failed to send event after retries'
+            : 'Failed to send event';
+          console.error(label, err);
           return;
         }
         await new Promise((resolve) =>
@@ -228,7 +318,7 @@ class VercelResponseHandler {
   private lastUpdatePromise: Promise<void> = Promise.resolve();
   private readonly updateIntervalMs = 200;
   private disposed = false;
-  private readonly tools: AgentTool[];
+  private readonly toolsResolver: () => AgentTool[];
 
   constructor(
     private readonly model: StreamLanguageModel,
@@ -237,10 +327,10 @@ class VercelResponseHandler {
     private readonly message: MessageResponse,
     private readonly messages: CoreMessage[],
     private readonly sendEvent: (event: Record<string, unknown>) => Promise<void>,
-    tools: AgentTool[],
+    toolsResolver: () => AgentTool[],
   ) {
     this.chatClient.on('ai_indicator.stop', this.handleStopGenerating);
-    this.tools = tools;
+    this.toolsResolver = toolsResolver;
   }
 
   run = async () => {
@@ -276,10 +366,11 @@ class VercelResponseHandler {
   };
 
   private buildToolDefinitions(): Record<string, CoreTool<any, any>> | null {
-    if (!this.tools.length) {
+    const tools = this.toolsResolver();
+    if (!tools.length) {
       return null;
     }
-    return this.tools.reduce<Record<string, CoreTool<any, any>>>(
+    return tools.reduce<Record<string, CoreTool<any, any>>>(
       (acc, tool) => {
         acc[tool.name] = {
           description: tool.description,
@@ -288,7 +379,11 @@ class VercelResponseHandler {
             if (tool.showExternalSourcesIndicator !== false) {
               await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
             }
-            const result = await tool.execute(args);
+            const result = await tool.execute(args, {
+              channel: this.channel,
+              message: this.message,
+              sendEvent: (event) => this.sendEvent(event),
+            });
             if (typeof result === 'string') {
               return result;
             }
@@ -433,3 +528,82 @@ class VercelResponseHandler {
     });
   }
 }
+
+const jsonSchemaToZod = (schema?: JsonSchemaDefinition): ZodTypeAny => {
+  if (!schema) {
+    return z.object({}).passthrough();
+  }
+
+  if (
+    Array.isArray(schema.enum) &&
+    schema.enum.length > 0 &&
+    schema.enum.every((value) => typeof value === 'string')
+  ) {
+    const enumValues = schema.enum as string[];
+    const enumSchema =
+      enumValues.length === 1
+        ? z.literal(enumValues[0])
+        : z.enum(enumValues as [string, ...string[]]);
+    return applyDescription(enumSchema, schema.description);
+  }
+
+  const inferredType = schema.type ?? (schema.properties ? 'object' : undefined);
+
+  switch (inferredType) {
+    case 'string':
+      return applyDescription(z.string(), schema.description);
+    case 'number':
+      return applyDescription(z.number(), schema.description);
+    case 'integer':
+      return applyDescription(z.number().int(), schema.description);
+    case 'boolean':
+      return applyDescription(z.boolean(), schema.description);
+    case 'array': {
+      const itemSchemas = Array.isArray(schema.items)
+        ? schema.items
+        : schema.items
+          ? [schema.items]
+          : [];
+      const firstItemSchema = itemSchemas[0] as JsonSchemaDefinition | undefined;
+      const itemZod = firstItemSchema
+        ? jsonSchemaToZod(firstItemSchema)
+        : z.any();
+      return applyDescription(z.array(itemZod), schema.description);
+    }
+    case 'object':
+    default: {
+      const properties = schema.properties ?? {};
+      const required = new Set(schema.required ?? []);
+      const shape: Record<string, ZodTypeAny> = {};
+      for (const [key, propertySchema] of Object.entries(properties)) {
+        let fieldSchema = jsonSchemaToZod(propertySchema);
+        if (!required.has(key)) {
+          fieldSchema = fieldSchema.optional();
+        }
+        shape[key] = fieldSchema;
+      }
+
+      let objectSchema: any = z.object(shape);
+      const additional = schema.additionalProperties;
+      if (typeof additional === 'object') {
+        objectSchema = objectSchema.catchall(jsonSchemaToZod(additional));
+      } else if (additional === false) {
+        objectSchema = objectSchema.strict();
+      } else {
+        objectSchema = objectSchema.passthrough();
+      }
+
+      return applyDescription(objectSchema as ZodTypeAny, schema.description);
+    }
+  }
+};
+
+const applyDescription = <T extends ZodTypeAny>(
+  schema: T,
+  description?: string,
+): T => {
+  if (description) {
+    return schema.describe(description) as T;
+  }
+  return schema;
+};

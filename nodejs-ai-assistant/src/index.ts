@@ -5,7 +5,11 @@ import { generateText } from 'ai';
 import { AgentPlatform, AIAgent } from './agents/types';
 import { createAgent } from './agents/createAgent';
 import { apiKey, serverClient } from './serverClient';
-import { createModelForPlatform } from './agents/VercelAIAgent';
+import {
+  ClientToolDefinition,
+  VercelAIAgent,
+  createModelForPlatform,
+} from './agents/VercelAIAgent';
 
 const app = express();
 app.use(express.json());
@@ -15,6 +19,24 @@ app.use(cors({ origin: '*' }));
 // [cid: string]: AI Agent
 const aiAgentCache = new Map<string, AIAgent>();
 const pendingAiAgents = new Set<string>();
+const clientToolRegistry = new Map<string, ClientToolDefinition[]>();
+
+const normalizeChannelId = (rawChannelId: string): string => {
+  const trimmed = typeof rawChannelId === 'string' ? rawChannelId.trim() : '';
+  if (trimmed.includes(':')) {
+    const parts = trimmed.split(':');
+    if (parts.length > 1 && parts[1]) {
+      return parts[1];
+    }
+  }
+  return trimmed;
+};
+
+const buildAgentUserId = (channelId: string): string =>
+  `ai-bot-${channelId.replace(/!/g, '')}`;
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 // TODO: temporary set to 8 hours, should be cleaned up at some point
 const inactivityThreshold = 480 * 60 * 1000;
@@ -54,15 +76,13 @@ app.post('/start-ai-agent', async (req, res) => {
     return;
   }
 
-  let channel_id_updated = channel_id;
-  if (channel_id.includes(':')) {
-    const parts = channel_id.split(':');
-    if (parts.length > 1) {
-      channel_id_updated = parts[1];
-    }
+  const channelIdNormalized = normalizeChannelId(channel_id);
+  if (!channelIdNormalized) {
+    res.status(400).json({ error: 'Invalid channel_id' });
+    return;
   }
 
-  const user_id = `ai-bot-${channel_id_updated.replace(/!/g, '')}`;
+  const user_id = buildAgentUserId(channelIdNormalized);
   try {
     if (!aiAgentCache.has(user_id) && !pendingAiAgents.has(user_id)) {
       pendingAiAgents.add(user_id);
@@ -72,7 +92,7 @@ app.post('/start-ai-agent', async (req, res) => {
         name: 'AI Bot',
         role: 'admin',
       });
-      const channel = serverClient.channel(channel_type, channel_id_updated);
+      const channel = serverClient.channel(channel_type, channelIdNormalized);
       try {
         await channel.addMembers([user_id]);
       } catch (error) {
@@ -101,9 +121,15 @@ app.post('/start-ai-agent', async (req, res) => {
         user_id,
         resolvedPlatform,
         channel_type,
-        channel_id_updated,
+        channelIdNormalized,
         modelId,
       );
+
+      if (agent instanceof VercelAIAgent) {
+        const registeredClientTools =
+          clientToolRegistry.get(channelIdNormalized) ?? [];
+        agent.setClientToolDefinitions(registeredClientTools);
+      }
 
       await agent.init();
       if (aiAgentCache.has(user_id)) {
@@ -131,9 +157,16 @@ app.post('/start-ai-agent', async (req, res) => {
  * Handle the request to stop the AI Agent
  */
 app.post('/stop-ai-agent', async (req, res) => {
-  const { channel_id } = req.body;
+  const { channel_id } = req.body ?? {};
+  const channelIdNormalized = typeof channel_id === 'string'
+    ? normalizeChannelId(channel_id)
+    : '';
+  if (!channelIdNormalized) {
+    res.status(400).json({ error: 'Invalid channel_id' });
+    return;
+  }
   try {
-    const userId = `ai-bot-${channel_id.replace(/!/g, '')}`;
+    const userId = buildAgentUserId(channelIdNormalized);
     const aiAgent = aiAgentCache.get(userId);
     if (aiAgent) {
       await disposeAiAgent(aiAgent, userId);
@@ -147,6 +180,96 @@ app.post('/stop-ai-agent', async (req, res) => {
       .status(500)
       .json({ error: 'Failed to stop AI Agent', reason: errorMessage });
   }
+});
+
+app.post('/register-tools', (req, res) => {
+  const { channel_id, tools } = req.body ?? {};
+
+  if (typeof channel_id !== 'string' || channel_id.trim().length === 0) {
+    res.status(400).json({ error: 'Missing or invalid channel_id' });
+    return;
+  }
+
+  if (!Array.isArray(tools)) {
+    res.status(400).json({ error: 'Missing or invalid tools array' });
+    return;
+  }
+
+  const channelIdNormalized = normalizeChannelId(channel_id);
+  if (!channelIdNormalized) {
+    res.status(400).json({ error: 'Invalid channel_id' });
+    return;
+  }
+
+  const sanitizedTools: ClientToolDefinition[] = [];
+  const invalidTools: string[] = [];
+
+  tools.forEach((rawTool, index) => {
+    const tool = rawTool ?? {};
+    const rawName = typeof tool.name === 'string' ? tool.name.trim() : '';
+    const rawDescription =
+      typeof tool.description === 'string' ? tool.description.trim() : '';
+
+    if (!rawName || !rawDescription) {
+      invalidTools.push(
+        typeof tool.name === 'string'
+          ? tool.name
+          : `tool_${index.toString().padStart(2, '0')}`,
+      );
+      return;
+    }
+
+    const instructions =
+      typeof tool.instructions === 'string' && tool.instructions.trim().length > 0
+        ? tool.instructions.trim()
+        : undefined;
+
+    const parameters = isPlainObject(tool.parameters)
+      ? (JSON.parse(JSON.stringify(tool.parameters)) as ClientToolDefinition['parameters'])
+      : undefined;
+
+    let showExternalSourcesIndicator: boolean | undefined;
+    if (typeof tool.showExternalSourcesIndicator === 'boolean') {
+      showExternalSourcesIndicator = tool.showExternalSourcesIndicator;
+    } else if (typeof tool.show_external_sources_indicator === 'boolean') {
+      showExternalSourcesIndicator = tool.show_external_sources_indicator;
+    }
+
+    sanitizedTools.push({
+      name: rawName,
+      description: rawDescription,
+      instructions,
+      parameters,
+      showExternalSourcesIndicator,
+    });
+  });
+
+  if (!sanitizedTools.length && tools.length > 0) {
+    res.status(400).json({
+      error: 'No valid tools provided',
+      invalid_tools: invalidTools,
+    });
+    return;
+  }
+
+  clientToolRegistry.set(channelIdNormalized, sanitizedTools);
+
+  const userId = buildAgentUserId(channelIdNormalized);
+  const agent = aiAgentCache.get(userId);
+  if (agent instanceof VercelAIAgent) {
+    agent.setClientToolDefinitions(sanitizedTools);
+  }
+
+  const responsePayload: Record<string, unknown> = {
+    message: 'Client tools registered',
+    channel_id: channelIdNormalized,
+    count: sanitizedTools.length,
+  };
+  if (invalidTools.length) {
+    responsePayload.invalid_tools = invalidTools;
+  }
+
+  res.json(responsePayload);
 });
 
 app.post('/summarize', async (req, res) => {

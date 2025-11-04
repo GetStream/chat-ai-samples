@@ -14,6 +14,8 @@ const createDefaultTools = (): AgentTool[] => [
   {
     name: 'getCurrentTemperature',
     description: 'Get the current temperature for a specific location',
+    instructions:
+      'Call getCurrentTemperature only when the user explicitly asks for the current temperature of a specific location.',
     parameters: z.object({
       location: z
         .string()
@@ -24,7 +26,8 @@ const createDefaultTools = (): AgentTool[] => [
           "The temperature unit to use. Infer this from the user's location.",
         ),
     }),
-    execute: async ({ location, unit }: TemperatureToolArgs) => {
+    execute: async (args: unknown, _context) => {
+      const { location, unit } = args as TemperatureToolArgs;
       const temperatureCelsius = await fetchCurrentTemperature(location);
       const temperature =
         unit === 'Fahrenheit'

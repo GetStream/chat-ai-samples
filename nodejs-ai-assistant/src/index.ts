@@ -1,15 +1,11 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { generateText } from 'ai';
-import { AgentPlatform, AIAgent } from './agents/types';
-import { createAgent } from './agents/createAgent';
-import { apiKey, serverClient } from './serverClient';
-import {
-  ClientToolDefinition,
-  VercelAIAgent,
-  createModelForPlatform,
-} from './agents/VercelAIAgent';
+import { AgentPlatform } from './agents/types';
+import { Agent } from './agents/Agent';
+import { createDefaultTools } from './agents/defaultTools';
+import { ClientToolDefinition } from './agents/VercelAIAgent';
+import { apiKey } from './serverClient';
 
 const app = express();
 app.use(express.json());
@@ -17,7 +13,7 @@ app.use(cors({ origin: '*' }));
 
 // Map to store the AI Agent instances
 // [cid: string]: AI Agent
-const aiAgentCache = new Map<string, AIAgent>();
+const aiAgentCache = new Map<string, Agent>();
 const pendingAiAgents = new Set<string>();
 const clientToolRegistry = new Map<string, ClientToolDefinition[]>();
 
@@ -42,10 +38,12 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 const inactivityThreshold = 480 * 60 * 1000;
 setInterval(async () => {
   const now = Date.now();
-  for (const [userId, aiAgent] of aiAgentCache) {
-    if (now - aiAgent.getLastInteraction() > inactivityThreshold) {
+  for (const [userId, agent] of aiAgentCache) {
+    if (now - agent.getLastInteraction() > inactivityThreshold) {
       console.log(`Disposing AI Agent due to inactivity: ${userId}`);
-      await disposeAiAgent(aiAgent, userId);
+      await agent.stop().catch((error) => {
+        console.error(`Failed to stop agent ${userId}`, error);
+      });
       aiAgentCache.delete(userId);
     }
   }
@@ -82,63 +80,51 @@ app.post('/start-ai-agent', async (req, res) => {
     return;
   }
 
+  const platformValue =
+    typeof platform === 'string'
+      ? (platform.toLowerCase() as AgentPlatform)
+      : platform;
+  const resolvedPlatform = Object.values(AgentPlatform).find(
+    (value) => value === platformValue,
+  );
+  if (!resolvedPlatform) {
+    res.status(400).json({ error: 'Unsupported platform' });
+    return;
+  }
+  const modelId =
+    typeof model === 'string' && model.trim().length > 0
+      ? model.trim()
+      : undefined;
+
   const user_id = buildAgentUserId(channelIdNormalized);
+  const channelTypeValue =
+    typeof channel_type === 'string' && channel_type.trim().length
+      ? channel_type
+      : 'messaging';
+  let agent = aiAgentCache.get(user_id);
+  if (!agent) {
+    agent = new Agent({
+      userId: user_id,
+      channelId: channelIdNormalized,
+      channelType: channelTypeValue,
+      platform: resolvedPlatform,
+      model: modelId,
+      serverTools: createDefaultTools(),
+    });
+    aiAgentCache.set(user_id, agent);
+  }
   try {
-    if (!aiAgentCache.has(user_id) && !pendingAiAgents.has(user_id)) {
+    if (!pendingAiAgents.has(user_id)) {
       pendingAiAgents.add(user_id);
 
-      await serverClient.upsertUser({
-        id: user_id,
-        name: 'AI Bot',
-        role: 'admin',
-      });
-      const channel = serverClient.channel(channel_type, channelIdNormalized);
-      try {
-        await channel.addMembers([user_id]);
-      } catch (error) {
-        console.error('Failed to add members to channel', error);
-      }
-
-      await channel.watch();
-
-      const platformValue =
-        typeof platform === 'string'
-          ? (platform.toLowerCase() as AgentPlatform)
-          : platform;
-      const resolvedPlatform = Object.values(AgentPlatform).find(
-        (value) => value === platformValue,
-      );
-      if (!resolvedPlatform) {
-        res.status(400).json({ error: 'Unsupported platform' });
-        return;
-      }
-      const modelId =
-        typeof model === 'string' && model.trim().length > 0
-          ? model.trim()
-          : undefined;
-
-      const agent = await createAgent(
-        user_id,
-        resolvedPlatform,
-        channel_type,
-        channelIdNormalized,
-        modelId,
-      );
-
-      if (agent instanceof VercelAIAgent) {
-        const registeredClientTools =
-          clientToolRegistry.get(channelIdNormalized) ?? [];
-        agent.setClientToolDefinitions(registeredClientTools);
-      }
-
-      await agent.init();
-      if (aiAgentCache.has(user_id)) {
-        await agent.dispose();
-      } else {
-        aiAgentCache.set(user_id, agent);
+      await agent.start();
+      const registeredClientTools =
+        clientToolRegistry.get(channelIdNormalized) ?? [];
+      if (registeredClientTools.length) {
+        agent.registerClientTools(registeredClientTools, { replace: true });
       }
     } else {
-      console.log(`AI Agent ${user_id} already started`);
+      console.log(`AI Agent ${user_id} already starting`);
     }
 
     res.json({ message: 'AI Agent started', data: [] });
@@ -167,9 +153,9 @@ app.post('/stop-ai-agent', async (req, res) => {
   }
   try {
     const userId = buildAgentUserId(channelIdNormalized);
-    const aiAgent = aiAgentCache.get(userId);
-    if (aiAgent) {
-      await disposeAiAgent(aiAgent, userId);
+    const agent = aiAgentCache.get(userId);
+    if (agent) {
+      await agent.stop();
       aiAgentCache.delete(userId);
     }
     res.json({ message: 'AI Agent stopped', data: [] });
@@ -256,9 +242,7 @@ app.post('/register-tools', (req, res) => {
 
   const userId = buildAgentUserId(channelIdNormalized);
   const agent = aiAgentCache.get(userId);
-  if (agent instanceof VercelAIAgent) {
-    agent.setClientToolDefinitions(sanitizedTools);
-  }
+  agent?.registerClientTools(sanitizedTools, { replace: true });
 
   const responsePayload: Record<string, unknown> = {
     message: 'Client tools registered',
@@ -297,17 +281,7 @@ app.post('/summarize', async (req, res) => {
     typeof model === 'string' && model.trim().length > 0 ? model.trim() : undefined;
 
   try {
-    const languageModel = createModelForPlatform(resolvedPlatform, modelId);
-    const { text: rawSummary } = await generateText({
-      model: languageModel,
-      prompt: `Write a short, catchy title of at most six words that captures the main idea of the following text. Respond with the title only.\n\nText:\n${text}`,
-    });
-
-    const summary = rawSummary
-      .trim()
-      .replace(/^[“”"']+/, '')
-      .replace(/[“”"']+$/, '');
-
+    const summary = await Agent.generateSummary(text, resolvedPlatform, modelId);
     res.json({ summary });
   } catch (error) {
     const message = (error as Error).message;
@@ -317,16 +291,6 @@ app.post('/summarize', async (req, res) => {
       .json({ error: 'Failed to summarize text', reason: message });
   }
 });
-
-async function disposeAiAgent(aiAgent: AIAgent, userId: string) {
-  await aiAgent.dispose();
-
-  const channel = serverClient.channel(
-    aiAgent.channel.type,
-    aiAgent.channel.id,
-  );
-  await channel.removeMembers([userId]);
-}
 
 // Start the Express server
 const port = process.env.PORT || 3000;

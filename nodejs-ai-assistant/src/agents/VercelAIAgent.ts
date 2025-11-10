@@ -15,7 +15,7 @@ import type { AIAgent } from './types';
 import { AgentPlatform } from './types';
 
 const BASE_SYSTEM_PROMPT =
-  'You are an AI assistant. Help users with their questions. When client-provided tools are available, only invoke them when the user intent clearly matches the tool instructions.';
+  'You are an AI assistant. Help users with their questions. Evaluate each user turn independently: restate the user intent, decide whether it matches any available tool instructions, and only invoke the matching tool when the intent clearly applies. If no tool matches, answer normally.';
 const CLIENT_TOOL_EVENT = 'custom_client_tool_invocation';
 
 type IndicatorState =
@@ -114,9 +114,10 @@ export class VercelAIAgent implements AIAgent {
   private model?: StreamLanguageModel;
   private lastInteractionTs = Date.now();
   private handlers = new Set<VercelResponseHandler>();
-  private readonly coreTools: AgentTool[];
+  private serverTools: AgentTool[];
   private clientTools: AgentTool[] = [];
   private readonly modelOverride?: string;
+  private readonly additionalInstructions: string[];
 
   constructor(
     readonly chatClient: StreamChat,
@@ -124,9 +125,15 @@ export class VercelAIAgent implements AIAgent {
     private readonly platform: AgentPlatform,
     tools: AgentTool[] = [],
     modelOverride?: string,
+    additionalInstructions?: string[],
   ) {
-    this.coreTools = tools ?? [];
+    this.serverTools = tools ?? [];
     this.modelOverride = modelOverride;
+    this.additionalInstructions = Array.isArray(additionalInstructions)
+      ? additionalInstructions.filter((line) => line && line.trim().length)
+      : additionalInstructions
+        ? [additionalInstructions]
+        : [];
   }
 
   init = async () => {
@@ -145,6 +152,14 @@ export class VercelAIAgent implements AIAgent {
 
   getLastInteraction = (): number => this.lastInteractionTs;
 
+  setServerTools = (tools: AgentTool[]) => {
+    this.serverTools = tools ?? [];
+  };
+
+  addServerTools = (tools: AgentTool[]) => {
+    this.serverTools = [...this.serverTools, ...(tools ?? [])];
+  };
+
   setClientTools = (tools: AgentTool[]) => {
     this.clientTools = tools ?? [];
   };
@@ -157,7 +172,7 @@ export class VercelAIAgent implements AIAgent {
   };
 
   private getActiveTools(): AgentTool[] {
-    return [...this.coreTools, ...this.clientTools];
+    return [...this.serverTools, ...this.clientTools];
   }
 
   private createClientTool(definition: ClientToolDefinition): AgentTool {
@@ -194,16 +209,21 @@ export class VercelAIAgent implements AIAgent {
   }
 
   private getSystemPrompt(): string {
-    const instructions = this.getActiveTools()
-      .map((tool) => tool.instructions?.trim())
-      .filter((value): value is string => Boolean(value));
+    const instructions = [
+      ...this.additionalInstructions,
+      ...this.getActiveTools()
+        .map((tool) => tool.instructions ?? '')
+        .filter((value) => typeof value === 'string' && value.trim().length > 0),
+    ]
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
     if (!instructions.length) {
       return BASE_SYSTEM_PROMPT;
     }
-    const formatted = instructions
-      .map((line) => `- ${line}`)
-      .join('\n');
-    return `${BASE_SYSTEM_PROMPT}\n\nTool usage guidelines:\n${formatted}`;
+
+    const formatted = instructions.map((line) => `- ${line}`).join('\n');
+    return `${BASE_SYSTEM_PROMPT}\n\nGuidelines:\n${formatted}`;
   }
 
   private handleMessage = async (event: Event) => {

@@ -5,6 +5,7 @@ import {
   ClientToolDefinition,
   VercelAIAgent,
   createModelForPlatform,
+  type Mem0ContextInput,
 } from './VercelAIAgent';
 import { apiKey, serverClient } from '../serverClient';
 import { generateText } from 'ai';
@@ -18,6 +19,7 @@ export interface AgentOptions {
   instructions?: string | string[];
   serverTools?: AgentTool[];
   clientTools?: ClientToolDefinition[];
+  mem0Context?: Partial<Mem0ContextInput>;
 }
 
 export interface RegisterToolOptions {
@@ -108,6 +110,7 @@ export class Agent {
         this.serverTools,
         this.model,
         this.instructions,
+        this.getMem0Context(),
       );
       if (this.clientTools.length) {
         this.aiAgent.setClientToolDefinitions(this.clientTools);
@@ -193,7 +196,9 @@ export class Agent {
     platform: AgentPlatform,
     model?: string,
   ): Promise<string> {
-    const languageModel = createModelForPlatform(platform, model);
+    const languageModel = createModelForPlatform(platform, model, {
+      disableMem0: true,
+    });
     const { text: rawSummary } = await generateText({
       model: languageModel,
       prompt:
@@ -205,5 +210,26 @@ export class Agent {
       .trim()
       .replace(/^[“”"']+/, '')
       .replace(/[“”"']+$/, '');
+  }
+
+  private getMem0Context(): Mem0ContextInput | undefined {
+    const contextOverrides = this.options.mem0Context ?? {};
+    const metadataOverrides = (
+      contextOverrides.configOverrides?.metadata ?? {}
+    ) as Record<string, unknown>;
+    const mergedContext: Mem0ContextInput = {
+      ...contextOverrides,
+      channelId: contextOverrides.channelId ?? this.streamChannelId,
+      configOverrides: {
+        ...(contextOverrides.configOverrides ?? {}),
+        metadata: {
+          channel_id: this.streamChannelId,
+          channel_type: this.channelType,
+          ...metadataOverrides,
+        },
+      },
+    };
+
+    return mergedContext;
   }
 }

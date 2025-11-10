@@ -23,9 +23,24 @@ STREAM_API_KEY=insert_your_key
 STREAM_API_SECRET=insert_your_secret
 OPENAI_API_KEY=insert_your_key
 OPENWEATHER_API_KEY=insert_your_key
+GOOGLE_GENERATIVE_AI_API_KEY=insert_your_key
+GEMINI_API_KEY=insert_your_key
+XAI_API_KEY=insert_your_key
+
+# Optional Mem0 integration
+MEM0_API_KEY=insert_your_mem0_key
+# JSON encoded advanced config (e.g. {"enable_graph":true})
+MEM0_CONFIG_JSON=
+MEM0_DEFAULT_USER_ID=
+MEM0_DEFAULT_AGENT_ID=
+MEM0_DEFAULT_APP_ID=
 ```
 
 You can provide a key for either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, depending on which one you would use. The `OPENWEATHER_API_KEY` is optional, in case you want to use the function calling example with OpenAI.
+
+### Enabling persistent memory with Mem0
+
+If you set `MEM0_API_KEY`, the server will automatically wrap supported Vercel AI SDK providers (OpenAI, Anthropic, Google/Gemini) with the [Mem0](https://docs.mem0.ai/integrations/vercel-ai-sdk) provider so chat history can be stored and retrieved automatically. The Stream user ID from each incoming message becomes the Mem0 `user_id`, which means the same person is remembered across channels, even though each channel spins up its own AI agent. Set `MEM0_DEFAULT_AGENT_ID` (and optionally `MEM0_DEFAULT_APP_ID`) to the same value across deployments to guarantee that memories span every channel. You can further customize the behavior by supplying JSON in `MEM0_CONFIG_JSON` or overriding IDs with the dedicated env vars listed above. When Mem0 is disabled or the chosen AI provider is not yet supported, the server falls back to the base model without memory.
 
 ### Install the dependencies
 

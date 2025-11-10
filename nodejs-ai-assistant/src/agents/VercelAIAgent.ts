@@ -1,9 +1,14 @@
-import type { CoreMessage, CoreTool } from 'ai';
+import type { CoreMessage, Tool } from 'ai';
 import { streamText } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
+import {
+  createMem0,
+  type Mem0ChatSettings,
+  type Mem0ConfigSettings,
+} from '@mem0/vercel-ai-provider';
 import { z, type ZodTypeAny } from 'zod';
 import type {
   Channel,
@@ -26,6 +31,19 @@ type IndicatorState =
 
 type StreamTextOptions = Parameters<typeof streamText>[0];
 type StreamLanguageModel = NonNullable<StreamTextOptions['model']>;
+
+export interface Mem0ContextInput {
+  userId?: string;
+  channelId?: string;
+  agentId?: string;
+  appId?: string;
+  configOverrides?: Partial<Mem0ConfigSettings>;
+}
+
+interface CreateModelOptions {
+  mem0Context?: Mem0ContextInput;
+  disableMem0?: boolean;
+}
 
 export interface ToolExecutionContext {
   channel: Channel;
@@ -61,9 +79,148 @@ export interface ClientToolDefinition {
   showExternalSourcesIndicator?: boolean;
 }
 
+const cloneMem0ConfigOverrides = (
+  config?: Partial<Mem0ConfigSettings>,
+): Partial<Mem0ConfigSettings> | undefined => {
+  if (!config) {
+    return undefined;
+  }
+  const cloned: Partial<Mem0ConfigSettings> = { ...config };
+  if (
+    config.metadata &&
+    typeof config.metadata === 'object' &&
+    !Array.isArray(config.metadata)
+  ) {
+    cloned.metadata = { ...config.metadata };
+  }
+  return cloned;
+};
+
+const cloneMem0Context = (
+  context?: Mem0ContextInput,
+): Mem0ContextInput | undefined => {
+  if (!context) {
+    return undefined;
+  }
+  return {
+    ...context,
+    configOverrides: cloneMem0ConfigOverrides(context.configOverrides),
+  };
+};
+
+const MEM0_CONFIG_FROM_ENV: Mem0ConfigSettings | undefined = (() => {
+  const raw = process.env.MEM0_CONFIG_JSON;
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Mem0ConfigSettings;
+    }
+    console.warn('MEM0_CONFIG_JSON must be a JSON object. Ignoring value.');
+  } catch (error) {
+    console.warn('Failed to parse MEM0_CONFIG_JSON. Ignoring value.', error);
+  }
+  return undefined;
+})();
+
+const DEFAULT_MEM0_AGENT_ID =
+  process.env.MEM0_DEFAULT_AGENT_ID?.trim() || 'stream-ai-agent';
+const DEFAULT_MEM0_APP_ID =
+  process.env.MEM0_DEFAULT_APP_ID?.trim() || 'stream-ai-app';
+
+const buildMem0Settings = (context?: Mem0ContextInput): Mem0ChatSettings => {
+  const envDefaults = MEM0_CONFIG_FROM_ENV
+    ? { ...MEM0_CONFIG_FROM_ENV }
+    : {};
+  const overrides = context?.configOverrides
+    ? { ...context.configOverrides }
+    : {};
+  const merged: Mem0ConfigSettings = {
+    ...envDefaults,
+    ...overrides,
+  };
+
+  const envUserId = process.env.MEM0_DEFAULT_USER_ID?.trim();
+  const envAgentId = process.env.MEM0_DEFAULT_AGENT_ID?.trim();
+  const envAppId = process.env.MEM0_DEFAULT_APP_ID?.trim();
+  const fallbackChannel = context?.channelId;
+
+  merged.user_id =
+    context?.userId ??
+    overrides.user_id ??
+    merged.user_id ??
+    envUserId ??
+    fallbackChannel ??
+    context?.agentId;
+
+  merged.agent_id =
+    context?.agentId ??
+    overrides.agent_id ??
+    merged.agent_id ??
+    envAgentId ??
+    context?.userId;
+
+  merged.app_id =
+    context?.appId ??
+    overrides.app_id ??
+    merged.app_id ??
+    envAppId ??
+    fallbackChannel;
+
+  return merged;
+};
+
+const getMem0ProviderName = (platform: AgentPlatform): string | null => {
+  switch (platform) {
+    case AgentPlatform.OPENAI:
+      return 'openai';
+    case AgentPlatform.ANTHROPIC:
+      return 'anthropic';
+    case AgentPlatform.GEMINI:
+      return 'google';
+    default:
+      return null;
+  }
+};
+
+const tryCreateMem0Model = (
+  platform: AgentPlatform,
+  providerApiKey: string,
+  modelId: string,
+  context?: Mem0ContextInput,
+): StreamLanguageModel | undefined => {
+  const mem0ApiKey = process.env.MEM0_API_KEY?.trim();
+  if (!mem0ApiKey) {
+    return undefined;
+  }
+  const providerName = getMem0ProviderName(platform);
+  if (!providerName) {
+    return undefined;
+  }
+
+  try {
+    const mem0Settings = buildMem0Settings(context);
+    const mem0Provider = createMem0({
+      provider: providerName,
+      apiKey: providerApiKey,
+      mem0ApiKey,
+      mem0Config: mem0Settings,
+    });
+
+    return mem0Provider(modelId, mem0Settings) as unknown as StreamLanguageModel;
+  } catch (error) {
+    console.warn(
+      `Mem0 integration failed for platform ${platform}. Falling back to base model.`,
+      (error as Error).message,
+    );
+    return undefined;
+  }
+};
+
 export const createModelForPlatform = (
   platform: AgentPlatform,
   modelOverride?: string,
+  options?: CreateModelOptions,
 ): StreamLanguageModel => {
   const modelId = typeof modelOverride === 'string' && modelOverride.trim()
     ? modelOverride.trim()
@@ -74,18 +231,42 @@ export const createModelForPlatform = (
       if (!apiKey) {
         throw new Error('OpenAI API key is required');
       }
+      const resolvedModelId = modelId ?? 'gpt-4o-mini';
+      const mem0Model =
+        options?.disableMem0
+          ? undefined
+          : tryCreateMem0Model(
+            platform,
+            apiKey,
+            resolvedModelId,
+            options?.mem0Context,
+          );
+      if (mem0Model) {
+        return mem0Model;
+      }
       const openai = createOpenAI({ apiKey });
-      return openai(modelId ?? 'gpt-4o-mini') as StreamLanguageModel;
+      return openai(resolvedModelId) as StreamLanguageModel;
     }
     case AgentPlatform.ANTHROPIC: {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new Error('Anthropic API key is required');
       }
+      const resolvedModelId = modelId ?? 'claude-3-5-sonnet-20241022';
+      const mem0Model =
+        options?.disableMem0
+          ? undefined
+          : tryCreateMem0Model(
+            platform,
+            apiKey,
+            resolvedModelId,
+            options?.mem0Context,
+          );
+      if (mem0Model) {
+        return mem0Model;
+      }
       const anthropic = createAnthropic({ apiKey });
-      return anthropic(
-        modelId ?? 'claude-3-5-sonnet-20241022',
-      ) as StreamLanguageModel;
+      return anthropic(resolvedModelId) as StreamLanguageModel;
     }
     case AgentPlatform.GEMINI: {
       const apiKey =
@@ -94,8 +275,21 @@ export const createModelForPlatform = (
       if (!apiKey) {
         throw new Error('Gemini API key is required');
       }
+      const resolvedModelId = modelId ?? 'gemini-1.5-flash';
+      const mem0Model =
+        options?.disableMem0
+          ? undefined
+          : tryCreateMem0Model(
+            platform,
+            apiKey,
+            resolvedModelId,
+            options?.mem0Context,
+          );
+      if (mem0Model) {
+        return mem0Model;
+      }
       const google = createGoogleGenerativeAI({ apiKey });
-      return google(modelId ?? 'gemini-1.5-flash') as StreamLanguageModel;
+      return google(resolvedModelId) as StreamLanguageModel;
     }
     case AgentPlatform.XAI: {
       const apiKey = process.env.XAI_API_KEY;
@@ -103,7 +297,7 @@ export const createModelForPlatform = (
         throw new Error('xAI API key is required');
       }
       const xai = createXai({ apiKey });
-      return xai(modelId ?? 'grok-beta') as StreamLanguageModel;
+      return xai((modelId ?? 'grok-beta')) as StreamLanguageModel;
     }
     default:
       throw new Error(`Unsupported AI platform: ${platform}`);
@@ -111,13 +305,13 @@ export const createModelForPlatform = (
 };
 
 export class VercelAIAgent implements AIAgent {
-  private model?: StreamLanguageModel;
   private lastInteractionTs = Date.now();
   private handlers = new Set<VercelResponseHandler>();
   private serverTools: AgentTool[];
   private clientTools: AgentTool[] = [];
   private readonly modelOverride?: string;
   private readonly additionalInstructions: string[];
+  private readonly mem0Context?: Mem0ContextInput;
 
   constructor(
     readonly chatClient: StreamChat,
@@ -126,6 +320,7 @@ export class VercelAIAgent implements AIAgent {
     tools: AgentTool[] = [],
     modelOverride?: string,
     additionalInstructions?: string[],
+    mem0Context?: Mem0ContextInput,
   ) {
     this.serverTools = tools ?? [];
     this.modelOverride = modelOverride;
@@ -134,10 +329,12 @@ export class VercelAIAgent implements AIAgent {
       : additionalInstructions
         ? [additionalInstructions]
         : [];
+    this.mem0Context = mem0Context;
   }
 
   init = async () => {
-    this.model = createModelForPlatform(this.platform, this.modelOverride);
+    // Ensure model configuration is valid before listening for messages.
+    this.createLanguageModel();
     this.chatClient.on('message.new', this.handleMessage);
   };
 
@@ -170,6 +367,48 @@ export class VercelAIAgent implements AIAgent {
     );
     this.setClientTools(tools);
   };
+
+  private createLanguageModel(userId?: string): StreamLanguageModel {
+    return createModelForPlatform(this.platform, this.modelOverride, {
+      mem0Context: this.buildMem0ContextForUser(userId),
+    });
+  }
+
+  private buildMem0ContextForUser(
+    userId?: string,
+  ): Mem0ContextInput | undefined {
+    let base = cloneMem0Context(this.mem0Context);
+    if (!base && this.channel?.id) {
+      base = {
+        channelId: this.channel.id,
+      };
+    }
+    if (!base && !userId) {
+      return undefined;
+    }
+    const context: Mem0ContextInput = base ?? {};
+    if (!context.agentId) {
+      context.agentId = DEFAULT_MEM0_AGENT_ID;
+    }
+    if (!context.appId) {
+      context.appId = DEFAULT_MEM0_APP_ID;
+    }
+    if (!context.channelId && this.channel?.id) {
+      context.channelId = this.channel.id;
+    }
+    if (userId) {
+      context.userId = userId;
+      const metadata: Record<string, any> = {
+        ...(context.configOverrides?.metadata ?? {}),
+        user_id: userId,
+      };
+      context.configOverrides = {
+        ...(context.configOverrides ?? {}),
+        metadata,
+      };
+    }
+    return context;
+  }
 
   private getActiveTools(): AgentTool[] {
     return [...this.serverTools, ...this.clientTools];
@@ -227,11 +466,6 @@ export class VercelAIAgent implements AIAgent {
   }
 
   private handleMessage = async (event: Event) => {
-    if (!this.model) {
-      console.warn('AI model not initialized');
-      return;
-    }
-
     if (!event.message || event.message.ai_generated) {
       return;
     }
@@ -279,8 +513,17 @@ export class VercelAIAgent implements AIAgent {
       message_id: channelMessage.id,
     });
 
+    let languageModel: StreamLanguageModel;
+    try {
+      languageModel = this.createLanguageModel(userId);
+    } catch (error) {
+      console.error('Failed to initialize language model', error);
+      await this.handlePreflightError(channelMessage, error as Error);
+      return;
+    }
+
     const handler = new VercelResponseHandler(
-      this.model,
+      languageModel,
       this.chatClient,
       this.channel,
       channelMessage,
@@ -299,6 +542,24 @@ export class VercelAIAgent implements AIAgent {
         this.handlers.delete(handler);
       });
   };
+
+  private async handlePreflightError(
+    message: MessageResponse,
+    error: Error,
+  ): Promise<void> {
+    await this.safeSendEvent({
+      type: 'ai_indicator.update',
+      ai_state: 'AI_STATE_ERROR',
+      cid: message.cid,
+      message_id: message.id,
+    });
+    await this.chatClient.partialUpdateMessage(message.id, {
+      set: {
+        text: error.message ?? 'Error generating the message',
+        generating: false,
+      },
+    });
+  }
 
   private async safeSendEvent(event: Record<string, unknown>) {
     const maxAttempts = 5;
@@ -385,16 +646,16 @@ class VercelResponseHandler {
     }
   };
 
-  private buildToolDefinitions(): Record<string, CoreTool<any, any>> | null {
+  private buildToolDefinitions(): Record<string, Tool<any, any>> | null {
     const tools = this.toolsResolver();
     if (!tools.length) {
       return null;
     }
-    return tools.reduce<Record<string, CoreTool<any, any>>>(
+    return tools.reduce<Record<string, Tool<any, any>>>(
       (acc, tool) => {
-        acc[tool.name] = {
+        const toolDefinition: Tool<any, any> = {
           description: tool.description,
-          parameters: tool.parameters,
+          inputSchema: tool.parameters as any,
           execute: async (args: unknown) => {
             if (tool.showExternalSourcesIndicator !== false) {
               await this.updateIndicator('AI_STATE_EXTERNAL_SOURCES');
@@ -410,6 +671,7 @@ class VercelResponseHandler {
             return JSON.stringify(result);
           },
         };
+        acc[tool.name] = toolDefinition;
         return acc;
       },
       {},
@@ -429,20 +691,40 @@ class VercelResponseHandler {
   private async consumeStream(result: any) {
     const fullStream = result?.fullStream;
     if (fullStream) {
-      for await (const part of fullStream) {
-        if (!part) continue;
-        if (part.type === 'text-delta') {
-          const delta = part.textDelta;
-          if (!delta) continue;
-          await this.updateIndicator('AI_STATE_GENERATING');
-          this.messageText += delta;
-          this.schedulePartialUpdate();
-        } else if (part.type === 'error') {
-          throw part.error instanceof Error
-            ? part.error
-            : new Error('Error streaming response');
-        } else if (part.type === 'finish') {
-          break;
+      for await (const payload of fullStream) {
+        const part = (payload && typeof payload === 'object' && 'part' in payload
+          ? (payload as { part?: { type?: string; [key: string]: unknown } }).part
+          : payload) as { type?: string; text?: string; textDelta?: string; error?: unknown } | null;
+        if (!part || !part.type) {
+          continue;
+        }
+
+        switch (part.type) {
+          case 'text-delta': {
+            const delta = part.text ?? (part as any).textDelta;
+            if (!delta) break;
+            await this.updateIndicator('AI_STATE_GENERATING');
+            this.messageText += delta;
+            this.schedulePartialUpdate();
+            break;
+          }
+          case 'error': {
+            const error =
+              part.error instanceof Error
+                ? part.error
+                : new Error(
+                    typeof part.error === 'string'
+                      ? part.error
+                      : 'Error streaming response',
+                  );
+            throw error;
+          }
+          case 'finish':
+          case 'abort':
+            return;
+          default:
+            // ignore other chunk types (response metadata, tool events, etc.)
+            break;
         }
       }
       return;

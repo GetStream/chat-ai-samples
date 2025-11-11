@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import {
   Agent,
+  AgentManager,
   AgentPlatform,
   ClientToolDefinition,
   createDefaultTools,
@@ -12,12 +13,6 @@ import { apiKey } from './serverClient';
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: '*' }));
-
-// Map to store the AI Agent instances
-// [cid: string]: AI Agent
-const aiAgentCache = new Map<string, Agent>();
-const pendingAiAgents = new Set<string>();
-const clientToolRegistry = new Map<string, ClientToolDefinition[]>();
 
 const normalizeChannelId = (rawChannelId: string): string => {
   const trimmed = typeof rawChannelId === 'string' ? rawChannelId.trim() : '';
@@ -33,29 +28,19 @@ const normalizeChannelId = (rawChannelId: string): string => {
 const buildAgentUserId = (channelId: string): string =>
   `ai-bot-${channelId.replace(/!/g, '')}`;
 
+const agentManager = new AgentManager({
+  serverToolsFactory: () => createDefaultTools(),
+  agentIdResolver: buildAgentUserId,
+});
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-
-// TODO: temporary set to 8 hours, should be cleaned up at some point
-const inactivityThreshold = 480 * 60 * 1000;
-setInterval(async () => {
-  const now = Date.now();
-  for (const [userId, agent] of aiAgentCache) {
-    if (now - agent.getLastInteraction() > inactivityThreshold) {
-      console.log(`Disposing AI Agent due to inactivity: ${userId}`);
-      await agent.stop().catch((error) => {
-        console.error(`Failed to stop agent ${userId}`, error);
-      });
-      aiAgentCache.delete(userId);
-    }
-  }
-}, 5000);
 
 app.get('/', (req, res) => {
   res.json({
     message: 'GetStream AI Server is running',
-    apiKey: apiKey,
-    activeAgents: aiAgentCache.size,
+    apiKey,
+    activeAgents: agentManager.activeAgentCount,
   });
 });
 
@@ -103,32 +88,14 @@ app.post('/start-ai-agent', async (req, res) => {
     typeof channel_type === 'string' && channel_type.trim().length
       ? channel_type
       : 'messaging';
-  let agent = aiAgentCache.get(user_id);
-  if (!agent) {
-    agent = new Agent({
+  try {
+    await agentManager.startAgent({
       userId: user_id,
       channelId: channelIdNormalized,
       channelType: channelTypeValue,
       platform: resolvedPlatform,
       model: modelId,
-      serverTools: createDefaultTools(),
     });
-    aiAgentCache.set(user_id, agent);
-  }
-  try {
-    if (!pendingAiAgents.has(user_id)) {
-      pendingAiAgents.add(user_id);
-
-      await agent.start();
-      const registeredClientTools =
-        clientToolRegistry.get(channelIdNormalized) ?? [];
-      if (registeredClientTools.length) {
-        agent.registerClientTools(registeredClientTools, { replace: true });
-      }
-    } else {
-      console.log(`AI Agent ${user_id} already starting`);
-    }
-
     res.json({ message: 'AI Agent started', data: [] });
   } catch (error) {
     const errorMessage = (error as Error).message;
@@ -136,8 +103,6 @@ app.post('/start-ai-agent', async (req, res) => {
     res
       .status(500)
       .json({ error: 'Failed to start AI Agent', reason: errorMessage });
-  } finally {
-    pendingAiAgents.delete(user_id);
   }
 });
 
@@ -155,11 +120,7 @@ app.post('/stop-ai-agent', async (req, res) => {
   }
   try {
     const userId = buildAgentUserId(channelIdNormalized);
-    const agent = aiAgentCache.get(userId);
-    if (agent) {
-      await agent.stop();
-      aiAgentCache.delete(userId);
-    }
+    await agentManager.stopAgent(userId);
     res.json({ message: 'AI Agent stopped', data: [] });
   } catch (error) {
     const errorMessage = (error as Error).message;
@@ -240,11 +201,7 @@ app.post('/register-tools', (req, res) => {
     return;
   }
 
-  clientToolRegistry.set(channelIdNormalized, sanitizedTools);
-
-  const userId = buildAgentUserId(channelIdNormalized);
-  const agent = aiAgentCache.get(userId);
-  agent?.registerClientTools(sanitizedTools, { replace: true });
+  agentManager.registerClientTools(channelIdNormalized, sanitizedTools);
 
   const responsePayload: Record<string, unknown> = {
     message: 'Client tools registered',

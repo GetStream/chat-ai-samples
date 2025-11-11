@@ -1,10 +1,12 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { AgentPlatform } from './agents/types';
-import { Agent } from './agents/Agent';
-import { createDefaultTools } from './agents/defaultTools';
-import { ClientToolDefinition } from './agents/VercelAIAgent';
+import {
+  Agent,
+  AgentPlatform,
+  ClientToolDefinition,
+  createDefaultTools,
+} from '@stream-io/chat-ai-sdk';
 import { apiKey } from './serverClient';
 
 const app = express();

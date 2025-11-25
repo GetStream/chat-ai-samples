@@ -89,6 +89,12 @@ app.post('/start-ai-agent', async (req, res) => {
       ? channel_type
       : 'messaging';
   try {
+    console.log(`Starting AI agent for channel ${channelIdNormalized}:`);
+    console.log(`  - User ID: ${user_id}`);
+    console.log(`  - Channel Type: ${channelTypeValue}`);
+    console.log(`  - Platform: ${resolvedPlatform}`);
+    console.log(`  - Model: ${modelId || 'default'}`);
+    
     await agentManager.startAgent({
       userId: user_id,
       channelId: channelIdNormalized,
@@ -96,6 +102,9 @@ app.post('/start-ai-agent', async (req, res) => {
       platform: resolvedPlatform,
       model: modelId,
     });
+    
+    console.log(`AI Agent ${user_id} started successfully`);
+    console.log(`Active agents: ${agentManager.activeAgentCount}`);
     res.json({ message: 'AI Agent started', data: [] });
   } catch (error) {
     const errorMessage = (error as Error).message;

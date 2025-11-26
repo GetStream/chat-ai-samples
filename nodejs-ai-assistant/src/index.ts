@@ -7,7 +7,7 @@ import {
   AgentPlatform,
   ClientToolDefinition,
   createDefaultTools,
-} from '@stream-io/chat-ai-sdk';
+} from '@stream-io/chat-langchain-sdk';
 import { apiKey } from './serverClient';
 
 const app = express();

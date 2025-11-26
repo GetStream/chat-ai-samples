@@ -1,12 +1,14 @@
 //
-//  TypingIndicatorHandler.swift
-//  StreamChatAIAssistant
+//  ContentView.swift
+//  AIComponents
 //
-//  Created by Martin Mitrevski on 25.11.24.
+//  Created by Martin Mitrevski on 24.10.25.
 //
 
+import Combine
 import Foundation
 import StreamChat
+import StreamChatAI
 import StreamChatSwiftUI
 
 class TypingIndicatorHandler: ObservableObject, EventsControllerDelegate, ChatChannelWatcherListControllerDelegate {
@@ -14,6 +16,7 @@ class TypingIndicatorHandler: ObservableObject, EventsControllerDelegate, ChatCh
     @Injected(\.chatClient) var chatClient: ChatClient
     
     private var eventsController: EventsController!
+    private let clientToolActionHandler: ClientToolActionHandling
     
     @Published var state: String = ""
     
@@ -46,13 +49,32 @@ class TypingIndicatorHandler: ObservableObject, EventsControllerDelegate, ChatCh
     }
     
     var watcherListController: ChatChannelWatcherListController?
+    let clientToolRegistry: ClientToolRegistry
         
-    init() {
+    init(actionHandler: ClientToolActionHandling, clientToolRegistry: ClientToolRegistry) {
+        self.clientToolActionHandler = actionHandler
+        self.clientToolRegistry = clientToolRegistry
         eventsController = chatClient.eventsController()
         eventsController.delegate = self
     }
     
     func eventsController(_ controller: EventsController, didReceiveEvent event: any Event) {
+        if
+            let unknownEvent = event as? UnknownChannelEvent,
+            let payload = unknownEvent.payload(ofType: ClientToolInvocationEventPayload.self)
+        {
+            Task { @MainActor [clientToolActionHandler] in
+                let invocation = ClientToolInvocation(
+                    payload: payload,
+                    channelId: AnyHashable(unknownEvent.cid)
+                )
+                let actions = clientToolRegistry.handleInvocation(invocation)
+                guard !actions.isEmpty else { return }
+                clientToolActionHandler.handle(actions)
+            }
+            return
+        }
+
         if event is AIIndicatorClearEvent {
             typingIndicatorShown = false
             generatingMessageId = nil

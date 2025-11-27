@@ -1,3 +1,5 @@
+## AI Components
+
 The AI UI components are designed specifically for AI-first applications written in SwiftUI. When paired with our real-time [Chat API](https://getstream.io/chat/), it makes integrating with and rendering responses from LLM providers such as ChatGPT, Gemini, Anthropic or any custom backend easier, by providing rich with out-of-the-box components able to render Markdown, Code blocks, tables, thinking indicators, images, charts etc.
 
 This library includes the following components which assist with this task:
@@ -7,19 +9,27 @@ This library includes the following components which assist with this task:
 - `SpeechToTextButton` - a reusable button that records voice input and streams the recognized transcript back into your UI.
 - `AITypingIndicatorView` - a component that can display different states of the LLM (thinking, checking external sources, etc).
 
-## Installation
+## Sample Project
 
-The AI components are available via the Swift Package Manager (SPM). Use the following steps to add the SDK via SPM in Xcode:
+This sample project showcase the usage of the AI components, how they integrate with Stream Chat's SwiftUI SDK and how to connect to a backend API.
 
-- Select "Add Packages…" in File menu
-- Paste the URL <https://github.com/GetStream/stream-chat-swift-ai.git>
-- In the option "Dependency Rule" choose "Up to next major version", and in the text inputs next to it, enter "0.1.0" and "1.0.0" accordingly.
+The project is a ChatGPT clone, with the following features:
+- Streaming messages with a message list optimized for AI assistants
+- Composer with photos, camera, agent modes, speech to text button
+- Conversation suggestions
+- Thinking indicators
+- Conversation history with a summary as the title of the channel
+- Sidebar view, commonly seen in AI assistants
 
-You can also add the components in your package file as a dependency:
+## Sample backend project 
 
-```swift
-.package(url: "https://github.com/GetStream/stream-chat-swift-ai.git", from: "0.1.0")
-```
+You will also need a backend project that will provide the AI capabilities to the chat experience. 
+
+You can try one of our NodeJS integrations with the [AI SDK](https://github.com/GetStream/chat-ai-samples/tree/main/ai-sdk-sample) or [Langchain](https://github.com/GetStream/chat-ai-samples/tree/main/langchain-sample), and run it locally. 
+
+When you decide to deploy your backend, make sure to update the `baseURL` in `AgentService`.
+
+## Project details
 
 ### Streaming Message View
 
@@ -27,16 +37,24 @@ The `StreamingMessageView` is a component that can render markdown content effic
 
 Under the hood, it implements letter by letter animation, with a character queue, similar to ChatGPT.
 
-Here's an example how to use it.
+In the project, the streaming message view is integrated with the SwiftUI SDK as a custom attachment.
 
 ```swift
-StreamingMessageView(
-    content: content,
-    isGenerating: true
-)
+@ViewBuilder
+func makeCustomAttachmentViewType(
+    for message: ChatMessage,
+    isFirst: Bool,
+    availableWidth: CGFloat,
+    scrolledId: Binding<String?>
+) -> some View {
+    let isGenerating = message.extraData["generating"]?.boolValue == true
+    StreamingMessageView(
+        content: message.text,
+        isGenerating: isGenerating
+    )
+    .padding()
+}
 ```
-
-Additionally, you can specify the speed of the animation, with the `letterInterval` parameter. The default value is 0.005 (5ms).
 
 ### AI Typing Indicator View
 
@@ -46,9 +64,50 @@ The `AITypingIndicatorView` is used to present different states of the LLM, such
 AITypingIndicatorView(text: "Thinking")
 ```
 
+In the sample, the thinking indicator is added via the message list modifier from the SwiftUI SDK:
+
+```swift
+// In the View Factory:
+func makeMessageListContainerModifier() -> some ViewModifier {
+    CustomMessageListContainerModifier(typingIndicatorHandler: typingIndicatorHandler)
+}
+
+// Somewhere in your code:
+struct CustomMessageListContainerModifier: ViewModifier {
+    
+    @ObservedObject var typingIndicatorHandler: TypingIndicatorHandler
+    
+    func body(content: Content) -> some View {
+        content.overlay {
+            AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
+        }
+    }
+}
+
+struct AIAgentOverlayView: View {
+    
+    @ObservedObject var typingIndicatorHandler: TypingIndicatorHandler
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            if typingIndicatorHandler.typingIndicatorShown {
+                HStack {
+                    AITypingIndicatorView(text: typingIndicatorHandler.state)
+                    Spacer()
+                }
+                .padding()
+                .frame(height: 60)
+                .background(Color(UIColor.secondarySystemBackground))
+            }
+        }
+    }
+}
+```
+
 ### Composer View
 
-The `ComposerView` gives users a modern text-entry surface with attachment previews, suggestions, and an integrated send button. Inject a `ComposerViewModel` to handle state and pass a closure that receives every `MessageData` payload when the user taps send.
+The `ComposerView` gives users a modern text-entry surface with attachment previews, suggestions, and an integrated send and speech to text buttons. Inject a `ComposerViewModel` to handle state and pass a closure that receives every `MessageData` payload when the user taps send.
 
 ```swift
 @available(iOS 16, *)
@@ -105,6 +164,73 @@ SuggestionsView(
 
 SpeechToTextButton(colors: colors) { transcript in
     print(transcript)
+}
+```
+
+### Conversation History 
+
+You can take the conversation history with StreamChat's API, via the `ChatChannelListViewModel`.
+
+```swift
+struct ConversationListView: View {
+    
+    @ObservedObject var viewModel: ChatChannelListViewModel
+    var onChannelSelected: (ChatChannel) -> Void
+    var onNewChat: () -> Void
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack {
+                HStack {
+                    Text("Conversations")
+                        .font(.headline)
+                    
+                    Spacer()
+
+                    Button(action: onNewChat) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                    .accessibilityLabel("New chat")
+                    .buttonStyle(.plain)
+                }
+                .padding()
+
+                ForEach(viewModel.channels) { channel in
+                    HStack {
+                        Text(channel.name ?? channel.id)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        onChannelSelected(channel)
+                    }
+                    .onAppear {
+                        if let index = viewModel.channels.firstIndex(of: channel) {
+                            viewModel.checkForChannels(index: index)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+### Suggestions
+
+You can use the `SuggestionsView` to show some conversation starters with the assistant. This view expects a list of strings.
+
+In the callback, when a suggestion is tapped, typically you would send the message to the channel.
+
+```swift
+SuggestionsView(suggestions: predefinedOptions) { messageData in
+    sendMessage(messageData)
 }
 ```
 

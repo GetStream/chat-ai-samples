@@ -28,7 +28,7 @@ If you want to learn more about building an AI assistant application using Jetpa
 
 ## 🛥 What is Stream?
 
-__[Stream Chat SDK for Compose](https://getstream.io/chat/sdk/compose?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)__ allows you to implement messaging systems seamlessly. If you’re interested in building powerful real-time video/audio calling, audio room, and livestreaming, check out the __[Stream Video SDK for Compose](https://getstream.io/video/docs/android/tutorials/video-calling?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)__!
+__[Stream Chat SDK for Compose](https://getstream.io/chat/sdk/compose?utm_source=Github)__ allows you to implement messaging systems seamlessly. If you’re interested in building powerful real-time video/audio calling, audio room, and livestreaming, check out the __[Stream Video SDK for Compose](https://getstream.io/video/docs/android/tutorials/video-calling?utm_source=Github)__!
 
 ### Stream Chat
 
@@ -38,15 +38,15 @@ __[Stream Chat SDK for Compose](https://getstream.io/chat/sdk/compose?utm_source
 
 ### Stream Video
 
-- [Stream Video SDK for Android on GitHub](https://github.com/getstream/stream-video-android?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)
-- [Video Call Tutorial](https://getstream.io/video/docs/android/tutorials/video-calling?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)
-- [Audio Room Tutorial](https://getstream.io/video/docs/android/tutorials/audio-room?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)
-- [Livestream Tutorial](https://getstream.io/video/docs/android/tutorials/livestream?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss)
+- [Stream Video SDK for Android on GitHub](https://github.com/getstream/stream-video-android?utm_source=Github)
+- [Video Call Tutorial](https://getstream.io/video/docs/android/tutorials/video-calling?utm_source=Github)
+- [Audio Room Tutorial](https://getstream.io/video/docs/android/tutorials/audio-room?utm_source=Github)
+- [Livestream Tutorial](https://getstream.io/video/docs/android/tutorials/livestream?utm_source=Github)
 
 ## 👩‍💻 Free for Makers 👨‍💻
 
 Stream is free for most side and hobby projects. To qualify, your project/company needs to have < 5 team members and < $10k in monthly revenue. Makers get $100 in monthly credit for video for free.
-For more details, check out the [Maker Account](https://getstream.io/maker-account?utm_source=Github&utm_medium=Jaewoong_OSS&utm_content=Developer&utm_campaign=Github_Dec2024_Jaewoong_Gemini&utm_term=DevRelOss).
+For more details, check out the [Maker Account](https://getstream.io/maker-account?utm_source=Github).
 
 ## 💼 We are hiring!
 
@@ -60,7 +60,6 @@ Most of the features are not completed except the chat feature, so anyone can co
 
 ## Find this repository useful? 💙
 Support it by joining __[stargazers](https://github.com/getstream/ai-chat-android/stargazers)__ for this repository. :star: <br>
-Also, __[follow me](https://github.com/skydoves)__ on GitHub for my next creations! 🤩
 
 # License
 ```xml

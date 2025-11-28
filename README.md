@@ -38,9 +38,9 @@ To get started building with AI and Stream, simply pick the example most suited 
 For your backend integration, you can try out one of these options:
 
 - **AI SDK integration**: Integrate StreamChat server-side with the popular AI SDK from Vercel.
-    - Docs: TODO: add link
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/ai-sdk-sample
 - **Langchain integration**: Another StreamChat server-side integration with the popular agentic framework Langchain.
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/langchain-sample
 - **Standalone samples**: If you prefer not to use additional dependencies, kick start your integration with our sample projects in Python and NodeJS.
     - Python sample: https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant
     - NodeJS sample: https://github.com/GetStream/chat-ai-samples/tree/main/python-ai-assistant

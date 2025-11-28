@@ -2,6 +2,49 @@
 
 ![Integrating Stream Chat with AI](/assets/repo_cover.png)
 
+This repo contains sample projects that integrate our UI components for building AI chat assistants, as well as server-side integrations with Vercel's AI SDK and Langchain:
+- Our UI components (available on iOS, Android, React, and React Native) work well with Stream Chat, but can also be used standalone. These components facilitate the development of AI assistants such as ChatGPT, Grok, Gemini, and others.
+- NodeJS packages - **stream-chat-js-ai-sdk** and **stream-chat-langchain** - which provide seamless integrations with Vercel’s AI SDK and LangChain, respectively. Stream Chat delivers the realtime layer and conversational memory, while the AI SDK and LangChain each offer a clean interface to multiple LLMs and support more advanced AI workflows. Additionally, we provide an example that uses a single backend server (NodeJS or Python) to manage the lifecycle of agents and handle the connection to external providers.
+
+## Architecture Overview 🏗️
+
+Here’s an overview of the general approach you can take to integrate Stream Chat with different LLMs.
+
+![Stream Chat AI Integration Architecture](/assets/arch_diagram.png)
+
+The customer app can use our AI components to build the chat assistant’s UI faster:
+- streaming message view with advanced rendering support (markdown, code syntax highlighting, charts, tables)
+- standalone composer with different options such as agent modes and photo picker
+- speech to text component
+- conversation suggestions 
+- converstation history
+- and much more.
+
+Your backend can use one of the provided packages to facilitate the integration with popular AI SDKs, such as Langchain and Vercel’s AI SDK. Or, in case you don’t want to depend on these packages, you can use our standalone NodeJS and Python examples, that show you how to integrate with Stream Chat’s server-side client and various LLMs (OpenAI and Anthropic are provided as examples).
+
+## Choose Your Platform
+
+To get started building with AI and Stream, simply pick the example most suited to your application and follow the step by step instructions outlined in each:
+
+- **iOS**: Learn how to create an assistant for iOS apps with Stream's iOS chat SDK.
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/ios
+- **Android**: Build powerful and responsive assistants for Android applications with Stream's Android chat SDK.
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/android
+- **React**: Develop chat assistants for web applications with Stream's React chat SDK.
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react-native
+- **React Native**: Step into the world of AI-enhanced chat apps with Stream's React Native SDK and our tutorial.
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react
+
+For your backend integration, you can try out one of these options:
+
+- **AI SDK integration**: Integrate StreamChat server-side with the popular AI SDK from Vercel.
+    - Docs: TODO: add link
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/ai-sdk-sample
+- **Langchain integration**: Another StreamChat server-side integration with the popular agentic framework Langchain.
+- **Standalone samples**: If you prefer not to use additional dependencies, kick start your integration with our sample projects in Python and NodeJS.
+    - Python sample: https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant
+    - NodeJS sample: https://github.com/GetStream/chat-ai-samples/tree/main/python-ai-assistant
+
 ## **Quick Links** 🔗
 - [Stream Chat](https://getstream.io/chat/)
 - [Getting Started Guide](https://getstream.io/blog/ai-assistant/)
@@ -10,75 +53,8 @@
 
 Before you begin, you'll need:
 - A Stream API Key ([Register for free](https://getstream.io/try-for-free/))
-- OpenAI API credentials ([Sign up](https://platform.openai.com/signup))
-- Anthropic API credentials ([Sign up](https://www.anthropic.com/api))
-
-## Overview 😎
-
-> This repository showcases official Stream sample projects demonstrating Generative AI integration with Chat API and UI Kits.
-
-### Samples:
-
-Frontend SDKs:
-- [React](https://getstream.io/blog/react-assistant/) for web apps
-- [React Native](https://getstream.io/blog/react-native-assistant/) for mobile apps
-- [Jetpack Compose](https://getstream.io/blog/android-assistant/) for Android
-- [Swift UI](https://getstream.io/blog/ios-assistant/) for iOS
-- [Flutter](https://getstream.io/blog/flutter-assistant/) for cross-platform development
-
-Backend Examples:
-- [NodeJS](https://getstream.io/blog/nodejs-assistant/) implementation
-- [Python AI Chat](https://getstream.io/blog/python-assistant/) implementation
-
-
-You can use our pre-built OpenAI/Anthropic integrations or extend the Agent class to work with any external LLM provider.
-
-## Architecture Overview 🏗️
-
-The repository implements a modular architecture that connects Stream's Chat functionality with various LLM providers:
-
-![Stream Chat AI Integration Architecture](/assets/arch_diagram.png)
-
-**Key features**:
-- Pre-built integrations with OpenAI and Anthropic
-- Extensible Agent class for custom LLM provider integration
-- Built-in UI components that handle:
-  - Loading states
-  - Code block rendering
-  - Markdown formatting
-  - Table displays
-  - Image rendering
-
-## Getting Started 🚀
-
-1. Clone the repo
-2. Configure environment variables:
-```sh
-cp .env.example .env
-```
-
-3. Add the following credentials to your `.env`:
-- [Stream Chat app api key and secret](https://getstream.io/try-for-free/)
-- [User ID and token](https://getstream.io/chat/docs/javascript/tokens_and_authentication/?language=javascript&q=secret#manually-generating-tokens)
-- [OpenAI API key](https://openai.com/product)
-- [Anthropic API key](https://www.anthropic.com/api)
-
-## Setup ⚙️
-
-### **Backend**
-
-- Follow the setup instructions in the [nodejs-ai-assistant](https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant) directory
-- Start reading our comprehensive [backend integration guide](https://getstream.io/blog/nodejs-assistant/) written by Stream engineers explaining the setup and integration with Stream Chat.
-
-### Frontend Integration
-
-Select your preferred SDK to get started.
-
-* [How to Build an AI Assistant with React](https://getstream.io/blog/react-assistant/)
-* [How to Build an AI Assistant with React Native](https://getstream.io/blog/react-native-assistant/)
-* [How to Build an AI Assistant for Android Using Compose](https://getstream.io/blog/android-assistant/)
-* [How to Build an AI Assistant for iOS Using Swift UI](https://getstream.io/blog/ios-assistant/)
-* [How to Build an AI Assistant with Flutter](https://getstream.io/blog/flutter-assistant/)
+- Credentials of the LLM you want to use in your integration (OpenAI, Anthropic, xAI and others)
+- Optional mem0 key for memory and context across conversations
 
 ## AI Guides 📚  
 These guides explore more of how AI can be used across our SDKs and products.

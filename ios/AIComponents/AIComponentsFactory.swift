@@ -15,12 +15,12 @@ class AIComponentsViewFactory: ViewFactory {
     @Injected(\.chatClient) var chatClient: ChatClient
     
     private let actionHandler = ClientToolActionHandler.shared
-    let typingIndicatorHandler: TypingIndicatorHandler
+    var typingIndicatorHandler: TypingIndicatorHandler!
     
-    init(typingIndicatorHandler: TypingIndicatorHandler) {
-        self.typingIndicatorHandler = typingIndicatorHandler
-    }
+    private init() {}
     
+    static let shared = AIComponentsViewFactory()
+        
     public func makeMessageListBackground(
         colors: ColorPalette,
         isInThread: Bool

@@ -25,7 +25,7 @@ struct ContentView: View {
     @ObservedObject private var clientToolActionHandler = ClientToolActionHandler.shared
     @StateObject var viewModel: ComposerViewModel
     @State var clientToolRegistry: ClientToolRegistry
-    @State var typingIndicatorHandler: TypingIndicatorHandler
+    @StateObject var typingIndicatorHandler: TypingIndicatorHandler
     @State private var draftChannelId: ChannelId?
     
     //TODO: extract this.
@@ -35,7 +35,7 @@ struct ContentView: View {
         _viewModel = StateObject(wrappedValue: .init())
         let clientToolRegistry = ClientToolRegistry()
         self.clientToolRegistry = clientToolRegistry
-        _typingIndicatorHandler = State(initialValue: TypingIndicatorHandler(
+        _typingIndicatorHandler = StateObject(wrappedValue: TypingIndicatorHandler(
                 actionHandler: ClientToolActionHandler.shared,
                 clientToolRegistry: clientToolRegistry
             )
@@ -68,6 +68,7 @@ struct ContentView: View {
             )
         }
         .onAppear {
+            AIComponentsViewFactory.shared.typingIndicatorHandler = _typingIndicatorHandler.wrappedValue
             viewModel.chatOptions = createChatOptions()
         }
     }
@@ -80,8 +81,7 @@ struct ContentView: View {
                 
                 if showMessageList, let channelController {
                     ConversationView(
-                        viewModel: ChatChannelViewModel(channelController: channelController),
-                        typingIndicatorHandler: typingIndicatorHandler
+                        channelController: channelController
                     )
                     .id(channelController.cid)
                 } else {
@@ -103,10 +103,15 @@ struct ContentView: View {
             .contentShape(Rectangle())
             
             ComposerView(
-                viewModel: viewModel
-            ) { messageData in
-                sendMessage(messageData)
-            }
+                viewModel: viewModel,
+                isGenerating: typingIndicatorHandler.generatingMessageId != nil,
+                onMessageSend: { messageData in
+                    sendMessage(messageData)
+                },
+                onStopGenerating: {
+                    stopGenerating()
+                }
+            )
             .background(
                 GeometryReader { proxy in
                     Color.clear.preference(key: ComposerHeightPreferenceKey.self, value: proxy.size.height)
@@ -119,6 +124,17 @@ struct ContentView: View {
                 isTextFieldFocused = !isSplitOpen
             }
         }
+    }
+    
+    private func stopGenerating() {
+        if let cid = channelController?.cid {
+            channelController?
+                .eventsController()
+                .sendEvent(
+                    AIIndicatorStopEvent(cid: cid)
+                )
+        }
+        typingIndicatorHandler.generatingMessageId = nil
     }
     
     private func setActiveChannelController(_ controller: ChatChannelController?) {
@@ -281,15 +297,18 @@ struct ContentView: View {
 }
 
 struct ConversationView: View {
-    @ObservedObject var viewModel: ChatChannelViewModel
-    let typingIndicatorHandler: TypingIndicatorHandler
-    
+    let channelController: ChatChannelController
+    @StateObject private var viewModel: ChatChannelViewModel
+
+    init(channelController: ChatChannelController) {
+        self.channelController = channelController
+        _viewModel = StateObject(wrappedValue: ChatChannelViewModel(channelController: channelController))
+    }
+
     var body: some View {
         if let channel = viewModel.channel {
             MessageListView(
-                factory: AIComponentsViewFactory(
-                    typingIndicatorHandler: typingIndicatorHandler
-                ),
+                factory: AIComponentsViewFactory.shared,
                 channel: channel,
                 viewModel: viewModel,
                 onLongPress: { _ in }

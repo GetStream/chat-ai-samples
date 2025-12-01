@@ -50,7 +50,7 @@ struct ContentView: View {
                 isOpen: $isSplitOpen,
                 excludedBottomHeight: composerHeight,
                 menu: {
-                    SplitSidebarView(
+                    ConversationListView(
                         onChannelSelected: handleChannelSelection,
                         onNewChat: handleNewChatRequest
                     )

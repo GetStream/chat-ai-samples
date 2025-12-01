@@ -10,27 +10,9 @@ import StreamChat
 import StreamChatAI
 import StreamChatSwiftUI
 
-struct SplitSidebarView: View {
-    
-    let onChannelSelected: (ChatChannel) -> Void
-    let onNewChat: () -> Void
-    @StateObject private var viewModel = ChatChannelListViewModel()
-    
-    var body: some View {
-        VStack {
-            ConversationListView(
-                viewModel: viewModel,
-                onChannelSelected: onChannelSelected,
-                onNewChat: onNewChat
-            )
-        }
-        .padding(.top, 40)
-    }
-}
-
 struct ConversationListView: View {
     
-    @ObservedObject var viewModel: ChatChannelListViewModel
+    @StateObject private var viewModel = ChatChannelListViewModel()
     var onChannelSelected: (ChatChannel) -> Void
     var onNewChat: () -> Void
     
@@ -74,5 +56,6 @@ struct ConversationListView: View {
                 }
             }
         }
+        .padding(.top, 40)
     }
 }

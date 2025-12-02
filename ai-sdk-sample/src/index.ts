@@ -5,36 +5,33 @@ import {
   Agent,
   AgentManager,
   AgentPlatform,
-  ClientToolDefinition,
+  type ClientToolDefinition,
   createDefaultTools,
 } from '@stream-io/chat-ai-sdk';
-import { apiKey } from './serverClient';
+import { buildAgentUserId, normalizeChannelId } from './utils.ts';
+import type {
+  RegisterToolsRequest,
+  StartAIAgentRequest,
+  StopAIAgentRequest,
+  SummarizeRequest,
+} from './types';
+
+const apiKey = process.env.STREAM_API_KEY as string | undefined;
+const apiSecret = process.env.STREAM_API_SECRET as string | undefined;
+if (!apiKey || !apiSecret) {
+  throw new Error(
+    'Missing required environment variables STREAM_API_KEY or STREAM_API_SECRET',
+  );
+}
 
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: '*' }));
 
-const normalizeChannelId = (rawChannelId: string): string => {
-  const trimmed = typeof rawChannelId === 'string' ? rawChannelId.trim() : '';
-  if (trimmed.includes(':')) {
-    const parts = trimmed.split(':');
-    if (parts.length > 1 && parts[1]) {
-      return parts[1];
-    }
-  }
-  return trimmed;
-};
-
-const buildAgentUserId = (channelId: string): string =>
-  `ai-bot-${channelId.replace(/!/g, '')}`;
-
 const agentManager = new AgentManager({
   serverToolsFactory: () => createDefaultTools(),
   agentIdResolver: buildAgentUserId,
 });
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 app.get('/', (req, res) => {
   res.json({
@@ -53,7 +50,9 @@ app.post('/start-ai-agent', async (req, res) => {
     channel_type = 'messaging',
     platform = AgentPlatform.ANTHROPIC,
     model,
-  } = req.body;
+  } = req.body as StartAIAgentRequest;
+
+  console.log('Received request to start AI Agent', req.body)
 
   // Simple validation
   if (!channel_id) {
@@ -78,16 +77,12 @@ app.post('/start-ai-agent', async (req, res) => {
     res.status(400).json({ error: 'Unsupported platform' });
     return;
   }
-  const modelId =
-    typeof model === 'string' && model.trim().length > 0
-      ? model.trim()
-      : undefined;
 
+  const modelId = model.trim().length > 0 ? model.trim() : undefined;
   const user_id = buildAgentUserId(channelIdNormalized);
-  const channelTypeValue =
-    typeof channel_type === 'string' && channel_type.trim().length
-      ? channel_type
-      : 'messaging';
+  const channelTypeValue = channel_type.trim().length
+    ? channel_type.trim()
+    : 'messaging';
   try {
     await agentManager.startAgent({
       userId: user_id,
@@ -110,10 +105,8 @@ app.post('/start-ai-agent', async (req, res) => {
  * Handle the request to stop the AI Agent
  */
 app.post('/stop-ai-agent', async (req, res) => {
-  const { channel_id } = req.body ?? {};
-  const channelIdNormalized = typeof channel_id === 'string'
-    ? normalizeChannelId(channel_id)
-    : '';
+  const { channel_id } = (req.body ?? {}) as StopAIAgentRequest;
+  const channelIdNormalized = normalizeChannelId(channel_id);
   if (!channelIdNormalized) {
     res.status(400).json({ error: 'Invalid channel_id' });
     return;
@@ -132,9 +125,9 @@ app.post('/stop-ai-agent', async (req, res) => {
 });
 
 app.post('/register-tools', (req, res) => {
-  const { channel_id, tools } = req.body ?? {};
+  const { channel_id, tools } = (req.body ?? {}) as RegisterToolsRequest;
 
-  if (typeof channel_id !== 'string' || channel_id.trim().length === 0) {
+  if (channel_id?.trim().length === 0) {
     res.status(400).json({ error: 'Missing or invalid channel_id' });
     return;
   }
@@ -155,32 +148,25 @@ app.post('/register-tools', (req, res) => {
 
   tools.forEach((rawTool, index) => {
     const tool = rawTool ?? {};
-    const rawName = typeof tool.name === 'string' ? tool.name.trim() : '';
-    const rawDescription =
-      typeof tool.description === 'string' ? tool.description.trim() : '';
+    const rawName = tool.name.trim();
+    const rawDescription = tool.description.trim();
 
     if (!rawName || !rawDescription) {
       invalidTools.push(
-        typeof tool.name === 'string'
-          ? tool.name
-          : `tool_${index.toString().padStart(2, '0')}`,
+        tool.name ? tool.name : `tool_${index.toString().padStart(2, '0')}`,
       );
       return;
     }
 
-    const instructions =
-      typeof tool.instructions === 'string' && tool.instructions.trim().length > 0
-        ? tool.instructions.trim()
-        : undefined;
-
-    const parameters = isPlainObject(tool.parameters)
-      ? (JSON.parse(JSON.stringify(tool.parameters)) as ClientToolDefinition['parameters'])
-      : undefined;
+    const instructions = tool.instructions?.trim();
+    const parameters = tool.parameters;
 
     let showExternalSourcesIndicator: boolean | undefined;
     if (typeof tool.showExternalSourcesIndicator === 'boolean') {
       showExternalSourcesIndicator = tool.showExternalSourcesIndicator;
+      // @ts-expect-error: show_external_sources_indicator is deprecated, but still supported for backwards compatibility
     } else if (typeof tool.show_external_sources_indicator === 'boolean') {
+      // @ts-expect-error: show_external_sources_indicator is deprecated, but still supported for backwards compatibility
       showExternalSourcesIndicator = tool.show_external_sources_indicator;
     }
 
@@ -216,9 +202,13 @@ app.post('/register-tools', (req, res) => {
 });
 
 app.post('/summarize', async (req, res) => {
-  const { text, platform = AgentPlatform.ANTHROPIC, model } = req.body ?? {};
+  const {
+    text,
+    platform = AgentPlatform.ANTHROPIC,
+    model,
+  } = (req.body ?? {}) as SummarizeRequest;
 
-  if (typeof text !== 'string' || text.trim().length === 0) {
+  if (text.trim().length === 0) {
     res.status(400).json({ error: 'Missing or invalid text to summarize' });
     return;
   }
@@ -236,11 +226,13 @@ app.post('/summarize', async (req, res) => {
     return;
   }
 
-  const modelId =
-    typeof model === 'string' && model.trim().length > 0 ? model.trim() : undefined;
-
+  const modelId = model?.trim();
   try {
-    const summary = await Agent.generateSummary(text, resolvedPlatform, modelId);
+    const summary = await Agent.generateSummary(
+      text,
+      resolvedPlatform,
+      modelId,
+    );
     res.json({ summary });
   } catch (error) {
     const message = (error as Error).message;

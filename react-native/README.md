@@ -1,84 +1,97 @@
-# [React Native](https://getstream.io/blog/react-native-assistant/) AI components Sample App
+This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-This repository contains a sample AI assistant app that integrates Stream's [React Native Chat SDK](https://github.com/GetStream/stream-chat-react-native). The sample shows how to render responses from LLM providers such as ChatGPT, Gemini, Anthropic or any custom backend by using our AI components and server-side SDKs. Our UI components are able to render Markdown, Code blocks, tables, thinking indicators, images, etc.
+# Getting Started
 
-The sample shows you how to integrate the following views:
-- `StreamingMessageView` - a component that is able to render text, markdown and code in real-time, using character-by-character animation, similar to ChatGPT (and is available by default !).
-- `AITypingIndicatorView` - a component that can display different states of the LLM (thinking, checking external sources, etc).
-- `StopMessageStreamingButton` - a component that replaces the `SendMessage` button by default and adds a way to stop AI generation
+> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 
-These components are designed to work seamlessly with our existing React Native SDK UI [Chat SDK](https://getstream.io/chat/docs/sdk/react-native/ui-components/overview/). Our [developer guide](https://getstream.io/chat/solutions/ai-integration/) explains how to get started building AI integrations with Stream and React Native.
+## Step 1: Start Metro
 
-The app consists of the standard StreamChat `ChannelList` and `Channel` screens. The channel view is enhanced with a button to start and stop AI agents. When the agent is started, it listens to all the sent messages in the channel and connects to an LLM to receive AI-generated responses.
+First, you will need to run **Metro**, the JavaScript build tool for React Native.
 
-There's also an example that shows you how to present the different states of the LLM, by reacting to the new AI events in the SDK. Additionally, you will learn how to stop the generation of messages at any time, using the `StopMessageStreamingButton`.
+To start the Metro dev server, run the following command from the root of your React Native project:
 
-## ⚙️ Usage
+```sh
+# Using npm
+npm start
 
-Running the app is simple. All you need to do is open the project in your favourite IDE, run the required installations:
-
-```bash
-yarn install
-npx pod-install
-```
-and then run the app in your desired environment:
-
-```bash
-yarn start --reset-cache # to run Metro
-yarn ios # for iOS
-yarn android # for Android
+# OR using Yarn
+yarn start
 ```
 
-If you want to use your own server, make sure to update the `url` parameters in `./http/requests.ts` to your own server's.
+## Step 2: Build and run your app
 
-<br />
+With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
 
-<a href="https://getstream.io?utm_source=Github&utm_medium=Github_Repo_Content&utm_content=Developer&utm_campaign=Github_Swift_AI_SDK&utm_term=DevRelOss">
-<img src="https://user-images.githubusercontent.com/24237865/138428440-b92e5fb7-89f8-41aa-96b1-71a5486c5849.png" align="right" width="12%"/>
-</a>
+### Android
 
-## 🛥 What is Stream?
+```sh
+# Using npm
+npm run android
 
-Stream allows developers to rapidly deploy scalable feeds, chat messaging and video with an industry leading 99.999% uptime SLA guarantee.
-
-Stream provides UI components and state handling that make it easy to build real-time chat and video calling for your app. Stream runs and maintains a global network of edge servers around the world, ensuring optimal latency and reliability regardless of where your users are located.
-
-## 📕 Tutorials
-
-To learn more about integrating AI and chatbots into your application, we recommend checking out the full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is natively supported across:
-* [React](https://getstream.io/blog/react-assistant/)
-* [React Native](https://getstream.io/blog/react-native-assistant/)
-* [Jetpack Compose](https://getstream.io/blog/android-assistant/)
-* [Swift UI](https://getstream.io/blog/ios-assistant/)
-* [Flutter](https://getstream.io/blog/flutter-assistant/)
-
-
-## 👩‍💻 Free for Makers 👨‍💻
-
-Stream is free for most side and hobby projects. To qualify, your project/company needs to have < 5 team members and < $10k in monthly revenue. Makers get $100 in monthly credit for video for free.
-For more details, check out the [Maker Account](https://getstream.io/maker-account?utm_source=Github&utm_medium=Github_Repo_Content&utm_content=Developer&utm_campaign=Github_Swift_AI_SDK&utm_term=DevRelOss).
-
-## 💼 We are hiring!
-
-We've recently closed a [\$38 million Series B funding round](https://techcrunch.com/2021/03/04/stream-raises-38m-as-its-chat-and-activity-feed-apis-power-communications-for-1b-users/) and we keep actively growing.
-Our APIs are used by more than a billion end-users, and you'll have a chance to make a huge impact on the product within a team of the strongest engineers all over the world.
-Check out our current openings and apply via [Stream's website](https://getstream.io/team/#jobs).
-
-
-## License
-
+# OR using Yarn
+yarn android
 ```
-Copyright (c) 2014-2024 Stream.io Inc. All rights reserved.
 
-Licensed under the Stream License;
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+### iOS
 
-   https://github.com/GetStream/stream-chat-swift-ai/blob/main/LICENSE
+For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+
+```sh
+bundle install
 ```
+
+Then, and every time you update your native dependencies, run:
+
+```sh
+bundle exec pod install
+```
+
+For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+
+```sh
+# Using npm
+npm run ios
+
+# OR using Yarn
+yarn ios
+```
+
+If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+
+This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+
+## Step 3: Modify your app
+
+Now that you have successfully run the app, let's make changes!
+
+Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+
+When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+
+- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
+- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+
+## Congratulations! :tada:
+
+You've successfully run and modified your React Native App. :partying_face:
+
+### Now what?
+
+- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
+- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+
+# Troubleshooting
+
+If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+
+# Learn More
+
+To learn more about React Native, take a look at the following resources:
+
+- [React Native Website](https://reactnative.dev) - learn more about React Native.
+- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
+- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
+- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
+- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.

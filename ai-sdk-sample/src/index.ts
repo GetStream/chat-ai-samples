@@ -52,7 +52,7 @@ app.post('/start-ai-agent', async (req, res) => {
     model,
   } = req.body as StartAIAgentRequest;
 
-  console.log('Received request to start AI Agent', req.body)
+  console.log('Received request to start AI Agent', req.body);
 
   // Simple validation
   if (!channel_id) {

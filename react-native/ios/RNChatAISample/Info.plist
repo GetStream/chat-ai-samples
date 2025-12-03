@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -35,6 +37,14 @@
 	<string></string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+    <string>$(PRODUCT_NAME) would like access to your photo gallery to share an image in a message.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>$(PRODUCT_NAME) would like to use your camera to share an image in a message.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>$(PRODUCT_NAME) would like to access your microphone to capture your voice.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>$(PRODUCT_NAME) would like to access speech recognition to transcribe your voice.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

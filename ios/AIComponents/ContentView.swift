@@ -11,6 +11,7 @@ import SwiftUI
 import StreamChat
 import StreamChatAI
 import StreamChatSwiftUI
+import UIKit
 
 struct ContentView: View {
     
@@ -45,6 +46,27 @@ struct ContentView: View {
     }
         
     var body: some View {
+        Group {
+            if isRunningOniPad {
+                iPadLayout()
+            } else {
+                iPhoneLayout()
+            }
+        }
+        .alert(item: $clientToolActionHandler.presentedAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        .onAppear {
+            AIComponentsViewFactory.shared.typingIndicatorHandler = _typingIndicatorHandler.wrappedValue
+            viewModel.chatOptions = createChatOptions()
+        }
+    }
+    
+    private func iPhoneLayout() -> some View {
         NavigationStack {
             SidebarView(
                 isOpen: $isSplitOpen,
@@ -60,16 +82,17 @@ struct ContentView: View {
                 }
             )
         }
-        .alert(item: $clientToolActionHandler.presentedAlert) { alert in
-            Alert(
-                title: Text(alert.title),
-                message: Text(alert.message),
-                dismissButton: .default(Text("OK"))
+    }
+    
+    @ViewBuilder
+    private func iPadLayout() -> some View {
+        NavigationSplitView {
+            ConversationListView(
+                onChannelSelected: handleChannelSelection,
+                onNewChat: handleNewChatRequest
             )
-        }
-        .onAppear {
-            AIComponentsViewFactory.shared.typingIndicatorHandler = _typingIndicatorHandler.wrappedValue
-            viewModel.chatOptions = createChatOptions()
+        } detail: {
+            mainConversation()
         }
     }
     
@@ -293,6 +316,10 @@ struct ContentView: View {
             }
         }
         return options
+    }
+    
+    private var isRunningOniPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
     }
 }
 

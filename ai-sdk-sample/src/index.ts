@@ -20,7 +20,7 @@ const apiKey = process.env.STREAM_API_KEY as string | undefined;
 const apiSecret = process.env.STREAM_API_SECRET as string | undefined;
 if (!apiKey || !apiSecret) {
   throw new Error(
-    'Missing required environment variables STREAM_API_KEY or STREAM_API_SECRET',
+      'Missing required environment variables STREAM_API_KEY or STREAM_API_SECRET',
   );
 }
 
@@ -48,7 +48,7 @@ app.post('/start-ai-agent', async (req, res) => {
   const {
     channel_id,
     channel_type = 'messaging',
-    platform = AgentPlatform.OPENAI,
+    platform = AgentPlatform.ANTHROPIC,
     model,
   } = req.body as StartAIAgentRequest;
 
@@ -67,22 +67,22 @@ app.post('/start-ai-agent', async (req, res) => {
   }
 
   const platformValue =
-    typeof platform === 'string'
-      ? (platform.toLowerCase() as AgentPlatform)
-      : platform;
+      typeof platform === 'string'
+          ? (platform.toLowerCase() as AgentPlatform)
+          : platform;
   const resolvedPlatform = Object.values(AgentPlatform).find(
-    (value) => value === platformValue,
+      (value) => value === platformValue,
   );
   if (!resolvedPlatform) {
     res.status(400).json({ error: 'Unsupported platform' });
     return;
   }
 
-  const modelId = model?.trim();
+  const modelId = model.trim().length > 0 ? model.trim() : undefined;
   const user_id = buildAgentUserId(channelIdNormalized);
   const channelTypeValue = channel_type.trim().length
-    ? channel_type.trim()
-    : 'messaging';
+      ? channel_type.trim()
+      : 'messaging';
   try {
     await agentManager.startAgent({
       userId: user_id,
@@ -96,8 +96,8 @@ app.post('/start-ai-agent', async (req, res) => {
     const errorMessage = (error as Error).message;
     console.error('Failed to start AI Agent', errorMessage);
     res
-      .status(500)
-      .json({ error: 'Failed to start AI Agent', reason: errorMessage });
+        .status(500)
+        .json({ error: 'Failed to start AI Agent', reason: errorMessage });
   }
 });
 
@@ -119,8 +119,8 @@ app.post('/stop-ai-agent', async (req, res) => {
     const errorMessage = (error as Error).message;
     console.error('Failed to stop AI Agent', errorMessage);
     res
-      .status(500)
-      .json({ error: 'Failed to stop AI Agent', reason: errorMessage });
+        .status(500)
+        .json({ error: 'Failed to stop AI Agent', reason: errorMessage });
   }
 });
 
@@ -153,7 +153,7 @@ app.post('/register-tools', (req, res) => {
 
     if (!rawName || !rawDescription) {
       invalidTools.push(
-        tool.name ? tool.name : `tool_${index.toString().padStart(2, '0')}`,
+          tool.name ? tool.name : `tool_${index.toString().padStart(2, '0')}`,
       );
       return;
     }
@@ -204,7 +204,7 @@ app.post('/register-tools', (req, res) => {
 app.post('/summarize', async (req, res) => {
   const {
     text,
-    platform = AgentPlatform.OPENAI,
+    platform = AgentPlatform.ANTHROPIC,
     model,
   } = (req.body ?? {}) as SummarizeRequest;
 
@@ -214,12 +214,12 @@ app.post('/summarize', async (req, res) => {
   }
 
   const platformValue =
-    typeof platform === 'string'
-      ? (platform.toLowerCase() as AgentPlatform)
-      : platform;
+      typeof platform === 'string'
+          ? (platform.toLowerCase() as AgentPlatform)
+          : platform;
 
   const resolvedPlatform = Object.values(AgentPlatform).find(
-    (value) => value === platformValue,
+      (value) => value === platformValue,
   );
   if (!resolvedPlatform) {
     res.status(400).json({ error: 'Unsupported platform' });
@@ -229,17 +229,17 @@ app.post('/summarize', async (req, res) => {
   const modelId = model?.trim();
   try {
     const summary = await Agent.generateSummary(
-      text,
-      resolvedPlatform,
-      modelId,
+        text,
+        resolvedPlatform,
+        modelId,
     );
     res.json({ summary });
   } catch (error) {
     const message = (error as Error).message;
     console.error('Failed to summarize text', message);
     res
-      .status(500)
-      .json({ error: 'Failed to summarize text', reason: message });
+        .status(500)
+        .json({ error: 'Failed to summarize text', reason: message });
   }
 });
 

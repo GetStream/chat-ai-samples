@@ -48,7 +48,7 @@ app.post('/start-ai-agent', async (req, res) => {
   const {
     channel_id,
     channel_type = 'messaging',
-    platform = AgentPlatform.ANTHROPIC,
+    platform = AgentPlatform.OPENAI,
     model,
   } = req.body as StartAIAgentRequest;
 
@@ -78,7 +78,7 @@ app.post('/start-ai-agent', async (req, res) => {
     return;
   }
 
-  const modelId = model.trim().length > 0 ? model.trim() : undefined;
+  const modelId = model?.trim();
   const user_id = buildAgentUserId(channelIdNormalized);
   const channelTypeValue = channel_type.trim().length
     ? channel_type.trim()
@@ -204,7 +204,7 @@ app.post('/register-tools', (req, res) => {
 app.post('/summarize', async (req, res) => {
   const {
     text,
-    platform = AgentPlatform.ANTHROPIC,
+    platform = AgentPlatform.OPENAI,
     model,
   } = (req.body ?? {}) as SummarizeRequest;
 

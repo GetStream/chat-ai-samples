@@ -1,17 +1,18 @@
 ## AI Components
 
-The Android AI UI components are built with Jetpack Compose and shipped in the `stream-chat-android-ai-compose` artifact. They are tailored for AI-first assistants that sit on top of Stream Chat and Stream's [real-time Chat API](https://getstream.io/chat/). Pair them with responses from providers such as OpenAI, Gemini, Anthropic, or your own backend to render markdown, code, tables, thinking indicators, and multi-turn context with just a few lines of Compose.
+The Android AI UI components are built with Jetpack Compose and shipped in the `stream-chat-android-ai-compose` artifact. They are tailored for AI-first assistants that sit on top of Stream Chat and Stream's [real-time Chat API](https://getstream.io/chat/). Pair them with responses from providers such as OpenAI, Gemini, Anthropic, or your own backend to render markdown, code, tables, and thinking indicators with just a few lines of Compose.
 
-This sample shows how to wire up:
+This library includes the following components which assist with this task:
+
 
 - `StreamingText` – renders markdown/code in real-time with a character queue so AI responses feel alive.
 - `ChatComposer` – a full-featured prompt composer with attachment previews, stop buttons, and gradient-friendly surfaces.
 - `AITypingIndicator` – visualizes agent states like "Thinking" or "Checking sources".
-- `ChatDrawer` + `ConversationListViewModel` – a sidebar for conversation history and quick navigation, built on Stream's state layer.
+- `SpeechToTextButton` – records microphone input, streams partial transcripts, and emits recognized text in real time.
 
 ## Sample Project
 
-`android/stream-chat-android-ai-compose-sample` is a ChatGPT-style assistant that demonstrates how the Compose components glue together with Stream Chat's Android SDK and a backend agent service. The sample includes:
+This sample project is a ChatGPT-style assistant that demonstrates how the Compose components glue together with Stream Chat's Android SDK and a backend agent service. The sample includes:
 
 - Streaming responses with markdown and syntax highlighting via `StreamingText`.
 - A modern composer with media attachments, stop generation, and smooth gradient overlays.
@@ -80,6 +81,22 @@ ChatComposer(
 ```
 
 Because the component simply emits callbacks, you can plug it into any view model or state container.
+
+### Speech to Text Button
+
+`SpeechToTextButton` wraps Android's speech recognizer with Compose-friendly state so you can turn microphone dictation into prompts. It requests audio permission, toggles recording, and returns partial and final transcripts via a single callback.
+
+```kotlin
+val speechState = rememberSpeechToTextButtonState()
+
+SpeechToTextButton(
+    state = speechState,
+) { transcript ->
+    chatViewModel.onInputTextChange(transcript)
+}
+```
+
+Its included into the composer `ChatComposer` but you can embed it directly inside custom toolbars to let users dictate prompts hands-free.
 
 ### Rendering Attachments
 

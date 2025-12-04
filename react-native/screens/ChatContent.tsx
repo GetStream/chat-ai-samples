@@ -1,10 +1,6 @@
 import {
   AIStates,
   Channel,
-  Copy,
-  DownloadArrow,
-  DownloadCloud,
-  Flag,
   isLocalUrl,
   mergeThemes,
   Message,
@@ -21,7 +17,7 @@ import {
 } from 'stream-chat-react-native';
 import { useAppContext } from '../contexts/AppContext.tsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {startAI, summarize} from '../http/requests.ts';
+import { startAI, summarize } from '../http/requests.ts';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
@@ -192,9 +188,9 @@ export const ChatContent = () => {
       await channel.watch({
         created_by_id: localMessage.user_id,
       });
-      summarize(localMessage.text).then((response) => {
+      summarize(localMessage.text).then(response => {
         const { summary } = response as { summary: string };
-        channel.update({ name: summary })
+        channel.update({ name: summary });
       });
     }
 

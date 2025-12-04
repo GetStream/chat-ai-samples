@@ -1,11 +1,8 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 
-import { StyleSheet, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React from 'react';
 import {
@@ -22,24 +19,10 @@ import {
 } from './chatConfig.ts';
 import { StreamTheme } from '@stream-io/chat-react-native-ai';
 import { MenuDrawer } from './screens/MenuDrawer.tsx';
-import { NewAppScreen } from '@react-native/new-app-screen';
 import { LocalMessage } from 'stream-chat';
-import {ChatContent} from "./screens/ChatContent.tsx";
+import { ChatContent } from './screens/ChatContent.tsx';
 
 const Drawer = createDrawerNavigator();
-
-const AppContent = () => {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-};
 
 const DrawerNavigator = () => (
   <Drawer.Navigator

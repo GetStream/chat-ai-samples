@@ -19,7 +19,14 @@ import { useAppContext } from '../contexts/AppContext.tsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { startAI, summarize } from '../http/requests.ts';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
+import {
+  Dimensions,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   AITypingIndicatorView,
   ComposerView,
@@ -55,7 +62,6 @@ const CustomMessage = (props: MessageProps) => {
                     borderRadius: 0,
                     borderColor: 'transparent',
                   },
-                  textContainer: { maxWidth: '100%' },
                 },
               }
             : {
@@ -217,6 +223,7 @@ export const ChatContent = () => {
     >
       <Channel
         channel={channel}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : -300}
         initializeOnMount={false}
         // @ts-expect-error This will be fixed upstream, the type is wrong
         preSendMessageRequest={preSendMessageRequest}
@@ -238,7 +245,7 @@ export const ChatContent = () => {
 };
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#fcfcfc' },
+  wrapper: { flex: 1, backgroundColor: '#fcfcfc'},
   emptyContainer: {
     flex: 1,
     width: '100%',
@@ -247,7 +254,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyContainerText: { fontSize: 24, fontWeight: 'bold' },
-  streamingMessageViewWrapper: { width: '100%', paddingHorizontal: 16 },
+  streamingMessageViewWrapper: {
+    maxWidth: '100%',
+    paddingHorizontal: 16,
+  },
   aiTypingIndicatorWrapper: {
     paddingHorizontal: 24,
     paddingVertical: 12,

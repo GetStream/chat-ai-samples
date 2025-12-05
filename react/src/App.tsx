@@ -1,6 +1,9 @@
-import type { ChannelFilters, ChannelOptions, ChannelSort } from "stream-chat";
-import { useCreateChatClient } from "stream-chat-react";
-import { AIChatApp } from "./components/AIChatApp";
+import {useState} from "react";
+import type {ChannelFilters, ChannelOptions, ChannelSort, LocalMessage} from "stream-chat";
+import {Chat, useCreateChatClient} from "stream-chat-react";
+
+import {Sidebar} from "./components/Sidebar";
+import {ChatContainer} from "./components/ChatContainer";
 
 import './components/index.scss';
 
@@ -38,28 +41,35 @@ const sort: ChannelSort = {
   updated_at: -1,
 };
 
+const isMessageAIGenerated = (message: LocalMessage) => !!message?.ai_generated;
+
 function App() {
   const chatClient = useCreateChatClient({
     apiKey: apiKey!,
-    tokenOrProvider: userToken!,
-    userData: {
-      id: userId,
-    },
+    tokenOrProvider: userToken,
+    userData: { id: userId },
   });
 
-  if (!chatClient) {
-    return <div>Loading chat...</div>;
-  }
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+
+  if (!chatClient) return <>Loading...</>;
 
   return (
-    <AIChatApp
-      apiKey={apiKey!}
-      userToken={userToken!}
-      userId={userId}
-      filters={filters}
-      options={options}
-      sort={sort}
-    />
+    <div className="ai-demo-app">
+      <Chat client={chatClient} isMessageAIGenerated={isMessageAIGenerated}>
+        <Sidebar
+          filters={filters}
+          options={options}
+          sort={sort}
+          isOpen={isSidebarOpen}
+          onClose={closeSidebar}
+        />
+        <ChatContainer onToggleSidebar={toggleSidebar} />
+      </Chat>
+    </div>
   );
 }
 

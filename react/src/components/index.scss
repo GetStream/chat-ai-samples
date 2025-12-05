@@ -153,6 +153,14 @@ body {
   display: flex;
 }
 
+.ai-demo-app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background-color: var(--ai-demo-bg-primary);
+  overflow: hidden;
+}
+
 /* Custom ChatGPT-style scrollbar */
 * {
   scrollbar-width: thin;

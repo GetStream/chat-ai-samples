@@ -27,12 +27,15 @@ Your backend can use one of the provided packages to facilitate the integration 
 To get started building with AI and Stream, simply pick the example most suited to your application and follow the step by step instructions outlined in each:
 
 - **iOS**: Learn how to create an assistant for iOS apps with Stream's iOS chat SDK.
+    - Docs: https://getstream.io/chat/docs/sdk/ios/ai-integrations/overview/
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/ios
 - **Android**: Build powerful and responsive assistants for Android applications with Stream's Android chat SDK.
+    - Docs: https://getstream.io/chat/docs/sdk/android/ai-integrations/overview/
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/android
 - **React**: Develop chat assistants for web applications with Stream's React chat SDK.
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react-native
 - **React Native**: Step into the world of AI-enhanced chat apps with Stream's React Native SDK and our tutorial.
+    - Docs: https://getstream.io/chat/docs/sdk/react-native/guides/ai-integrations/
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react
 
 For your backend integration, you can try out one of these options:

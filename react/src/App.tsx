@@ -1,73 +1,65 @@
-import type {
-  User,
-  ChannelSort,
-  ChannelFilters,
-  ChannelOptions,
-} from 'stream-chat';
+import type { ChannelFilters, ChannelOptions, ChannelSort } from "stream-chat";
 import {
-  useCreateChatClient,
-  Chat,
-  Channel,
-  ChannelList,
-  MessageInput,
-  MessageList,
-  Thread,
-  Window,
-} from 'stream-chat-react';
+	Chat,
+	Channel,
+	MessageList,
+	useCreateChatClient,
+	ChannelList,
+	Window,
+} from "stream-chat-react";
 
-import 'stream-chat-react/dist/css/v2/index.css';
-import MyChannelHeader from './MyChannelHeader';
-import MyAIStateIndicator from './MyAIStateIndicator';
+const userToken = import.meta.env.VITE_STREAM_USER_TOKEN;
+const apiKey = import.meta.env.VITE_STREAM_API_KEY;
 
-// your Stream app information
-const apiKey = import.meta.env.VITE_STREAM_API_KEY as string | undefined;
-const userToken = import.meta.env.VITE_STREAM_TOKEN as string | undefined;
-const userId = 'anakin_skywalker';
-const userName = 'Anakin Skywalker';
+console.log(import.meta, userToken, apiKey);
 
-if (!apiKey || !userToken) {
-  throw new Error('Missing API key or user token');
+if (typeof apiKey !== "string" || !apiKey.length) {
+	throw new Error("Missing VITE_STREAM_API_KEY");
 }
 
-const user: User = {
-  id: userId,
-  name: userName,
-  image:
-    'https://vignette.wikia.nocookie.net/starwars/images/6/6f/Anakin_Skywalker_RotS.png',
+if (typeof userToken !== "string" || !userToken.length) {
+	throw new Error("Missing VITE_STREAM_USER_TOKEN");
+}
+
+const userIdFromToken = (token: string) => {
+	const [, payload] = token.split(".");
+	const parsedPayload = JSON.parse(atob(payload));
+	return parsedPayload.user_id as string;
 };
 
-const sort: ChannelSort = { last_message_at: -1 };
+const userId = userIdFromToken(userToken!);
+
 const filters: ChannelFilters = {
-  type: 'messaging',
-  members: { $in: [userId] },
+	members: { $in: [userId] },
+	type: "messaging",
+	archived: false,
 };
-const options: ChannelOptions = {
-  limit: 10,
-};
+const options: ChannelOptions = { limit: 5 };
+const sort: ChannelSort = { pinned_at: 1, last_message_at: -1, updated_at: -1 };
 
-const App = () => {
-  const client = useCreateChatClient({
-    apiKey,
-    tokenOrProvider: userToken,
-    userData: user,
-  });
+function App() {
+	const chatClient = useCreateChatClient({
+		apiKey: apiKey!,
+		tokenOrProvider: userToken!,
+		userData: {
+			id: userId,
+		},
+	});
 
-  if (!client) return <div>Setting up client & connection...</div>;
+	if (!chatClient) {
+		return <div>Loading chat...</div>;
+	}
 
-  return (
-    <Chat client={client}>
-      <ChannelList filters={filters} sort={sort} options={options} />
-      <Channel>
-        <Window>
-          <MyChannelHeader />
-          <MessageList />
-          <MyAIStateIndicator />
-          <MessageInput />
-        </Window>
-        <Thread />
-      </Channel>
-    </Chat>
-  );
-};
+	return (
+		<Chat client={chatClient}>
+			<ChannelList filters={filters} sort={sort} options={options} />
+			<Channel>
+				<Window>
+					<MessageList />
+				</Window>
+			</Channel>
+		</Chat>
+	);
+}
 
 export default App;

@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@stream-io/chat-react-ai": "workspace:^",
+    "@stream-io/chat-react-ai": "^0.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "stream-chat": "^9.26.1",

@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@stream-io/chat-react-ai": "^0.1.0",
+    "clsx": "^2.1.1",
+    "material-symbols": "^0.40.0",
+    "nanoid": "^5.1.6",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "stream-chat": "^9.26.1",
@@ -26,6 +29,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "sass-embedded": "^1.93.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"

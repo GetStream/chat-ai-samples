@@ -1,6 +1,6 @@
-import {AIStateIndicator} from "@stream-io/chat-react-ai";
+import { AIStateIndicator as StateIndicator } from '@stream-io/chat-react-ai';
 import { useEffect } from 'react';
-import type { DateSeparatorProps } from 'stream-chat-react';
+import {AIStates, type DateSeparatorProps, useAIState, useChannelStateContext} from 'stream-chat-react';
 import { useChatContext } from 'stream-chat-react';
 import {
   Channel,
@@ -25,6 +25,16 @@ const NoOp = () => null;
 const CustomDateSeparator = (props: DateSeparatorProps) => (
   <DateSeparator {...props} position="center" />
 );
+
+const AIStateIndicator = () => {
+  const { channel } = useChannelStateContext();
+  const { aiState } = useAIState(channel);
+
+  if (![AIStates.Generating, AIStates.Thinking].includes(aiState)) return null;
+
+  return <StateIndicator key={channel.state.last_message_at?.toString()} />;
+};
+
 
 const nanoId = customAlphabet('abcdefghijklmnopqrstuvwxyz0123456789', 10);
 

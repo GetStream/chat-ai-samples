@@ -735,10 +735,10 @@
   resolved "https://registry.yarnpkg.com/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.53.3.tgz#38ae84f4c04226c1d56a3b17296ef1e0460ecdfe"
   integrity sha512-UhTd8u31dXadv0MopwGgNOBpUVROFKWVQgAg5N1ESyCz8AuBcMqm4AuTjrwgQKGDfoFuz02EuMRHQIw/frmYKQ==
 
-"@stream-io/chat-react-ai@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@stream-io/chat-react-ai/-/chat-react-ai-0.1.0.tgz#864b4ad8a241795a367f38a6b4ef319dba44f84d"
-  integrity sha512-1WlBKAGOrHoUNwBgkFyNaPQx+d1YFC1kL/dSy//sZzfaK5hGACd4w5dflELcvuKd0gYmxUnNCuYJpKShj4wCfQ==
+"@stream-io/chat-react-ai@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@stream-io/chat-react-ai/-/chat-react-ai-0.1.1.tgz#b80bdb9eda5503722707e693914567f18c7f01a7"
+  integrity sha512-IQSHVzMO3AG2MdVwL1OTa4dD3ACZTQd34/kFvdsiXtqXVbwqOwnaKLSZDvZfqAu+uKl9VYFeDGna0TyC9bsfww==
   dependencies:
     "@stream-io/state-store" "^1.1.6"
     chart.js "^4.5.1"

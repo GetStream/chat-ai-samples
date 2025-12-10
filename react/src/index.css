@@ -1,6 +1,11 @@
-@layer stream, stream-overrides;
+@layer stream, stream-overrides, stream-ai;
 
+@import "material-symbols/rounded.css";
 @import url("stream-chat-react/dist/css/v2/index.css") layer(stream);
+@import url("@stream-io/chat-react-ai/styles/index.css") layer(stream-ai);
+
+@import url("./components/Composer.css");
+@import url("./components/ChannelListItem.css");
 
 :root {
 	font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -18,26 +23,41 @@
 }
 
 body {
-  margin: 0;
+	margin: 0;
 }
 
 #root {
-  display: flex;
-  justify-content: stretch;
+	display: flex;
+	height: 100vh;
 }
 
 @layer stream-overrides {
-  
-  .str-chat__channel-list {
-    display: flex;
-    flex-shrink: 1;
-    flex-basis: 400px;
-    height: 100%;
-  }
+	.str-chat__channel-list {
+		flex-basis: 350px;
+		flex-shrink: 1;
+	}
 
-  .str-chat__channel {
-    flex-grow: 1;
-    flex-shrink: 0;
-  }
+	.str-chat__channel {
+		flex-grow: 1;
+	}
 
+	.str-chat__message-list-scroll {
+		max-width: 800px;
+		width: 100%;
+	}
+
+	.str-chat__list {
+		display: flex;
+		justify-content: center;
+		scrollbar-gutter: stable;
+		scrollbar-width: thin;
+	}
+
+	.str-chat__message--other .str-chat__message-bubble {
+		max-width: unset;
+	}
+
+	.str-chat__message--other .str-chat__message-inner {
+		margin-inline-end: 0;
+	}
 }

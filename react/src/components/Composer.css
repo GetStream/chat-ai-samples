@@ -1,0 +1,14 @@
+.tut__composer-container {
+	display: flex;
+	justify-content: center;
+	padding: 1rem;
+	scrollbar-gutter: stable;
+	scrollbar-width: thin;
+	overflow-y: hidden;
+	flex-shrink: 0;
+}
+
+.aicr__ai-message-composer__form {
+	max-width: 800px;
+	width: 100%;
+}

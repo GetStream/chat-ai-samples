@@ -1,1 +1,0 @@
-export { MessageInputBar } from './MessageInputBar';

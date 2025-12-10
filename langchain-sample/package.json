@@ -15,18 +15,11 @@
   "author": "GetStream.io",
   "license": "ISC",
   "dependencies": {
-    "@ai-sdk/anthropic": "2.0.0",
-    "@ai-sdk/google": "2.0.1",
-    "@ai-sdk/openai": "2.0.2",
-    "@ai-sdk/xai": "2.0.0",
-    "@mem0/vercel-ai-provider": "^2.0.4",
-    "@stream-io/chat-langchain-sdk": "file:../../stream-chat-langchain",
-    "ai": "5.0.2",
-    "axios": "^1.7.9",
+    "@stream-io/chat-langchain-sdk": "^0.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "stream-chat": "^9.19.0",
+    "stream-chat": "^9.27.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

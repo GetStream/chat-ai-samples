@@ -39,12 +39,17 @@ class AIComponentsViewFactory: ViewFactory {
         availableWidth: CGFloat,
         scrolledId: Binding<String?>
     ) -> some View {
-        let isGenerating = message.extraData["generating"]?.boolValue == true
-        StreamingMessageView(
-            content: message.text,
-            isGenerating: isGenerating
-        )
-        .padding()
+        if let a2ui = message.extraData["a2ui"]?.dictionaryValue,
+           let surfaceId = a2ui["surfaceId"]?.stringValue ?? a2ui["surface_id"]?.stringValue {
+            GenUIView(host: "http://localhost:3000", surfaceId: surfaceId)
+        } else {
+            let isGenerating = message.extraData["generating"]?.boolValue == true
+            StreamingMessageView(
+                content: message.text,
+                isGenerating: isGenerating
+            )
+            .padding()
+        }
     }
     
     func makeMessageListContainerModifier() -> some ViewModifier {

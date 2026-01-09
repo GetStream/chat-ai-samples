@@ -30,7 +30,7 @@ struct ContentView: View {
     @State private var draftChannelId: ChannelId?
     
     //TODO: extract this.
-    let predefinedOptions = ["Create a painting in Renaissance-style", "Create a workout plan for resistance training", "Find the decade that a photo is from", "Help me study vocabulary for an exam", "Tell me the best stocks to invest"]
+    let predefinedOptions = ["Top 5 restaurants in New York", "Create a painting in Renaissance-style", "Create a workout plan for resistance training", "Find the decade that a photo is from", "Help me study vocabulary for an exam", "Tell me the best stocks to invest"]
     
     init() {
         _viewModel = StateObject(wrappedValue: .init())

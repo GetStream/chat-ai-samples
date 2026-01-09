@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		840BFDBF2F1109EC009841AC /* GenUI in Frameworks */ = {isa = PBXBuildFile; productRef = 840BFDBE2F1109EC009841AC /* GenUI */; };
 		84144E042EB8E95D00D0D034 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 84144E032EB8E95D00D0D034 /* MCP */; };
 		8464FB542EABCB5B00933768 /* StreamChatSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8464FB532EABCB5B00933768 /* StreamChatSwiftUI */; };
 		8464FB582EABCBC200933768 /* StreamChatAI in Frameworks */ = {isa = PBXBuildFile; productRef = 8464FB572EABCBC200933768 /* StreamChatAI */; };
@@ -31,6 +32,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84144E042EB8E95D00D0D034 /* MCP in Frameworks */,
+				840BFDBF2F1109EC009841AC /* GenUI in Frameworks */,
 				8464FB582EABCBC200933768 /* StreamChatAI in Frameworks */,
 				84F35D3E2EDA5E6A0014D30F /* StreamChatAI in Frameworks */,
 				8464FB542EABCB5B00933768 /* StreamChatSwiftUI in Frameworks */,
@@ -88,6 +90,7 @@
 				8464FB572EABCBC200933768 /* StreamChatAI */,
 				84144E032EB8E95D00D0D034 /* MCP */,
 				84F35D3D2EDA5E6A0014D30F /* StreamChatAI */,
+				840BFDBE2F1109EC009841AC /* GenUI */,
 			);
 			productName = AIComponents;
 			productReference = 8464FB412EABCAB100933768 /* AIComponents.app */;
@@ -121,6 +124,7 @@
 				8464FB522EABCB5B00933768 /* XCRemoteSwiftPackageReference "stream-chat-swiftui" */,
 				84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */,
 				84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */,
+				840BFDBD2F1109EC009841AC /* XCRemoteSwiftPackageReference "GenUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8464FB422EABCAB100933768 /* Products */;
@@ -370,6 +374,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		840BFDBD2F1109EC009841AC /* XCRemoteSwiftPackageReference "GenUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/martinmitrevski/GenUI.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk";
@@ -397,6 +409,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		840BFDBE2F1109EC009841AC /* GenUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 840BFDBD2F1109EC009841AC /* XCRemoteSwiftPackageReference "GenUI" */;
+			productName = GenUI;
+		};
 		84144E032EB8E95D00D0D034 /* MCP */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */;

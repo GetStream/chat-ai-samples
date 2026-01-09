@@ -9,6 +9,7 @@ import {
   createDefaultTools,
 } from '@stream-io/chat-ai-sdk';
 import { buildAgentUserId, normalizeChannelId } from './utils.ts';
+import { restaurantA2uiAugmentor } from './a2ui/restaurant.ts';
 import type {
   RegisterToolsRequest,
   StartAIAgentRequest,
@@ -31,6 +32,7 @@ app.use(cors({ origin: '*' }));
 const agentManager = new AgentManager({
   serverToolsFactory: () => createDefaultTools(),
   agentIdResolver: buildAgentUserId,
+  finalMessageAugmentor: restaurantA2uiAugmentor,
 });
 
 app.get('/', (req, res) => {

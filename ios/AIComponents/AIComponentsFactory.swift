@@ -39,13 +39,13 @@ class AIComponentsViewFactory: ViewFactory {
         availableWidth: CGFloat,
         scrolledId: Binding<String?>
     ) -> some View {
-        if let a2ui = message.extraData["a2ui"]?.dictionaryValue,
-           let surfaceId = a2ui["surfaceId"]?.stringValue ?? a2ui["surface_id"]?.stringValue {
-            GenUIView(host: "http://localhost:3000", surfaceId: surfaceId)
+        if let payload = A2uiPayload(rawJSON: message.extraData["a2ui"]) {
+            GenUIView(payload: payload, message: message, chatClient: chatClient)
         } else {
             let isGenerating = message.extraData["generating"]?.boolValue == true
+            let displayText = message.extraData["a2ui_display_text"]?.stringValue ?? message.text
             StreamingMessageView(
-                content: message.text,
+                content: displayText,
                 isGenerating: isGenerating
             )
             .padding()

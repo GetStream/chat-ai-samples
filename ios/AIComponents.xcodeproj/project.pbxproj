@@ -16,6 +16,7 @@
 
 /* Begin PBXFileReference section */
 		8464FB412EABCAB100933768 /* AIComponents.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIComponents.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		84D81EEC2F13D1780009FEEB /* GenUI */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = GenUI; path = /Users/martinmitrevski/workspace/GenUI; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,6 +46,7 @@
 		8464FB382EABCAB100933768 = {
 			isa = PBXGroup;
 			children = (
+				84D81EEC2F13D1780009FEEB /* GenUI */,
 				8464FB432EABCAB100933768 /* AIComponents */,
 				8464FB562EABCBC200933768 /* Frameworks */,
 				8464FB422EABCAB100933768 /* Products */,

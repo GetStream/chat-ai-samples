@@ -7,34 +7,26 @@
 
 import SwiftUI
 import GenUI
+import StreamChat
 
 struct GenUIView: View {
-    let host: String
-    let surfaceId: String
+    @StateObject private var renderer: A2uiSurfaceRenderer
     
-    private let conversation: GenUiConversation
-    
-    init(host: String, surfaceId: String) {
-        self.host = host
-        self.surfaceId = surfaceId
-        
-        // Create host setup similar to GenUISample
-        let baseUrl = URL(string: host) ?? URL(string: "http://localhost:10002")!
-        let generator = A2uiContentGenerator(serverUrl: baseUrl)
-        let catalog = CoreCatalogItems.asCatalog()
-        let processor = A2uiMessageProcessor(catalogs: [catalog])
-        self.conversation = GenUiConversation(
-            contentGenerator: generator,
-            a2uiMessageProcessor: processor,
-            handleSubmitEvents: false
+    init(payload: A2uiPayload, message: ChatMessage, chatClient: ChatClient) {
+        _renderer = StateObject(
+            wrappedValue: A2uiSurfaceRenderer(
+                payload: payload,
+                message: message,
+                chatClient: chatClient
+            )
         )
     }
     
     var body: some View {
-        GenUiSurface(host: conversation.host, surfaceId: surfaceId)
+        GenUiSurface(host: renderer.processor, surfaceId: renderer.surfaceId)
             .padding(16)
             .onDisappear {
-                conversation.dispose()
+                renderer.dispose()
             }
     }
 }

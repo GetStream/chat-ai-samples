@@ -7,7 +7,8 @@
     "node": "24"
   },
   "scripts": {
-    "start": "node src/index.ts",
+    "start": "node --loader ./ts-esm-loader.mjs ./src/index.ts",
+    "build": "tsc -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

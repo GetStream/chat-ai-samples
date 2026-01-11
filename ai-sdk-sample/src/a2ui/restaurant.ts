@@ -307,6 +307,307 @@ const buildRestaurantPayload = (
   messages: buildRestaurantMessages(restaurants, title),
 });
 
+export interface BookingIntentContext {
+  restaurantName: string;
+  address?: string;
+  imageUrl?: string;
+}
+
+export interface BookingSubmissionContext extends BookingIntentContext {
+  partySize?: string;
+  reservationTime?: string;
+  dietary?: string;
+}
+
+const BOOKING_FORM_SURFACE_ID = 'restaurant-booking-form';
+const BOOKING_CONFIRM_SURFACE_ID = 'restaurant-booking-confirmation';
+const BOOKING_PRIMARY_COLOR = '#D84315';
+
+const BOOKING_FORM_COMPONENTS: Array<Record<string, unknown>> = [
+  {
+    id: 'booking-form-root',
+    component: {
+      Column: {
+        spacing: 'large',
+        children: {
+          explicitList: [
+            'booking-title',
+            'booking-image',
+            'booking-address',
+            'booking-party',
+            'booking-time',
+            'booking-dietary',
+            'booking-submit',
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'booking-title',
+    component: {
+      Text: {
+        usageHint: 'h2',
+        text: { path: 'title' },
+      },
+    },
+  },
+  {
+    id: 'booking-image',
+    component: {
+      Image: {
+        url: { path: 'imageUrl' },
+        fit: 'cover',
+        usageHint: 'feature',
+      },
+    },
+  },
+  {
+    id: 'booking-address',
+    component: {
+      Text: {
+        text: { path: 'address' },
+      },
+    },
+  },
+  {
+    id: 'booking-party',
+    component: {
+      TextField: {
+        label: 'Party size',
+        inputType: 'number',
+        dataBinding: '/partySize',
+      },
+    },
+  },
+  {
+    id: 'booking-time',
+    component: {
+      DateTimeInput: {
+        label: 'Reservation time',
+        dataBinding: '/reservationTime',
+      },
+    },
+  },
+  {
+    id: 'booking-dietary',
+    component: {
+      TextField: {
+        label: 'Dietary requirements',
+        dataBinding: '/dietary',
+      },
+    },
+  },
+  {
+    id: 'booking-submit',
+    component: {
+      Button: {
+        child: 'booking-submit-text',
+        primary: true,
+        action: {
+          name: 'submit_booking',
+          context: [
+            { key: 'restaurantName', value: { path: 'restaurantName' } },
+            { key: 'address', value: { path: 'address' } },
+            { key: 'imageUrl', value: { path: 'imageUrl' } },
+            { key: 'partySize', value: { path: 'partySize' } },
+            { key: 'reservationTime', value: { path: 'reservationTime' } },
+            { key: 'dietary', value: { path: 'dietary' } },
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'booking-submit-text',
+    component: {
+      Text: {
+        text: { literalString: 'Confirm reservation' },
+      },
+    },
+  },
+];
+
+const BOOKING_CONFIRM_COMPONENTS: Array<Record<string, unknown>> = [
+  {
+    id: 'booking-confirm-root',
+    component: {
+      Column: {
+        spacing: 'large',
+        children: {
+          explicitList: [
+            'booking-confirm-title',
+            'booking-confirm-image',
+            'booking-confirm-details',
+            'booking-confirm-note',
+          ],
+        },
+      },
+    },
+  },
+  {
+    id: 'booking-confirm-title',
+    component: {
+      Text: {
+        usageHint: 'h2',
+        text: { path: 'title' },
+      },
+    },
+  },
+  {
+    id: 'booking-confirm-image',
+    component: {
+      Image: {
+        url: { path: 'imageUrl' },
+        fit: 'cover',
+        usageHint: 'feature',
+      },
+    },
+  },
+  {
+    id: 'booking-confirm-details',
+    component: {
+      Text: {
+        text: { path: 'bookingDetails' },
+      },
+    },
+  },
+  {
+    id: 'booking-confirm-note',
+    component: {
+      Text: {
+        text: { path: 'note' },
+      },
+    },
+  },
+];
+
+const buildBookingFormMessages = (
+  details: BookingSubmissionContext,
+): Array<Record<string, unknown>> => [
+  {
+    beginRendering: {
+      surfaceId: BOOKING_FORM_SURFACE_ID,
+      root: 'booking-form-root',
+      styles: {
+        primaryColor: BOOKING_PRIMARY_COLOR,
+        font: 'Roboto',
+      },
+    },
+  },
+  {
+    surfaceUpdate: {
+      surfaceId: BOOKING_FORM_SURFACE_ID,
+      components: BOOKING_FORM_COMPONENTS,
+    },
+  },
+  {
+    dataModelUpdate: {
+      surfaceId: BOOKING_FORM_SURFACE_ID,
+      path: '/',
+      contents: [
+        {
+          key: 'title',
+          valueString: `Reserve a table at ${details.restaurantName}`,
+        },
+        {
+          key: 'address',
+          valueString: details.address ?? 'Address unavailable',
+        },
+        {
+          key: 'imageUrl',
+          valueString: details.imageUrl ?? 'https://picsum.photos/seed/booking/800/600',
+        },
+        {
+          key: 'partySize',
+          valueString: details.partySize ?? '2',
+        },
+        {
+          key: 'reservationTime',
+          valueString: details.reservationTime ?? 'Today at 7:00 PM',
+        },
+        {
+          key: 'dietary',
+          valueString: details.dietary ?? 'None',
+        },
+        {
+          key: 'restaurantName',
+          valueString: details.restaurantName,
+        },
+      ],
+    },
+  },
+];
+
+const buildBookingConfirmationMessages = (
+  details: BookingSubmissionContext,
+): Array<Record<string, unknown>> => [
+  {
+    beginRendering: {
+      surfaceId: BOOKING_CONFIRM_SURFACE_ID,
+      root: 'booking-confirm-root',
+      styles: {
+        primaryColor: BOOKING_PRIMARY_COLOR,
+        font: 'Roboto',
+      },
+    },
+  },
+  {
+    surfaceUpdate: {
+      surfaceId: BOOKING_CONFIRM_SURFACE_ID,
+      components: BOOKING_CONFIRM_COMPONENTS,
+    },
+  },
+  {
+    dataModelUpdate: {
+      surfaceId: BOOKING_CONFIRM_SURFACE_ID,
+      path: '/',
+      contents: [
+        {
+          key: 'title',
+          valueString: `Reservation confirmed for ${details.restaurantName}`,
+        },
+        {
+          key: 'bookingDetails',
+          valueString: `Table for ${details.partySize ?? '2'} on ${details.reservationTime ?? 'your selected date'} with dietary notes: ${details.dietary ?? 'None'}.`,
+        },
+        {
+          key: 'imageUrl',
+          valueString: details.imageUrl ?? 'https://picsum.photos/seed/booking/800/600',
+        },
+        {
+          key: 'note',
+          valueString: 'We have shared your booking details with the restaurant. Expect a confirmation email shortly.',
+        },
+      ],
+    },
+  },
+];
+
+export const buildBookingFormPayload = (
+  details: BookingSubmissionContext,
+): Record<string, unknown> => ({
+  version: '0.8',
+  surfaceId: BOOKING_FORM_SURFACE_ID,
+  intent: 'restaurant_booking_form',
+  metadata: {
+    title: `Booking form for ${details.restaurantName}`,
+  },
+  messages: buildBookingFormMessages(details),
+});
+
+export const buildBookingConfirmationPayload = (
+  details: BookingSubmissionContext,
+): Record<string, unknown> => ({
+  version: '0.8',
+  surfaceId: BOOKING_CONFIRM_SURFACE_ID,
+  intent: 'restaurant_booking_confirmation',
+  metadata: {
+    title: `Reservation confirmed for ${details.restaurantName}`,
+  },
+  messages: buildBookingConfirmationMessages(details),
+});
+
 export const restaurantA2uiAugmentor: FinalMessageAugmentor = async (
   context,
 ) => {

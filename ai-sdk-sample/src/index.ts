@@ -10,6 +10,7 @@ import {
 } from '@stream-io/chat-ai-sdk';
 import { buildAgentUserId, normalizeChannelId } from './utils.ts';
 import { restaurantA2uiAugmentor } from './a2ui/restaurant.ts';
+import { createA2uiInteractionHandler } from './a2ui/interaction-handler.ts';
 import type {
   RegisterToolsRequest,
   StartAIAgentRequest,
@@ -33,6 +34,7 @@ const agentManager = new AgentManager({
   serverToolsFactory: () => createDefaultTools(),
   agentIdResolver: buildAgentUserId,
   finalMessageAugmentor: restaurantA2uiAugmentor,
+  userMessageHandler: createA2uiInteractionHandler(),
 });
 
 app.get('/', (req, res) => {

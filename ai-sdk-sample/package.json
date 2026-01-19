@@ -15,7 +15,7 @@
   "author": "GetStream.io",
   "license": "ISC",
   "dependencies": {
-    "@stream-io/chat-ai-sdk": "file:../../stream-chat-ai-sdk",
+    "@stream-io/chat-ai-sdk": "a2ui",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",

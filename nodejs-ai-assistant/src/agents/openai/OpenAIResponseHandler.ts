@@ -1,6 +1,11 @@
 import axios from 'axios';
 import OpenAI from 'openai';
-import type { Channel, MessageResponse, StreamChat } from 'stream-chat';
+import type {
+  Channel,
+  MessageResponse,
+  PartialMessageUpdate,
+  StreamChat,
+} from 'stream-chat';
 import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
 export class OpenAIResponseHandler {
@@ -51,7 +56,8 @@ export class OpenAIResponseHandler {
     } catch (e) {
       // no-op
     }
-    await this.finalizeMessage();
+
+    await this.finalizeMessage({ forceStop: true });
   };
 
   // Stream from the Responses API via the official SDK
@@ -286,7 +292,9 @@ export class OpenAIResponseHandler {
     }
   }
 
-  private async finalizeMessage() {
+  private async finalizeMessage({
+    forceStop = false,
+  }: { forceStop?: boolean } = {}) {
     if (this.finalized) return;
     this.finalized = true;
     if (this.pendingUpdateTimer) {
@@ -296,9 +304,17 @@ export class OpenAIResponseHandler {
     // Wait for any in-flight partial updates to settle, then apply final
     await this.lastUpdatePromise.catch(() => Promise.resolve());
     const text = this.message_text;
-    await this.chatClient.partialUpdateMessage(this.message.id, {
-      set: { text, generating: false },
-    });
+
+    const partialMessage: PartialMessageUpdate = {
+      set: { generating: false },
+    };
+
+    // if forceStop is true, it means generation was stopped by the user, so we avoid overwriting the message text with extra content that may have been generated after the stop signal was sent
+    if (!forceStop) {
+      partialMessage.set!.text = text;
+    }
+
+    await this.chatClient.partialUpdateMessage(this.message.id, partialMessage);
     await this.clearIndicator();
   }
 }

@@ -12,6 +12,17 @@ import { useEffect } from "react";
 import { nanoid } from "nanoid";
 import { startAiAgent } from "../api";
 
+function getUserLocation(): Promise<{ latitude: number; longitude: number } | undefined> {
+	return new Promise((resolve) => {
+		if (!navigator.geolocation) return resolve(undefined);
+		navigator.geolocation.getCurrentPosition(
+			(pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+			() => resolve(undefined),
+			{ timeout: 5000 },
+		);
+	});
+}
+
 export const ChatContent = () => {
 	const { setActiveChannel, client, channel } = useChatContext();
 
@@ -34,6 +45,15 @@ export const ChatContent = () => {
 				await channel.watch();
 			}
 			await startAiAgent(channel, "claude-sonnet-4-5", "anthropic");
+
+			const location = await getUserLocation();
+			if (location) {
+				await channel.sendEvent({
+					type: 'user_location' as any,
+					latitude: location.latitude,
+					longitude: location.longitude,
+				} as any);
+			}
 		};
 		autoStart().catch(console.error);
 	}, [channel?.id]);

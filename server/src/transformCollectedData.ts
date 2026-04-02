@@ -60,7 +60,7 @@ function padToLength(str: string, minLen: number, maxLen: number): string {
   return result;
 }
 
-export function transformCollectedData(input: CollectedData): ListingPayload {
+export function transformCollectedData(input: CollectedData, location?: Record<string, unknown>): ListingPayload {
   const title = padToLength(input.title, 5, 50);
   const description = padToLength(input.description, 100, 200);
   const breedAttr = toBreedAttributeValue(input.breed);
@@ -94,17 +94,14 @@ export function transformCollectedData(input: CollectedData): ListingPayload {
     requiredDeposit: input.deposit_amount,
     hidePrice: false,
     preferredContact: 'ChatOnly',
-    location: {
-      "coordinates": {
-        "latitude": 53.4327408,
-        "longitude": -2.313706
-      },
-      "raw": "{\"address_components\":[{\"long_name\":\"M33 7WR\",\"short_name\":\"M33 7WR\",\"types\":[\"postal_code\"]},{\"long_name\":\"Sale\",\"short_name\":\"Sale\",\"types\":[\"postal_town\"]},{\"long_name\":\"Greater Manchester\",\"short_name\":\"Greater Manchester\",\"types\":[\"administrative_area_level_2\",\"political\"]},{\"long_name\":\"England\",\"short_name\":\"England\",\"types\":[\"administrative_area_level_1\",\"political\"]},{\"long_name\":\"United Kingdom\",\"short_name\":\"GB\",\"types\":[\"country\",\"political\"]}],\"formatted_address\":\"Sale M33 7WR, UK\",\"geometry\":{\"location\":{\"lat\":53.4327408,\"lng\":-2.313706},\"viewport\":{\"south\":53.43101671238331,\"west\":-2.317349345330443,\"north\":53.43694091055722,\"east\":-2.309293545625865}},\"html_attributions\":[]}",
-      "postalCode": "M33 7WR",
-      "city": "Sale",
-      "areaLevel2": "Greater Manchester",
-      "areaLevel1": "England",
-      "country": "United Kingdom"
+    location: location ?? {
+      coordinates: { latitude: 53.4327408, longitude: -2.313706 },
+      raw: '{"address_components":[{"long_name":"M33 7WR","short_name":"M33 7WR","types":["postal_code"]},{"long_name":"Sale","short_name":"Sale","types":["postal_town"]},{"long_name":"Greater Manchester","short_name":"Greater Manchester","types":["administrative_area_level_2","political"]},{"long_name":"England","short_name":"England","types":["administrative_area_level_1","political"]},{"long_name":"United Kingdom","short_name":"GB","types":["country","political"]}],"formatted_address":"Sale M33 7WR, UK","geometry":{"location":{"lat":53.4327408,"lng":-2.313706},"viewport":{"south":53.43101671238331,"west":-2.317349345330443,"north":53.43694091055722,"east":-2.309293545625865}},"html_attributions":[]}',
+      postalCode: 'M33 7WR',
+      city: 'Sale',
+      areaLevel2: 'Greater Manchester',
+      areaLevel1: 'England',
+      country: 'United Kingdom',
     },
     attributes,
     videos: [],

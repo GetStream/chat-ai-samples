@@ -7,6 +7,7 @@ import { buildMessageContent } from './buildMessageContent';
 import { detectEnumOptions } from './detectEnumOptions';
 import { transformCollectedData } from '../../transformCollectedData';
 import { createPmgListing } from '../../pmg/pmgClient';
+import { reverseGeocode } from '../../geocode';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -19,6 +20,7 @@ export class AnthropicAgent implements AIAgent {
   private handlers: AnthropicResponseHandler[] = [];
   private lastInteractionTs = Date.now();
   private lastImageUrl: string | null = null;
+  private userLocation: { latitude: number; longitude: number } | null = null;
 
   constructor(
     readonly chatClient: StreamChat,
@@ -28,6 +30,7 @@ export class AnthropicAgent implements AIAgent {
 
   dispose = async () => {
     this.chatClient.off('message.new', this.handleMessage);
+    this.channel.off('user_location' as any, this.handleUserLocation);
     await this.chatClient.disconnectUser();
 
     this.handlers.forEach((handler) => handler.dispose());
@@ -49,6 +52,7 @@ export class AnthropicAgent implements AIAgent {
     });
 
     this.chatClient.on('message.new', this.handleMessage);
+    this.channel.on('user_location' as any, this.handleUserLocation);
   };
 
   private buildSystemPrompt(schema: any): string | undefined {
@@ -94,6 +98,14 @@ You are a friendly data collection assistant. Your job is to conversationally co
       },
     };
   }
+
+  private handleUserLocation = (e: Event) => {
+    const { latitude, longitude } = e as any;
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+      this.userLocation = { latitude, longitude };
+      console.log(`User location received: ${latitude}, ${longitude}`);
+    }
+  };
 
   private handleMessage = async (e: Event) => {
     if (!this.anthropic) {
@@ -181,7 +193,17 @@ You are a friendly data collection assistant. Your job is to conversationally co
         if (toolName === 'submit_collected_data') {
           console.log('Data collection complete (raw):', JSON.stringify(input));
 
-          const payload = transformCollectedData(input as any);
+          let resolvedLocation: Record<string, unknown> | undefined;
+          if (this.userLocation) {
+            try {
+              resolvedLocation = await reverseGeocode(this.userLocation.latitude, this.userLocation.longitude) as unknown as Record<string, unknown>;
+              console.log('Resolved location:', JSON.stringify(resolvedLocation));
+            } catch (error) {
+              console.error('Failed to reverse geocode, using default location:', error);
+            }
+          }
+
+          const payload = transformCollectedData(input as any, resolvedLocation);
 
           console.log('Transformed listing payload:', JSON.stringify(payload));
 

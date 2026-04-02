@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node --import tsx src/index.ts",
+    "start": "tsx src/index.ts",
     "test": "vitest run --config vitest.config.mjs --passWithNoTests"
   },
   "keywords": [],

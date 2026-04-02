@@ -22,6 +22,7 @@ export async function createPmgListing(
 
   try {
     const adminToken = await loginWith('PMG_ADMIN_EMAIL', 'PMG_ADMIN_PASSWORD');
+    console.log('Admin logged in successfully');
     await payListingFee(adminToken, id);
     console.log('Listing fee paid successfully');
     await publishListing(adminToken, id);

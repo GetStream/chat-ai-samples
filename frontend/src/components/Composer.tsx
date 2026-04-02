@@ -1,5 +1,5 @@
 import { AIMessageComposer } from "@stream-io/chat-react-ai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ChipBar } from "./ChipBar";
 import {
 	Channel,
@@ -81,6 +81,19 @@ export const Composer = () => {
 		});
 		return () => listener.unsubscribe();
 	}, [channel]);
+
+	const seenNotificationIds = useRef(new Set<string>());
+	
+	useEffect(() => {
+		return client.notifications.store.subscribe((state) => {
+			for (const notification of state.notifications) {
+				if (!seenNotificationIds.current.has(notification.id)) {
+					seenNotificationIds.current.add(notification.id);
+					client.notifications.startTimeout(notification.id, 5000);
+				}
+			}
+		});
+	}, [client]);
 
 	return (
 		<div className="tut__composer-container">

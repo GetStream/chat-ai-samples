@@ -61,7 +61,9 @@ struct ContentView: View {
             )
         }
         .onAppear {
-            AIComponentsViewFactory.shared.typingIndicatorHandler = _typingIndicatorHandler.wrappedValue
+            let handler = _typingIndicatorHandler.wrappedValue
+            AIComponentsViewFactory.shared.typingIndicatorHandler = handler
+            AIComponentsViewFactory.shared.styles.typingIndicatorHandler = handler
             viewModel.chatOptions = createChatOptions()
         }
     }
@@ -355,12 +357,13 @@ private struct ComposerHeightPreferenceKey: PreferenceKey {
 }
 
 struct CustomMessageListContainerModifier: ViewModifier {
-    
-    @ObservedObject var typingIndicatorHandler: TypingIndicatorHandler
-    
+    let typingIndicatorHandler: TypingIndicatorHandler?
+
     func body(content: Content) -> some View {
         content.overlay {
-            AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
+            if let typingIndicatorHandler {
+                AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
+            }
         }
     }
 }

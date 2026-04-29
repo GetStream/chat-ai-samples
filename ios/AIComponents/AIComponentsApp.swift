@@ -25,11 +25,12 @@ struct AIComponentsApp: App {
     
     init() {
         let messageListConfig = MessageListConfig(messageDisplayOptions: .init(
-            showAvatars: false,
+            showIncomingMessageAvatar: false,
+            showOutgoingMessageAvatar: false,
             showAvatarsInGroups: false,
             showMessageDate: false,
             showAuthorName: false,
-            spacerWidth: { _ in return 16 },
+            spacerWidth: { _ in return 16 }
         ), skipEditedMessageLabel: { message in
             message.extraData["ai_generated"]?.boolValue == true
         })

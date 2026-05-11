@@ -357,13 +357,11 @@ private struct ComposerHeightPreferenceKey: PreferenceKey {
 }
 
 struct CustomMessageListContainerModifier: ViewModifier {
-    let typingIndicatorHandler: TypingIndicatorHandler?
+    @ObservedObject var typingIndicatorHandler: TypingIndicatorHandler
 
     func body(content: Content) -> some View {
         content.overlay {
-            if let typingIndicatorHandler {
-                AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
-            }
+            AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
         }
     }
 }

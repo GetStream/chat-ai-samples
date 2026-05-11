@@ -56,7 +56,7 @@ class AIComponentsViewFactory: ViewFactory {
 
 final class AIComponentsStyles: Styles {
     var composerPlacement: ComposerPlacement = .docked
-    var typingIndicatorHandler: TypingIndicatorHandler?
+    var typingIndicatorHandler: TypingIndicatorHandler!
 
     func makeMessageListContainerModifier(
         options: MessageListContainerModifierOptions

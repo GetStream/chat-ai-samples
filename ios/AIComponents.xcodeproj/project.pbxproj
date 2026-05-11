@@ -387,7 +387,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GetStream/stream-chat-swift-ai.git";
 			requirement = {
-				branch = "chore/swift-sdk-0.12.0";
+				branch = main;
 				kind = branch;
 			};
 		};

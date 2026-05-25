@@ -11,6 +11,7 @@ import {
 import { buildAgentUserId, normalizeChannelId } from './utils.ts';
 import { restaurantA2uiAugmentor } from './a2ui/restaurant.ts';
 import { createA2uiInteractionHandler } from './a2ui/interaction-handler.ts';
+import { restaurantActionProvider } from './a2ui/action-describer.ts';
 import type {
   RegisterToolsRequest,
   StartAIAgentRequest,
@@ -35,6 +36,7 @@ const agentManager = new AgentManager({
   agentIdResolver: buildAgentUserId,
   finalMessageAugmentor: restaurantA2uiAugmentor,
   userMessageHandler: createA2uiInteractionHandler(),
+  a2uiActionProvider: restaurantActionProvider,
 });
 
 app.get('/', (req, res) => {

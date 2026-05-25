@@ -14,19 +14,13 @@ import {
   useMessageInputContext,
   useStableCallback,
   useTheme,
+  WithComponents,
 } from 'stream-chat-react-native';
 import { useAppContext } from '../contexts/AppContext.tsx';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { startAI, summarize } from '../http/requests.ts';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import {
-  Dimensions,
-  Platform,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
   AITypingIndicatorView,
   ComposerView,
@@ -34,6 +28,17 @@ import {
 } from '@stream-io/chat-react-native-ai';
 import { useCallback, useMemo } from 'react';
 import { bottomSheetOptions } from '../bottomSheetOptions.ts';
+import type {
+  LocalMessage,
+  Message as StreamMessage,
+  SendMessageOptions,
+} from 'stream-chat';
+
+type PreSendMessageRequestOptions = {
+  localMessage: LocalMessage;
+  message: StreamMessage;
+  options?: SendMessageOptions;
+};
 
 const CustomMessage = (props: MessageProps) => {
   const { theme } = useTheme();
@@ -54,7 +59,7 @@ const CustomMessage = (props: MessageProps) => {
       mergeThemes({
         theme,
         style: {
-          messageSimple: isFromBot
+          messageItemView: isFromBot
             ? {
                 content: {
                   containerInner: {
@@ -65,7 +70,7 @@ const CustomMessage = (props: MessageProps) => {
                 },
               }
             : {
-                wrapper: {
+                container: {
                   opacity: hasPendingAttachments ? 0.5 : 1,
                 },
               },
@@ -160,13 +165,15 @@ const CustomAITypingIndicatorView = () => {
     [AIStates.ExternalSources]: 'Checking external sources...',
   };
 
-  if (aiState === AIStates.Idle || aiState === AIStates.Error) {
+  const indicatorText = allowedStates[aiState as keyof typeof allowedStates];
+
+  if (!indicatorText) {
     return null;
   }
 
   return (
     <View style={styles.aiTypingIndicatorWrapper}>
-      <AITypingIndicatorView text={allowedStates[aiState]} />
+      <AITypingIndicatorView text={indicatorText} />
     </View>
   );
 };
@@ -185,30 +192,32 @@ export const ChatContent = () => {
   const { channel } = useAppContext();
   const { bottom } = useSafeAreaInsets();
 
-  const preSendMessageRequest = useStableCallback(async ({ localMessage }) => {
-    if (!channel) {
-      return;
-    }
+  const preSendMessageRequest = useStableCallback(
+    async ({ localMessage }: PreSendMessageRequestOptions) => {
+      if (!channel) {
+        return;
+      }
 
-    if (!channel.initialized) {
-      await channel.watch({
-        created_by_id: localMessage.user_id,
-      });
-      summarize(localMessage.text).then(response => {
-        const { summary } = response as { summary: string };
-        channel.update({ name: summary });
-      });
-    }
+      if (!channel.initialized) {
+        await channel.watch({
+          created_by_id: localMessage.user_id,
+        });
+        summarize(localMessage.text ?? '').then(response => {
+          const { summary } = response as { summary: string };
+          channel.update({ name: summary });
+        });
+      }
 
-    if (
-      !Object.keys(channel.state.watchers).some(watcher =>
-        watcher.startsWith('ai-bot'),
-      ) &&
-      channel.id
-    ) {
-      await startAI(channel.id);
-    }
-  });
+      if (
+        !Object.keys(channel.state.watchers).some(watcher =>
+          watcher.startsWith('ai-bot'),
+        ) &&
+        channel.id
+      ) {
+        await startAI(channel.id);
+      }
+    },
+  );
 
   if (!channel) {
     return null;
@@ -221,31 +230,35 @@ export const ChatContent = () => {
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
     >
-      <Channel
-        channel={channel}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : -300}
-        initializeOnMount={false}
-        // @ts-expect-error This will be fixed upstream, the type is wrong
-        preSendMessageRequest={preSendMessageRequest}
-        StreamingMessageView={CustomStreamingMessageView}
-        Message={CustomMessage}
-        enableSwipeToReply={false}
-        EmptyStateIndicator={EmptyStateIndicator}
-        allowSendBeforeAttachmentsUpload={true}
-        NetworkDownIndicator={RenderNull}
-        MessageAvatar={RenderNull}
-        MessageFooter={RenderNull}
+      <WithComponents
+        overrides={{
+          EmptyStateIndicator,
+          Message: CustomMessage,
+          MessageAuthor: RenderNull,
+          MessageFooter: RenderNull,
+          NetworkDownIndicator: RenderNull,
+          StreamingMessageView: CustomStreamingMessageView,
+        }}
       >
-        <MessageList additionalFlatListProps={additionalFlatListProps} />
-        <CustomAITypingIndicatorView />
-        <CustomComposerView />
-      </Channel>
+        <Channel
+          channel={channel}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 95 : 0}
+          initializeOnMount={false}
+          preSendMessageRequest={preSendMessageRequest}
+          enableSwipeToReply={false}
+          allowSendBeforeAttachmentsUpload={true}
+        >
+          <MessageList additionalFlatListProps={additionalFlatListProps} />
+          <CustomAITypingIndicatorView />
+          <CustomComposerView />
+        </Channel>
+      </WithComponents>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#fcfcfc'},
+  wrapper: { flex: 1, backgroundColor: '#fcfcfc' },
   emptyContainer: {
     flex: 1,
     width: '100%',

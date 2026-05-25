@@ -1,8 +1,8 @@
-import type { ChannelPreviewProps } from "stream-chat-react";
+import type { ChannelListItemUIProps } from "stream-chat-react";
 import { useChatContext } from "stream-chat-react";
 import clsx from "clsx";
 
-export const ChannelListItem = (props: ChannelPreviewProps) => {
+export const ChannelListItem = (props: ChannelListItemUIProps) => {
 	const { id, data } = props.channel;
 	const { setActiveChannel, channel: activeChannel } = useChatContext();
 	const isActive = activeChannel?.id === id;

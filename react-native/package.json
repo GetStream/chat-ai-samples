@@ -17,7 +17,7 @@
     "@react-navigation/drawer": "^7.7.6",
     "@react-navigation/native": "^7.1.22",
     "@shopify/react-native-skia": "^2.4.6",
-    "@stream-io/chat-react-native-ai": "^0.1.2",
+    "@stream-io/chat-react-native-ai": "^0.1.4",
     "react": "19.1.1",
     "react-native": "0.82.1",
     "react-native-fs": "^2.20.0",
@@ -27,9 +27,10 @@
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.18.0",
     "react-native-svg": "^15.15.1",
+    "react-native-teleport": "^1.1.4",
     "react-native-worklets": "^0.6.1",
-    "stream-chat": "^9.26.0",
-    "stream-chat-react-native": "^8.10.0",
+    "stream-chat": "^9.42.1",
+    "stream-chat-react-native": "^9.1.0",
     "victory-native": "^41.20.2"
   },
   "devDependencies": {

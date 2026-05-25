@@ -3,7 +3,8 @@ import {
 	MessageList,
 	ChannelList,
 	Window,
-	MessageInput,
+	MessageComposer,
+	WithComponents,
 	useChatContext,
 	type ChannelListProps,
 } from "stream-chat-react";
@@ -34,21 +35,26 @@ export const ChatContent = ({
 	}, [channel]);
 
 	return (
-		<>
+		<WithComponents
+			overrides={{
+				ChannelListItemUI: ChannelListItem,
+				Message: MessageBubble,
+				MessageComposerUI: Composer,
+			}}
+		>
 			<ChannelList
-				Preview={ChannelListItem}
 				setActiveChannelOnMount={false}
 				filters={filters}
 				sort={sort}
 				options={options}
 			/>
-			<Channel initializeOnMount={false} Message={MessageBubble}>
+			<Channel initializeOnMount={false}>
 				<Window>
 					<MessageList />
 					<AIStateIndicator />
-					<MessageInput Input={Composer} />
+					<MessageComposer />
 				</Window>
 			</Channel>
-		</>
+		</WithComponents>
 	);
 };

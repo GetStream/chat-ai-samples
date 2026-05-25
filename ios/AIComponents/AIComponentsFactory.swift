@@ -11,55 +11,68 @@ import StreamChatAI
 import StreamChatSwiftUI
 
 class AIComponentsViewFactory: ViewFactory {
-    
+
     @Injected(\.chatClient) var chatClient: ChatClient
-    
+
     private let actionHandler = ClientToolActionHandler.shared
     var typingIndicatorHandler: TypingIndicatorHandler!
-    
+    var styles = AIComponentsStyles()
+
     private init() {}
-    
+
     static let shared = AIComponentsViewFactory()
-        
+
     public func makeMessageListBackground(
-        colors: ColorPalette,
-        isInThread: Bool
+        options: MessageListBackgroundOptions
     ) -> some View {
         Color.clear
     }
-    
-    func makeMessageReadIndicatorView(channel: ChatChannel, message: ChatMessage) -> some View {
+
+    func makeMessageReadIndicatorView(
+        options: MessageReadIndicatorViewOptions
+    ) -> some View {
         EmptyView()
     }
-    
+
     @ViewBuilder
     func makeCustomAttachmentViewType(
-        for message: ChatMessage,
-        isFirst: Bool,
-        availableWidth: CGFloat,
-        scrolledId: Binding<String?>
+        options: CustomAttachmentViewTypeOptions
     ) -> some View {
-        if let payload = A2uiPayload(rawJSON: message.extraData["a2ui"]) {
-            GenUIView(payload: payload, message: message, chatClient: chatClient)
-        } else {
-            let isGenerating = message.extraData["generating"]?.boolValue == true
-            let displayText = message.extraData["a2ui_display_text"]?.stringValue ?? message.text
-            StreamingMessageView(
-                content: displayText,
-                isGenerating: isGenerating
-            )
-            .padding()
-        }
+        let message = options.message
+        let isGenerating = message.extraData["generating"]?.boolValue == true
+        StreamingMessageView(
+            content: message.text,
+            isGenerating: isGenerating
+        )
+        .padding()
     }
-    
-    func makeMessageListContainerModifier() -> some ViewModifier {
-        CustomMessageListContainerModifier(typingIndicatorHandler: typingIndicatorHandler)
-    }
-    
+
     func makeEmptyMessagesView(
-        for channel: ChatChannel,
-        colors: ColorPalette
+        options: EmptyMessagesViewOptions
     ) -> some View {
         AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
+    }
+}
+
+final class AIComponentsStyles: Styles {
+    var composerPlacement: ComposerPlacement = .docked
+    var typingIndicatorHandler: TypingIndicatorHandler!
+
+    func makeMessageListContainerModifier(
+        options: MessageListContainerModifierOptions
+    ) -> some ViewModifier {
+        CustomMessageListContainerModifier(typingIndicatorHandler: typingIndicatorHandler)
+    }
+
+    func makeComposerInputViewModifier(options: ComposerInputModifierOptions) -> some ViewModifier {
+        RegularInputViewModifier()
+    }
+
+    func makeComposerButtonViewModifier(options: ComposerButtonModifierOptions) -> some ViewModifier {
+        RegularButtonViewModifier()
+    }
+
+    func makeSuggestionsContainerModifier(options: SuggestionsContainerModifierOptions) -> some ViewModifier {
+        SuggestionsRegularContainerModifier()
     }
 }

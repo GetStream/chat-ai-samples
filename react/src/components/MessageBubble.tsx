@@ -1,9 +1,5 @@
 import { StreamingMessage } from "@stream-io/chat-react-ai";
-import {
-	Attachment,
-	MessageErrorIcon,
-	useMessageContext,
-} from "stream-chat-react";
+import { Attachment, useMessageContext } from "stream-chat-react";
 import clsx from "clsx";
 
 export const MessageBubble = () => {
@@ -38,7 +34,9 @@ export const MessageBubble = () => {
 						/>
 					)}
 					{message?.text && <StreamingMessage text={message.text} />}
-					<MessageErrorIcon />
+					{message?.status === "failed" && (
+						<div className="str-chat__message-error-indicator" />
+					)}
 				</div>
 			</div>
 		</div>

@@ -1084,10 +1084,10 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.57.1.tgz#de633db3ec2ef6a3c89e2f19038063e8a122e2c2"
   integrity sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==
 
-"@gorhom/bottom-sheet@^5.1.8":
-  version "5.2.7"
-  resolved "https://registry.yarnpkg.com/@gorhom/bottom-sheet/-/bottom-sheet-5.2.7.tgz#8311046a6368cc9ed9b0b18107012740637c44ef"
-  integrity sha512-nczswZTZ8hwFRQI2eLrC5kdLRh2JzJYb+xe3C/RIMFzEC4+q5KqxDsZqYqh54JgrViCx78euM1hE91x4uxg5VA==
+"@gorhom/bottom-sheet@5.2.9":
+  version "5.2.9"
+  resolved "https://registry.yarnpkg.com/@gorhom/bottom-sheet/-/bottom-sheet-5.2.9.tgz#57d26ab8a4a881bb4be8fd45a4b9539929c9f198"
+  integrity sha512-YwieCsEnTQnN2QW4VBKfCGszzxaw2ID7FydusEgqo7qB817fZ45N88kptcuNwZFnnauCjdyzKdrVBWmLmpl9oQ==
   dependencies:
     "@gorhom/portal" "1.0.14"
     invariant "^2.2.4"
@@ -1886,10 +1886,10 @@
   dependencies:
     "@sinonjs/commons" "^3.0.0"
 
-"@stream-io/chat-react-native-ai@^0.1.2":
-  version "0.1.2"
-  resolved "https://registry.yarnpkg.com/@stream-io/chat-react-native-ai/-/chat-react-native-ai-0.1.2.tgz#ffe07d13a8f1cc2f6cc44e9869101fded5714a43"
-  integrity sha512-GDCS+HQUuBVszXdrVhIn8EJwCkaFkkfXpi9tC0HBb9EapmdBaVC+wTUHn6Eo/jqInVzoN1gA2Z9EF3kGX7OR6g==
+"@stream-io/chat-react-native-ai@^0.1.4":
+  version "0.1.4"
+  resolved "https://registry.yarnpkg.com/@stream-io/chat-react-native-ai/-/chat-react-native-ai-0.1.4.tgz#01e02869c5251e10f4623ea905c0d52c9b8e6228"
+  integrity sha512-fyQfICeKh1KZjkV41w75J8ABV5DEafPb981a3jXckXEkVEUyEkoSe261EqfJzB/6yucO8iNSIAAL7m656l2/9A==
   dependencies:
     "@khanacademy/simple-markdown" "^2.1.0"
     "@stream-io/state-store" "^1.1.6"
@@ -2387,14 +2387,14 @@ available-typed-arrays@^1.0.7:
   dependencies:
     possible-typed-array-names "^1.0.0"
 
-axios@^1.12.2:
-  version "1.13.2"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.13.2.tgz#9ada120b7b5ab24509553ec3e40123521117f687"
-  integrity sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==
+axios@^1.15.1:
+  version "1.15.2"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.15.2.tgz#eb8fb6d30349abace6ade5b4cb4d9e8a0dc23e5b"
+  integrity sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==
   dependencies:
-    follow-redirects "^1.15.6"
-    form-data "^4.0.4"
-    proxy-from-env "^1.1.0"
+    follow-redirects "^1.15.11"
+    form-data "^4.0.5"
+    proxy-from-env "^2.1.0"
 
 babel-jest@^29.7.0:
   version "29.7.0"
@@ -3908,10 +3908,10 @@ flow-enums-runtime@^0.0.6:
   resolved "https://registry.yarnpkg.com/flow-enums-runtime/-/flow-enums-runtime-0.0.6.tgz#5bb0cd1b0a3e471330f4d109039b7eba5cb3e787"
   integrity sha512-3PYnM29RFXwvAN6Pc/scUfkI7RwhQ/xqyLUyPNlXUp9S40zI8nup9tUSrTLSVnWGBN38FNiGWbwZOB6uR4OGdw==
 
-follow-redirects@^1.15.6:
-  version "1.15.11"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.11.tgz#777d73d72a92f8ec4d2e410eb47352a56b8e8340"
-  integrity sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==
+follow-redirects@^1.15.11:
+  version "1.16.0"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.16.0.tgz#28474a159d3b9d11ef62050a14ed60e4df6d61bc"
+  integrity sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==
 
 for-each@^0.3.3, for-each@^0.3.5:
   version "0.3.5"
@@ -3920,7 +3920,7 @@ for-each@^0.3.3, for-each@^0.3.5:
   dependencies:
     is-callable "^1.2.7"
 
-form-data@^4.0.4:
+form-data@^4.0.4, form-data@^4.0.5:
   version "4.0.5"
   resolved "https://registry.yarnpkg.com/form-data/-/form-data-4.0.5.tgz#b49e48858045ff4cbf6b03e1805cebcad3679053"
   integrity sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==
@@ -5111,12 +5111,12 @@ jsonfile@^4.0.0:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
-jsonwebtoken@^9.0.2:
-  version "9.0.2"
-  resolved "https://registry.yarnpkg.com/jsonwebtoken/-/jsonwebtoken-9.0.2.tgz#65ff91f4abef1784697d40952bb1998c504caaf3"
-  integrity sha512-PRp66vJ865SSqOlgqS8hujT5U4AOgMfhrwYIuIhfKaoSCZcirrmASQr8CX7cUg+RMih+hgznrjp99o+W4pJLHQ==
+jsonwebtoken@^9.0.3:
+  version "9.0.3"
+  resolved "https://registry.yarnpkg.com/jsonwebtoken/-/jsonwebtoken-9.0.3.tgz#6cd57ab01e9b0ac07cb847d53d3c9b6ee31f7ae2"
+  integrity sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g==
   dependencies:
-    jws "^3.2.2"
+    jws "^4.0.1"
     lodash.includes "^4.3.0"
     lodash.isboolean "^3.0.3"
     lodash.isinteger "^4.0.4"
@@ -5137,21 +5137,21 @@ jsonwebtoken@^9.0.2:
     object.assign "^4.1.4"
     object.values "^1.1.6"
 
-jwa@^1.4.1:
-  version "1.4.2"
-  resolved "https://registry.yarnpkg.com/jwa/-/jwa-1.4.2.tgz#16011ac6db48de7b102777e57897901520eec7b9"
-  integrity sha512-eeH5JO+21J78qMvTIDdBXidBd6nG2kZjg5Ohz/1fpa28Z4CcsWUzJ1ZZyFq/3z3N17aZy+ZuBoHljASbL1WfOw==
+jwa@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/jwa/-/jwa-2.0.1.tgz#bf8176d1ad0cd72e0f3f58338595a13e110bc804"
+  integrity sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==
   dependencies:
     buffer-equal-constant-time "^1.0.1"
     ecdsa-sig-formatter "1.0.11"
     safe-buffer "^5.0.1"
 
-jws@^3.2.2:
-  version "3.2.2"
-  resolved "https://registry.yarnpkg.com/jws/-/jws-3.2.2.tgz#001099f3639468c9414000e99995fa52fb478304"
-  integrity sha512-YHlZCB6lMTllWDtSPHz/ZXTsi8S00usEV6v1tjq8tOUZzw7DpSDWVXjXDre6ed1w/pd495ODpHZYSdkRTsa0HA==
+jws@^4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/jws/-/jws-4.0.1.tgz#07edc1be8fac20e677b283ece261498bd38f0690"
+  integrity sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA==
   dependencies:
-    jwa "^1.4.1"
+    jwa "^2.0.1"
     safe-buffer "^5.0.1"
 
 keyv@^4.5.3:
@@ -5200,7 +5200,7 @@ lines-and-columns@^1.1.6:
   resolved "https://registry.yarnpkg.com/lines-and-columns/-/lines-and-columns-1.2.4.tgz#eca284f75d2965079309dc0ad9255abb2ebc1632"
   integrity sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==
 
-linkifyjs@^4.3.1, linkifyjs@^4.3.2:
+linkifyjs@^4.3.2:
   version "4.3.2"
   resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-4.3.2.tgz#d97eb45419aabf97ceb4b05a7adeb7b8c8ade2b1"
   integrity sha512-NT1CJtq3hHIreOianA8aSXn6Cw0JzYOuDQbOrSPe7gqFnCpKP++MQe3ODgO3oh2GJFORkAAdqredOa60z63GbA==
@@ -5219,10 +5219,10 @@ locate-path@^6.0.0:
   dependencies:
     p-locate "^5.0.0"
 
-lodash-es@4.17.21:
-  version "4.17.21"
-  resolved "https://registry.yarnpkg.com/lodash-es/-/lodash-es-4.17.21.tgz#43e626c46e6591b7750beb2b50117390c609e3ee"
-  integrity sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==
+lodash-es@4.17.23:
+  version "4.17.23"
+  resolved "https://registry.yarnpkg.com/lodash-es/-/lodash-es-4.17.23.tgz#58c4360fd1b5d33afc6c0bbd3d1149349b1138e0"
+  integrity sha512-kVI48u3PZr38HdYz98UmfPnXl2DXrpdctLrFLCd3kOx1xUkOmpFPx7gCWWM5MPkL/fD8zb+Ph0QzjGFs4+hHWg==
 
 lodash.debounce@^4.0.8:
   version "4.0.8"
@@ -6043,10 +6043,10 @@ property-information@^5.0.0:
   dependencies:
     xtend "^4.0.0"
 
-proxy-from-env@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/proxy-from-env/-/proxy-from-env-1.1.0.tgz#e102f16ca355424865755d2c9e8ea4f24d58c3e2"
-  integrity sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==
+proxy-from-env@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/proxy-from-env/-/proxy-from-env-2.1.0.tgz#a7487568adad577cfaaa7e88c49cab3ab3081aba"
+  integrity sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==
 
 punycode@^2.1.0, punycode@^2.1.1:
   version "2.3.1"
@@ -6215,6 +6215,11 @@ react-native-svg@^15.15.1:
     css-select "^5.1.0"
     css-tree "^1.1.3"
     warn-once "0.1.1"
+
+react-native-teleport@^1.1.4:
+  version "1.1.4"
+  resolved "https://registry.yarnpkg.com/react-native-teleport/-/react-native-teleport-1.1.4.tgz#b1967f7c10d5825a675e0ada76c4b39fd1f27606"
+  integrity sha512-2xCDhbCvoaGs2TDXemf1inUdr7bvOsW3Pq9MfCV5KcMD2w3q1Ne+g0m2EZ7KsXDu1TAIawkrLmd1Vd8KFmq6Qg==
 
 react-native-url-polyfill@^2.0.0:
   version "2.0.0"
@@ -6795,47 +6800,47 @@ stop-iteration-iterator@^1.1.0:
     es-errors "^1.3.0"
     internal-slot "^1.1.0"
 
-stream-chat-react-native-core@8.10.0:
-  version "8.10.0"
-  resolved "https://registry.yarnpkg.com/stream-chat-react-native-core/-/stream-chat-react-native-core-8.10.0.tgz#c4302b2862a28129ff3833a90551c07a6c1c552e"
-  integrity sha512-j2YU2p2GQFNnJbl0+v31Uy7HspLz0cuEDJr6DiCROklf5KRCgSvz+EQa7u1BV1+hssmma2TNxJixGo9VPW8ydA==
+stream-chat-react-native-core@9.1.0:
+  version "9.1.0"
+  resolved "https://registry.yarnpkg.com/stream-chat-react-native-core/-/stream-chat-react-native-core-9.1.0.tgz#5eee8de18a16e22a1dae96bc5b90984095ea6664"
+  integrity sha512-YR3NuxadP5pU92n1NUxGctAuDEunRp/lfKF6RRY50ZQbdxh1ZFk3N8ysCMKEG72APET0yhKGfp0KQtolC+5jXA==
   dependencies:
-    "@gorhom/bottom-sheet" "^5.1.8"
+    "@gorhom/bottom-sheet" "5.2.9"
     "@ungap/structured-clone" "^1.3.0"
     dayjs "1.11.13"
     emoji-regex "^10.4.0"
     i18next "^25.2.1"
     intl-pluralrules "^2.0.1"
-    linkifyjs "^4.3.1"
-    lodash-es "4.17.21"
+    linkifyjs "^4.3.2"
+    lodash-es "4.17.23"
     mime-types "^2.1.35"
     path "0.12.7"
     react-native-markdown-package "1.8.2"
     react-native-url-polyfill "^2.0.0"
-    stream-chat "^9.26.0"
+    stream-chat "^9.42.1"
     use-sync-external-store "^1.5.0"
 
-stream-chat-react-native@^8.10.0:
-  version "8.10.0"
-  resolved "https://registry.yarnpkg.com/stream-chat-react-native/-/stream-chat-react-native-8.10.0.tgz#bbd3099b5b823eb04fd6101029cac59be156bcba"
-  integrity sha512-WxPQaRQhr+RPH0qHOcRNWbn5lZBY5RpDRq/zkouB/wtKnLqZ7L7I/t2NSeczkZT80uGxcyUARIQg0EA0UDPODA==
+stream-chat-react-native@^9.1.0:
+  version "9.1.0"
+  resolved "https://registry.yarnpkg.com/stream-chat-react-native/-/stream-chat-react-native-9.1.0.tgz#95dc9e308d9d93f1a5a0527208812a97c1014344"
+  integrity sha512-UTUSiErBZGow+pSi9qiiMXH/rhmnJiK5/4/3hM+jn5tNpnhbgsbzWHGUW1JKkP+FZny0dJrTAfvzkKE1mHvvQw==
   dependencies:
     es6-symbol "^3.1.3"
     mime "^4.0.7"
-    stream-chat-react-native-core "8.10.0"
+    stream-chat-react-native-core "9.1.0"
 
-stream-chat@^9.26.0:
-  version "9.26.0"
-  resolved "https://registry.yarnpkg.com/stream-chat/-/stream-chat-9.26.0.tgz#92cd0dd5c59bfed05fb4fd74e9a19e8cce726175"
-  integrity sha512-hTeKWDyWjiM3R7GcvgqNCO6zTPZ1oyJbwbpJR2MyEReDVYSKeZge009m/queMxUGJHNuyiRKY0sjQocw4ceWUQ==
+stream-chat@^9.42.1:
+  version "9.42.1"
+  resolved "https://registry.yarnpkg.com/stream-chat/-/stream-chat-9.42.1.tgz#8b6aa4e3e73a39ed07bb2a4f2a6829ba9354567a"
+  integrity sha512-o+9wQO4Ruu1A48T0IrX9ZH8+9F5xPgGLPvflaswaPeLyIZXcy8bsQdcT/HSrPmT7gs0WGD3qcbXaAJU5lMQezQ==
   dependencies:
     "@types/jsonwebtoken" "^9.0.8"
     "@types/ws" "^8.5.14"
-    axios "^1.12.2"
+    axios "^1.15.1"
     base64-js "^1.5.1"
     form-data "^4.0.4"
     isomorphic-ws "^5.0.0"
-    jsonwebtoken "^9.0.2"
+    jsonwebtoken "^9.0.3"
     linkifyjs "^4.3.2"
     ws "^8.18.1"
 

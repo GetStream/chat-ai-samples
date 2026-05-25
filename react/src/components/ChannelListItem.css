@@ -1,14 +1,15 @@
 .tut__channel-preview {
 	padding: 0.75rem 1rem;
 	cursor: pointer;
+	border-radius: var(--str-chat__radius-md);
 }
 
 .tut__channel-preview--active {
-	background-color: var(--str-chat__primary-surface-color);
+	background-color: var(--str-chat__background-utility-pressed);
 }
 
 .tut__channel-preview__text {
 	font-size: 1rem;
 	font-weight: 500;
-	color: var(--str-chat__text-color);
+	color: var(--str-chat__text-primary);
 }

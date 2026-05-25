@@ -22,7 +22,6 @@ struct ContentView: View {
     @State var showMessageList = false
     @State private var isSplitOpen = false
     @State private var composerHeight: CGFloat = 0
-    @State private var isTextFieldFocused = true
     @ObservedObject private var clientToolActionHandler = ClientToolActionHandler.shared
     @StateObject var viewModel: ComposerViewModel
     @State var clientToolRegistry: ClientToolRegistry
@@ -61,7 +60,9 @@ struct ContentView: View {
             )
         }
         .onAppear {
-            AIComponentsViewFactory.shared.typingIndicatorHandler = _typingIndicatorHandler.wrappedValue
+            let handler = _typingIndicatorHandler.wrappedValue
+            AIComponentsViewFactory.shared.typingIndicatorHandler = handler
+            AIComponentsViewFactory.shared.styles.typingIndicatorHandler = handler
             viewModel.chatOptions = createChatOptions()
         }
     }
@@ -135,6 +136,9 @@ struct ContentView: View {
                     stopGenerating()
                 }
             )
+            .onAppear {
+                viewModel.isTextFieldFocused = true
+            }
             .background(
                 GeometryReader { proxy in
                     Color.clear.preference(key: ComposerHeightPreferenceKey.self, value: proxy.size.height)
@@ -144,7 +148,7 @@ struct ContentView: View {
                 composerHeight = newHeight
             }
             .onChange(of: isSplitOpen) { oldValue, newValue in
-                isTextFieldFocused = !isSplitOpen
+                viewModel.isTextFieldFocused = !isSplitOpen
             }
         }
     }
@@ -355,9 +359,8 @@ private struct ComposerHeightPreferenceKey: PreferenceKey {
 }
 
 struct CustomMessageListContainerModifier: ViewModifier {
-    
     @ObservedObject var typingIndicatorHandler: TypingIndicatorHandler
-    
+
     func body(content: Content) -> some View {
         content.overlay {
             AIAgentOverlayView(typingIndicatorHandler: typingIndicatorHandler)
@@ -382,5 +385,11 @@ struct AIAgentOverlayView: View {
                 .background(Color(UIColor.secondarySystemBackground))
             }
         }
+    }
+}
+
+class CustomViewFactory: ComposerViewFactory {
+    func makeLeadingComposerView(options: StreamChatAI.LeadingComposerViewOptions) -> some View {
+        EmptyView()
     }
 }

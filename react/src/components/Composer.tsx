@@ -11,7 +11,7 @@ import {
 	useChannelActionContext,
 	useChannelStateContext,
 	useChatContext,
-	useMessageComposer,
+	useMessageComposerController,
 } from "stream-chat-react";
 import { startAiAgent, summarizeConversation } from "../api";
 
@@ -25,7 +25,7 @@ export const Composer = () => {
 	const { client } = useChatContext();
 	const { updateMessage, sendMessage } = useChannelActionContext();
 	const { channel } = useChannelStateContext();
-	const composer = useMessageComposer();
+	const composer = useMessageComposerController();
 
 	const { attachments } = useAttachmentsForPreview();
 

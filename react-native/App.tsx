@@ -19,7 +19,7 @@ import {
 } from './chatConfig.ts';
 import { StreamTheme } from '@stream-io/chat-react-native-ai';
 import { MenuDrawer } from './screens/MenuDrawer.tsx';
-import { LocalMessage } from 'stream-chat';
+import type { LocalMessage } from 'stream-chat';
 import { ChatContent } from './screens/ChatContent.tsx';
 
 const Drawer = createDrawerNavigator();

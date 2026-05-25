@@ -39,12 +39,17 @@ class AIComponentsViewFactory: ViewFactory {
         options: CustomAttachmentViewTypeOptions
     ) -> some View {
         let message = options.message
-        let isGenerating = message.extraData["generating"]?.boolValue == true
-        StreamingMessageView(
-            content: message.text,
-            isGenerating: isGenerating
-        )
-        .padding()
+        if let payload = A2uiPayload(rawJSON: message.extraData["a2ui"]) {
+            GenUIView(payload: payload, message: message, chatClient: chatClient)
+        } else {
+            let isGenerating = message.extraData["generating"]?.boolValue == true
+            let displayText = message.extraData["a2ui_display_text"]?.stringValue ?? message.text
+            StreamingMessageView(
+                content: displayText,
+                isGenerating: isGenerating
+            )
+            .padding()
+        }
     }
 
     func makeEmptyMessagesView(

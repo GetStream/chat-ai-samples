@@ -87,6 +87,12 @@ class ChatAIAssistantTypingStateHandler
     _aiTypingStateSubscription = channel.on().listen(
       (event) {
         final state = switch (event.type) {
+          // On error, the backend sends `ai_indicator.update` with
+          // `AI_STATE_ERROR` instead of `ai_indicator.clear`/`ai_indicator.stop`.
+          // Treat it as generation having ended, same as clear/stop, so the
+          // composer's send/stop toggle doesn't get stuck on "stop".
+          EventType.aiIndicatorUpdate when event.aiState == AITypingState.error =>
+              (AITypingState.error, null),
           EventType.aiIndicatorUpdate => (event.aiState, event.messageId),
           EventType.aiIndicatorClear => (AITypingState.idle, null),
           EventType.aiIndicatorStop => (AITypingState.idle, null),

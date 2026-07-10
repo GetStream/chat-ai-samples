@@ -9,7 +9,7 @@ class ChatAIAssistantService {
 
   ChatAIAssistantService._() : _client = Dio() {
     _client
-      ..options.baseUrl = 'https://stream-nodejs-ai-e5d85ed5ce6f.herokuapp.com'
+      ..options.baseUrl = 'http://localhost:3000'
       ..options.headers = {
         'Content-Type': 'application/json',
       }
@@ -18,10 +18,16 @@ class ChatAIAssistantService {
 
   final Dio _client;
 
-  Future<Response<T>> startAIAgent<T>(String channelId) async {
+  Future<Response<T>> startAIAgent<T>(
+    String channelId, {
+    String? platform,
+  }) async {
     final result = await _client.post<T>(
       '/start-ai-agent',
-      data: jsonEncode({'channel_id': channelId}),
+      data: jsonEncode({
+        'channel_id': channelId,
+        if (platform != null) 'platform': platform,
+      }),
     );
 
     return result;

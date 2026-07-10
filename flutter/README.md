@@ -16,9 +16,20 @@ user messages.
 
 ## Features
 
-- **AI Assistant Integration**: Start and stop the AI assistant in chat channels.
-- **Custom Message Handling**: Customize the display of AI-generated messages.
-- **AI Typing Indicator**: Show typing indicators when the AI assistant is generating a response.
+- **Chat-first navigation**: the app opens directly into a "new chat" composer with suggestion prompts
+  (ChatGPT-style), not a channel list. Channel history lives in a drawer reached by edge-swipe from the
+  left. There's deliberately no app bar, matching the native iOS `AIComponents` sample this app mirrors.
+- **Automatic AI agent lifecycle**: the AI agent starts automatically whenever a channel becomes active
+  (newly created or reopened from history) — no manual "Start AI" button. The backend's own
+  inactivity-based cleanup handles stopping idle agents.
+- **Streaming responses**: AI replies are rendered as plain markdown text (no avatar, no bubble) with
+  `StreamingMessageView` from
+  [`stream_chat_flutter_ai`](https://github.com/GetStream/stream-chat-flutter/tree/master/packages/stream_chat_flutter_ai),
+  a standalone package of AI-oriented Flutter components (no dependency on Stream Chat itself).
+- **AI Typing Indicator**: Show typing indicators (`AITypingIndicatorView`) when the AI assistant is
+  thinking, checking sources, or generating a response.
+- **AI composer**: `StreamAIComposer` with suggestion chips and a send/stop toggle that flips to a
+  stop button while the AI is generating.
 - **Stream Chat SDK**: Utilize the Stream Chat SDK for chat functionalities.
 
 ## Getting Started
@@ -26,8 +37,23 @@ To follow along with this integration, we recommend checking out our step by ste
 
 ### Prerequisites
 
-- Flutter SDK: ^3.24.0
+- Flutter SDK: >=3.41.0
 - [Stream Chat account](https://getstream.io/try-for-free/) and API key
+
+### Note on `stream_chat_flutter_ai`
+
+This sample currently depends on `stream_chat_flutter_ai` via a **local path** in `pubspec.yaml`,
+pointing at a sibling checkout of
+[`GetStream/stream-chat-flutter`](https://github.com/GetStream/stream-chat-flutter):
+
+```yaml
+stream_chat_flutter_ai:
+  path: ../../stream-chat-flutter/packages/stream_chat_flutter_ai
+```
+
+Adjust the path to wherever you've cloned `stream-chat-flutter` locally. Once
+`stream_chat_flutter_ai` is published to pub.dev, this will switch to a version constraint like the
+other Stream dependencies.
 
 ### Installation
 
@@ -62,16 +88,19 @@ flutter run
 
 ## Usage
 
-- **AI Assistant Channels Page**: Displays a list of chat channels. Tap on a channel to open it.
-- **AI Assistant Channel Page**: Shows the chat interface for a selected channel. Use the toggle
-  button to start or stop the AI assistant.
+- **Home page**: opens into a "new chat" landing view — tap a suggestion or type a message to start a
+  conversation. The AI agent starts automatically; there's no manual toggle.
+- **Channel history**: edge-swipe from the left (or tap "New chat" inside the drawer) to see past
+  conversations and switch between them.
 
 ## Project Structure
 
 - `lib/main.dart`: Entry point of the application.
 - `lib/src/chat_ai_assistant_service.dart`: Service for starting and stopping the AI assistant.
-- `lib/src/chat_ai_assistant_channel_list_page.dart`: UI for displaying the list of chat channels.
-- `lib/src/chat_ai_assistant_channel_page.dart`: UI for the chat interface within a channel.
+- `lib/src/chat_ai_assistant_home_page.dart`: The app's single entry point — persistent composer, landing
+  view, and the channel-history drawer.
+- `lib/src/chat_ai_assistant_channel_page.dart`: The active conversation view (message list + typing
+  indicator) embedded inside the home page.
 - `lib/src/chat_ai_assistant_typing_indicator_handler.dart`: Handles the AI typing indicator state.
 
 ---

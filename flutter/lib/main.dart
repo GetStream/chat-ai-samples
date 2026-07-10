@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_channel_list_page.dart';
+import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_home_page.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 Future<void> main() async {
@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData.light(),
       darkTheme: ThemeData.dark(),
       themeMode: ThemeMode.light,
-      home: const ChatAiAssistantChannelListPage(),
+      home: const ChatAIAssistantHomePage(),
       builder: (_, child) => StreamChat(client: client, child: child),
     );
   }

@@ -1,12 +1,27 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_service.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_typing_indicator_handler.dart';
-import 'package:stream_chat_flutter/stream_chat_flutter.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart'
+    hide
+        StreamingMessageView,
+        AITypingIndicatorView,
+        TypewriterState,
+        TypewriterController,
+        StreamTypewriterBuilder;
+import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
-class ChatAIAssistantChannelPage extends StatefulWidget {
-  const ChatAIAssistantChannelPage({
+/// Renders the message list and AI typing indicator for [channel].
+///
+/// The composer lives in the parent `ChatAIAssistantHomePage` instead of here
+/// — it's now a single, persistent widget shown across both the landing
+/// (no active channel) and active-conversation states, matching the iOS
+/// sample's always-docked `ComposerView`.
+///
+/// Callers must pass a `key` derived from the channel's identity (e.g.
+/// `ValueKey(channel.cid)`) so a new [State] — and a fresh
+/// [ChatAIAssistantTypingStateHandler] — is created whenever the active
+/// channel changes.
+class ChatAIAssistantConversationView extends StatefulWidget {
+  const ChatAIAssistantConversationView({
     super.key,
     required this.channel,
   });
@@ -14,12 +29,12 @@ class ChatAIAssistantChannelPage extends StatefulWidget {
   final Channel channel;
 
   @override
-  State<ChatAIAssistantChannelPage> createState() =>
-      _ChatAIAssistantChannelPageState();
+  State<ChatAIAssistantConversationView> createState() =>
+      _ChatAIAssistantConversationViewState();
 }
 
-class _ChatAIAssistantChannelPageState
-    extends State<ChatAIAssistantChannelPage> {
+class _ChatAIAssistantConversationViewState
+    extends State<ChatAIAssistantConversationView> {
   var _typewriterState = TypewriterState.idle;
   late final ChatAIAssistantTypingStateHandler _typingStateHandler;
 
@@ -37,100 +52,76 @@ class _ChatAIAssistantChannelPageState
     super.dispose();
   }
 
-  Future<void> _toggleAIAssistant(bool toggleState) async {
-    final channelId = widget.channel.id;
-    if (channelId == null) return;
-
-    try {
-      await switch (toggleState) {
-        true => ChatAIAssistantService().startAIAgent(channelId),
-        false => ChatAIAssistantService().stopAIAgent(channelId),
-      };
-    } catch (e) {
-      debugPrint('Failed to toggle AI assistant: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamChannel(
       channel: widget.channel,
       child: ValueListenableBuilder(
         valueListenable: _typingStateHandler,
-        builder: (context, value, _) => Scaffold(
-          appBar: const StreamChannelHeader(),
-          body: Stack(
-            children: [
-              Column(
-                children: [
-                  Expanded(
-                    child: StreamMessageListView(
-                      messageBuilder: (_, details, ___, defaultWidget) {
-                        // Customize the message widget based on whether it's an
-                        // AI generated message or not.
-                        if (details.message.isAI) {
-                          return defaultWidget.copyWith(
-                            textBuilder: (context, message) {
-                              // Use the `StreamingMessageView` for AI messages
-                              // to animate the typing effect.
-                              return StreamingMessageView(
-                                text: message.text ?? '',
-                                onTypewriterStateChanged: (state) {
-                                  if (state == _typewriterState) return;
+        builder: (context, value, _) => Column(
+          children: [
+            Expanded(
+              child: StreamMessageListView(
+                messageBuilder: (context, message, defaultProps) {
+                  // Customize the message widget based on whether it's an
+                  // AI generated message or not.
+                  if (message.isAI) {
+                    // Use the `StreamingMessageView` for AI messages to
+                    // animate the typing effect.
+                    return AIMessageItem(
+                      message: message,
+                      onTypewriterStateChanged: (state) {
+                        if (state == _typewriterState) return;
 
-                                  WidgetsBinding.instance
-                                      .addPostFrameCallback((_) {
-                                    setState(() => _typewriterState = state);
-                                  });
-                                },
-                              );
-                            },
-                            bottomRowBuilderWithDefaultWidget: (
-                              context,
-                              message,
-                              defaultWidget,
-                            ) {
-                              // Hide the edited label for AI messages.
-                              return defaultWidget.copyWith(
-                                showEditedLabel: false,
-                              );
-                            },
-                          );
-                        }
-
-                        return defaultWidget;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          setState(() => _typewriterState = state);
+                        });
                       },
-                    ),
-                  ),
-                  // Show the AI typing indicator when the AI assistant is
-                  // generating a response.
-                  AITypingIndicatorStateView(
-                    typewriterState: _typewriterState,
-                    aiTypingState: value.aiTypingState,
-                  ),
-                ],
+                    );
+                  }
+
+                  return DefaultStreamMessageItem(props: defaultProps);
+                },
               ),
-              // Add a button to toggle the AI assistant.
-              Align(
-                alignment: const Alignment(0.98, -0.98),
-                child: ToggleAIAssistantButton(
-                  child: Text(value.isBotPresent ? 'Stop AI' : 'Start AI'),
-                  onPressed: () => _toggleAIAssistant(!value.isBotPresent),
-                ),
-              ),
-            ],
-          ),
-          bottomNavigationBar: StreamMessageInput(
-            // Add a button to stop the AI response if it's in progress.
-            sendButtonBuilder: value.aiMessageId != null
-                ? (_, controller) => IconButton(
-                      color: const Color(0XFF006BFE),
-                      onPressed: () => widget.channel.stopAIResponse(),
-                      icon: const Icon(Icons.stop_circle_rounded),
-                    )
-                : null,
-          ),
+            ),
+            // Show the AI typing indicator when the AI assistant is
+            // generating a response.
+            AITypingIndicatorStateView(
+              typewriterState: _typewriterState,
+              aiTypingState: value.aiTypingState,
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// Renders an AI-generated message as plain, padded markdown text — no
+/// avatar, no bubble background.
+///
+/// Mirrors the iOS sample's `AIComponentsFactory.makeCustomAttachmentViewType`
+/// (`StreamingMessageView(content:isGenerating:).padding()`), which applies
+/// only to AI-generated messages; the user's own messages keep the SDK's
+/// normal (bubble) rendering via [DefaultStreamMessageItem].
+class AIMessageItem extends StatelessWidget {
+  const AIMessageItem({
+    super.key,
+    required this.message,
+    this.onTypewriterStateChanged,
+  });
+
+  final Message message;
+  final ValueChanged<TypewriterState>? onTypewriterStateChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: StreamingMessageView(
+        text: message.text ?? '',
+        onTypewriterStateChanged: onTypewriterStateChanged,
       ),
     );
   }
@@ -179,25 +170,6 @@ class AITypingIndicatorStateView extends StatelessWidget {
             child: child ?? const SizedBox.shrink(),
           ),
       },
-    );
-  }
-}
-
-class ToggleAIAssistantButton extends StatelessWidget {
-  const ToggleAIAssistantButton({
-    super.key,
-    required this.child,
-    this.onPressed,
-  });
-
-  final Widget child;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      child: child,
     );
   }
 }

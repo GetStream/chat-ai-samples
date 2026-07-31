@@ -27,16 +27,50 @@ const _landingSuggestions = [
   'Top 5 restaurants in New York',
 ];
 
-/// Modes offered from the composer's leading "+" sheet, mirroring
-/// `stream-chat-swift-ai`'s `ComposerPickerView` chat-options section
-/// (`ComposerView.swift`). Distinct from [_landingSuggestions] above — this
-/// list is reachable via the "+" button at any time, not just on the landing
-/// screen.
+/// Modes offered in the composer's attachment sheet (opened via the "+"
+/// button — see `ComposerAttachmentSheet`), alongside the photo picker.
+/// Mirrors `createChatOptions()` in the iOS sample's `ContentView.swift`,
+/// which populates `ComposerViewModel.chatOptions` with this same six-option
+/// set (title/description/icon) — that file also marks the array
+/// `// TODO: extract this.`, i.e. even upstream treats the concrete content
+/// as sample-only, not finalized.
 const _chatOptions = [
-  ChatOption(id: 'summarize', text: 'Summarize', icon: Icons.summarize_outlined),
-  ChatOption(id: 'web_search', text: 'Web search', icon: Icons.public),
-  ChatOption(id: 'deep_research', text: 'Deep research', icon: Icons.travel_explore),
-  ChatOption(id: 'write_email', text: 'Write an email', icon: Icons.email_outlined),
+  ChatOption(
+    id: 'image',
+    text: 'Create image',
+    description: 'Visualize anything',
+    icon: Icons.palette_outlined,
+  ),
+  ChatOption(
+    id: 'research',
+    text: 'Deep research',
+    description: 'Get a detailed report',
+    icon: Icons.travel_explore,
+  ),
+  ChatOption(
+    id: 'search',
+    text: 'Web search',
+    description: 'Find real-time news and info',
+    icon: Icons.public,
+  ),
+  ChatOption(
+    id: 'study',
+    text: 'Study and learn',
+    description: 'Learn a new concept',
+    icon: Icons.menu_book_outlined,
+  ),
+  ChatOption(
+    id: 'agent',
+    text: 'Agent mode',
+    description: 'Get work done for you',
+    icon: Icons.smart_toy_outlined,
+  ),
+  ChatOption(
+    id: 'files',
+    text: 'Add files',
+    description: 'Analyze or summarize',
+    icon: Icons.folder_zip_outlined,
+  ),
 ];
 
 /// The app's single entry-point screen.
@@ -60,19 +94,12 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
 
   late final _channelListController = StreamChannelListController(
     client: StreamChat.of(context).client,
-    filter: Filter.in_(
-      'members',
-      [StreamChat.of(context).currentUser!.id],
-    ),
+    filter: Filter.in_('members', [StreamChat.of(context).currentUser!.id]),
     presence: true,
     limit: 30,
   );
 
-  // Chat options are surfaced through the composer's leading "+" sheet
-  // (`_showChatOptionsSheet`) rather than as an always-visible chip row —
-  // matches iOS's `ComposerPickerView`, which only shows them inside the
-  // sheet opened by the "+" button.
-  final _composerController = AiComposerController();
+  final _composerController = ChatComposerController(chatOptions: _chatOptions);
 
   @override
   void dispose() {
@@ -89,7 +116,10 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
       // Using OpenAI since that's the key set up in the local backend's
       // .env; swap or make configurable if the deployed backend needs a
       // different platform.
-      await ChatAIAssistantService().startAIAgent(channelId, platform: 'openai');
+      await ChatAIAssistantService().startAIAgent(
+        channelId,
+        platform: 'openai',
+      );
     } catch (e) {
       debugPrint('Failed to start AI agent: $e');
     }
@@ -99,7 +129,9 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
     // Best-effort local title. Unlike the iOS sample, which calls a
     // `/summarize` backend endpoint to AI-generate a title, this stays
     // entirely client-side — no backend changes for this sample.
-    final title = firstMessage.length > 40 ? '${firstMessage.substring(0, 40)}…' : firstMessage;
+    final title = firstMessage.length > 40
+        ? '${firstMessage.substring(0, 40)}…'
+        : firstMessage;
     try {
       await channel.updatePartial(set: {'name': title});
     } catch (e) {
@@ -107,8 +139,12 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
     }
   }
 
-  Future<void> _sendMessage(String text, {ChatOption? option}) async {
-    if (text.trim().isEmpty) return;
+  Future<void> _sendMessage(
+    String text, {
+    ChatOption? option,
+    List<XFile> attachments = const [],
+  }) async {
+    if (text.trim().isEmpty && attachments.isEmpty) return;
 
     final message = switch (option) {
       final option? => '${option.text}: $text',
@@ -130,13 +166,31 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
       await channel.watch();
       if (!mounted) return;
       setState(() => _activeChannel = channel);
-      unawaited(_ensureAgentStarted(channel));
+      // Must be awaited, not fire-and-forget: the backend's AI agent only
+      // registers a live `message.new` listener in `agent.init()` — it never
+      // replays channel history. `_ensureAgentStarted` needs ~3 sequential
+      // Stream API round-trips (upsertUser, addMembers, channel.watch())
+      // before that listener exists, while `channel.sendMessage` below is a
+      // single round-trip — so firing it without awaiting almost always won
+      // the race and left the agent listening one message too late.
+      await _ensureAgentStarted(channel);
     }
 
-    await channel.sendMessage(Message(text: message));
+    // `channel.sendMessage` uploads any not-yet-uploaded attachment (via
+    // `sendImage`/`sendFile`) before posting, so `toAttachment` only needs to
+    // wrap the picked file — no manual upload call needed.
+    final messageAttachments = await Future.wait(
+      attachments.map((file) => file.toAttachment(type: AttachmentType.image)),
+    );
+
+    await channel.sendMessage(
+      Message(text: message, attachments: messageAttachments),
+    );
 
     if (isNewChannel) {
-      unawaited(_maybeSetLocalTitle(channel, text));
+      unawaited(
+        _maybeSetLocalTitle(channel, text.trim().isNotEmpty ? text : 'Photo'),
+      );
     }
   }
 
@@ -150,28 +204,6 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
     Navigator.of(context).pop(); // close the drawer
     setState(() => _activeChannel = null);
     _composerController.clear();
-  }
-
-  Future<void> _showChatOptionsSheet(BuildContext context) async {
-    final selected = await showModalBottomSheet<ChatOption>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final option in _chatOptions)
-              ListTile(
-                leading: Icon(option.icon),
-                title: Text(option.text),
-                onTap: () => Navigator.of(context).pop(option),
-              ),
-          ],
-        ),
-      ),
-    );
-
-    if (selected != null) _composerController.selectChatOption(selected);
   }
 
   @override
@@ -220,24 +252,23 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
               ),
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(8),
-        child: StreamAIComposer(
+        // No `minimum` padding here — `ChatComposer` now supplies its own
+        // 8px margin internally; adding one here too would double it up.
+        child: ChatComposer(
           controller: _composerController,
           enableSpeechToText: true,
-          onSendPressed: (text, option) => _sendMessage(text, option: option),
+          onSendPressed: (text, option, attachments) =>
+              _sendMessage(text, option: option, attachments: attachments),
           onStopPressed: () => _activeChannel?.stopAIResponse(),
-          factory: _AIComposerFactory(
-            onOptionsPressed: () => _showChatOptionsSheet(context),
-          ),
         ),
       ),
     );
   }
 }
 
-/// The "new chat" landing screen: a horizontally-scrollable row of prompt
-/// suggestions above the (always-docked) composer. Tapping one sends it
-/// immediately — mirrors the iOS sample's `SuggestionsView`.
+/// The "new chat" landing screen: an `AISuggestionsView` row docked
+/// above the (always-docked) composer. Tapping a chip sends it immediately —
+/// mirrors the iOS sample's `VStack { Spacer(); SuggestionsView(...) }`.
 class _LandingView extends StatelessWidget {
   const _LandingView({required this.onSuggestionTap});
 
@@ -245,71 +276,15 @@ class _LandingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Column(
       children: [
         const Spacer(),
-        // `IntrinsicHeight` + a plain `Row` (rather than a fixed-height
-        // `ListView`) lets each chip size to its own 2-line text instead of
-        // being hard-clipped to an arbitrary box height.
-        IntrinsicHeight(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final suggestion in _landingSuggestions) ...[
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 160),
-                    child: Material(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => onSuggestionTap(suggestion),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Text(
-                            suggestion,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.left,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ],
-            ),
-          ),
+        AISuggestionsView(
+          suggestions: _landingSuggestions,
+          itemMaxWidth: 190,
+          onSuggestionSelected: onSuggestionTap,
         ),
       ],
-    );
-  }
-}
-
-/// Supplies the composer's leading "+" (opens the chat-options sheet).
-///
-/// Mirrors iOS's `AddAttachmentsButton` in `ComposerView.swift`, minus real
-/// photo/camera attachment upload — `stream_chat_flutter_ai`'s
-/// `AiComposerController` has no attachment state today, so that part is a
-/// follow-up (either a package enhancement or a sample-only bypass), not part
-/// of this pass. The voice/send toggle is handled by the composer itself via
-/// `enableSpeechToText: true`, not this factory.
-class _AIComposerFactory extends StreamAIComposerFactory {
-  const _AIComposerFactory({required this.onOptionsPressed});
-
-  final VoidCallback onOptionsPressed;
-
-  @override
-  Widget buildLeading(BuildContext context, AiComposerController controller) {
-    return IconButton(
-      icon: const Icon(Icons.add_circle_outline),
-      onPressed: onOptionsPressed,
     );
   }
 }

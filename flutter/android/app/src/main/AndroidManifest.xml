@@ -5,6 +5,12 @@
 -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Required by photo_manager (via ComposerAttachmentSheet's recent-photos
+         strip) on Android 13+; both are required even for images-only. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
+    <!-- Android 14+ "limited access" selection support. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"/>
 
     <application
         android:label="stream_chat_ai_assistant_flutter_example"

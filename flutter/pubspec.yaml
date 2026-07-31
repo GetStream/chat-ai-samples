@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
   dio: ^5.7.0
+  marionette_flutter: ^0.6.0
   stream_chat: ^10.0.1
   stream_chat_flutter: ^10.0.1
   stream_chat_flutter_ai:

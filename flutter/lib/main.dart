@@ -1,8 +1,16 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:marionette_flutter/marionette_flutter.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_home_page.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 Future<void> main() async {
+  if (kDebugMode) {
+    MarionetteBinding.ensureInitialized();
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
+
   final client = StreamChatClient('zcgvnykxsfm8');
 
   final user = await client.connectUser(
@@ -16,10 +24,7 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({
-    super.key,
-    required this.client,
-  });
+  const MyApp({super.key, required this.client});
 
   final StreamChatClient client;
 

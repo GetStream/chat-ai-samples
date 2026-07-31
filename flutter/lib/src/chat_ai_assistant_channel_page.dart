@@ -62,6 +62,22 @@ class _ChatAIAssistantConversationViewState
           children: [
             Expanded(
               child: StreamMessageListView(
+                // Every channel in this sample is created together with its
+                // first message (see `_sendMessage` in
+                // `ChatAIAssistantHomePage`), so the SDK's default empty
+                // state ("send a message to start the conversation") would
+                // only ever flash for one frame while that first message is
+                // still in flight — replace it with a loading indicator
+                // instead of a placeholder that's never really accurate.
+                builders: StreamMessageListViewBuilders(
+                  empty: (context) => const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
                 messageBuilder: (context, message, defaultProps) {
                   // Customize the message widget based on whether it's an
                   // AI generated message or not.
@@ -117,11 +133,22 @@ class AIMessageItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Match the regular (non-AI) message bubble's font by reusing
+    // `stream_chat_flutter`'s own message text style — `stream_chat_flutter_ai`
+    // has no dependency on that package, so it falls back to
+    // `flutter_markdown_plus`'s own default (Material's stock `bodyMedium`)
+    // when no style sheet is given, which looks noticeably different (size,
+    // weight, line height) from `context.streamTextTheme.bodyDefault`.
+    final bodyStyle = context.streamTextTheme.bodyDefault.copyWith(
+      color: context.streamColorScheme.textPrimary,
+    );
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: StreamingMessageView(
         text: message.text ?? '',
         onTypewriterStateChanged: onTypewriterStateChanged,
+        styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
       ),
     );
   }

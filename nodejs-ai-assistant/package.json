@@ -18,7 +18,7 @@
     "@anthropic-ai/sdk": "^0.32.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.1",
+    "express": "^4.22.2",
     "openai": "^5.20.1",
     "stream-chat": "^9.19.0"
   },

@@ -1,13 +1,11 @@
 # Stream Chat AI Assistant for [Flutter](https://getstream.io/blog/flutter-assistant/)
 
-This project demonstrates the integration of AI assistant features in a Flutter application using
-the Stream [Chat SDK](https://getstream.io/chat/).
+A Flutter chat app with an AI assistant, built on the Stream [Chat SDK](https://getstream.io/chat/)
+and [`stream_chat_flutter_ai`](https://github.com/GetStream/stream-chat-flutter-ai/tree/main/packages/stream_chat_flutter_ai).
 
-## Description
-
-This Flutter project showcases how to implement an AI assistant in a chat application. The AI
-assistant can be started and stopped within chat channels, and it provides automated responses to
-user messages.
+It opens straight into a "new chat" composer rather than a channel list. Type a message or tap a
+suggestion, and an AI agent joins the conversation and streams its reply back as markdown. Past
+conversations live in a drawer reached by edge-swiping from the left.
 
 ## Demo
 | App Demo                                                                                      |
@@ -16,92 +14,133 @@ user messages.
 
 ## Features
 
-- **Chat-first navigation**: the app opens directly into a "new chat" composer with suggestion prompts
-  (ChatGPT-style), not a channel list. Channel history lives in a drawer reached by edge-swipe from the
-  left. There's deliberately no app bar, matching the native iOS `AIComponents` sample this app mirrors.
-- **Automatic AI agent lifecycle**: the AI agent starts automatically whenever a channel becomes active
-  (newly created or reopened from history) — no manual "Start AI" button. The backend's own
-  inactivity-based cleanup handles stopping idle agents.
-- **Streaming responses**: AI replies are rendered as plain markdown text (no avatar, no bubble) with
-  `StreamingMessageView` from
-  [`stream_chat_flutter_ai`](https://github.com/GetStream/stream-chat-flutter/tree/master/packages/stream_chat_flutter_ai),
-  a standalone package of AI-oriented Flutter components (no dependency on Stream Chat itself).
-- **AI Typing Indicator**: Show typing indicators (`AITypingIndicatorView`) when the AI assistant is
-  thinking, checking sources, or generating a response.
-- **AI composer**: `StreamAIComposer` with suggestion chips and a send/stop toggle that flips to a
-  stop button while the AI is generating.
-- **Stream Chat SDK**: Utilize the Stream Chat SDK for chat functionalities.
+- **Chat-first navigation**: no channel list and no app bar — the app is a composer, with history
+  tucked into an edge-swipe drawer.
+- **Automatic agent lifecycle**: the agent starts whenever a conversation becomes active, whether
+  newly created or reopened from history. There's no "Start AI" button; the backend stops idle
+  agents on its own.
+- **Streaming responses**: replies render as plain markdown with `StreamingMessageView` — no avatar,
+  no bubble.
+- **Typing indicator**: `AITypingIndicatorView` reflects whether the assistant is thinking, checking
+  sources, or generating.
+- **AI composer**: `ChatComposer` with suggestion chips, attachments, speech-to-text, and a trailing
+  control that flips to a stop button while a reply streams.
+- **Client-side tools**: the assistant can trigger real behaviour in the app — see below.
+- **AI-generated titles**: a new conversation is named after its first message, summarized by the
+  backend.
 
-## Getting Started
-To follow along with this integration, we recommend checking out our step by step guide for building with Flutter and AI on our [blog](https://getstream.io/blog/flutter-assistant/). 
+## Client-side tools
+
+Client-side tools let the assistant do things in the app rather than only talk about them: show an
+alert, navigate, read a sensor. Two ship here, both in
+[`lib/src/chat_ai_assistant_client_tools.dart`](lib/src/chat_ai_assistant_client_tools.dart):
+
+| Tool | Arguments | Effect | Ask the assistant |
+|---|---|---|---|
+| `greetUser` | none | Shows an alert | "greet me" |
+| `setThemeMode` | `mode`: `light` \| `dark` \| `system` | Switches the app's theme | "switch to dark mode" |
+
+How a tool call travels:
+
+1. Each tool implements `AIClientTool` and goes into an `AIToolRegistry`, created once in
+   `ChatAIAssistantHomePage`.
+2. When a conversation's agent starts, the registry's `registrationPayloads()` are POSTed to the
+   backend's `/register-tools`, telling the model which tools exist.
+3. The model calls one, and the agent sends a `custom_client_tool_invocation` event down the normal
+   chat connection.
+4. `ChatAIAssistantClientToolListener` parses that event and dispatches it to the registry, which
+   runs the matching tool.
+
+Two properties of this protocol shape the code, and are worth knowing before you add a tool:
+
+- **Nothing is returned to the model.** A tool is a side effect, not a function call with a result,
+  so none of them return a value.
+- **Registrations are persisted by the backend** and re-applied when an agent restarts. A
+  conversation registered by an older build of the app can therefore invoke a tool the current build
+  no longer has, which is why `dispatch` returning `false` is normal rather than an error.
+
+Tools hand back deferred actions instead of acting directly, since a tool object has no
+`BuildContext` and can't know whether the app is even foregrounded. Those actions land in
+`ChatAIAssistantToolActionHandler`, which the widget tree listens to.
+
+## Getting started
+
+For a step-by-step walkthrough of building this, see the
+[Flutter AI assistant guide](https://getstream.io/blog/flutter-assistant/) on our blog.
 
 ### Prerequisites
 
-- Flutter SDK: >=3.41.0
-- [Stream Chat account](https://getstream.io/try-for-free/) and API key
+- Flutter SDK >= 3.41.0
+- A [Stream account](https://getstream.io/try-for-free/) and API key
+- An OpenAI API key, for the backend
 
-### Note on `stream_chat_flutter_ai`
+### 1. Run the backend
 
-This sample currently depends on `stream_chat_flutter_ai` via a **local path** in `pubspec.yaml`,
-pointing at a sibling checkout of
-[`GetStream/stream-chat-flutter`](https://github.com/GetStream/stream-chat-flutter):
+The app expects a backend on `http://localhost:3000`. Use
+[`ai-sdk-sample`](../ai-sdk-sample) from this repository, which provides the agent
+lifecycle, client-tool registration, and summarization endpoints this app calls:
+
+```sh
+cd ../ai-sdk-sample
+cp .env.example .env   # fill in STREAM_API_KEY, STREAM_API_SECRET and OPENAI_API_KEY
+npm install
+npm start
+```
+
+Use the same Stream app for the backend and the Flutter app, or the agent will never appear in your
+conversations.
+
+### 2. Point at `stream_chat_flutter_ai`
+
+This sample depends on `stream_chat_flutter_ai` via a **local path**, pointing at a sibling checkout
+of [`GetStream/stream-chat-flutter-ai`](https://github.com/GetStream/stream-chat-flutter-ai):
 
 ```yaml
 stream_chat_flutter_ai:
-  path: ../../stream-chat-flutter/packages/stream_chat_flutter_ai
+  path: ../../stream-chat-flutter-ai/packages/stream_chat_flutter_ai
 ```
 
-Adjust the path to wherever you've cloned `stream-chat-flutter` locally. Once
-`stream_chat_flutter_ai` is published to pub.dev, this will switch to a version constraint like the
-other Stream dependencies.
+Adjust the path to wherever you cloned it. Once the package is published to pub.dev this becomes a
+version constraint like the other Stream dependencies.
 
-### Installation
+### 3. Configure the app
 
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/your-repo/stream_chat_ai_assistant_flutter_example.git
-   cd stream_chat_ai_assistant_flutter_example
-   ```
+Set your Stream API key and a user token in `lib/main.dart`:
 
-2. Install dependencies:
-   ```sh
-   flutter pub get
-   ```
+```dart
+final client = StreamChatClient('your_api_key');
 
-### Configuration
+final user = await client.connectUser(
+  User(id: 'your_user_id'),
+  'your_user_token',
+);
+```
 
-Update the `lib/main.dart` file with your Stream Chat API key:
-   ```dart
-   final client = StreamChatClient(
-     'your_api_key',
-     logLevel: Level.INFO,
-   );
-   ```
-
-### Running the App
-
-Run the app on an emulator or physical device:
+### 4. Run it
 
 ```sh
+flutter pub get
 flutter run
 ```
 
 ## Usage
 
-- **Home page**: opens into a "new chat" landing view — tap a suggestion or type a message to start a
-  conversation. The AI agent starts automatically; there's no manual toggle.
-- **Channel history**: edge-swipe from the left (or tap "New chat" inside the drawer) to see past
-  conversations and switch between them.
+- **Start a conversation**: tap a suggestion chip or type a message. The agent joins automatically.
+- **Browse history**: edge-swipe from the left, or tap "New chat" in that drawer to start over.
+- **Try a tool**: ask the assistant to greet you, or to switch the app to dark mode.
 
-## Project Structure
+## Project structure
 
-- `lib/main.dart`: Entry point of the application.
-- `lib/src/chat_ai_assistant_service.dart`: Service for starting and stopping the AI assistant.
-- `lib/src/chat_ai_assistant_home_page.dart`: The app's single entry point — persistent composer, landing
-  view, and the channel-history drawer.
-- `lib/src/chat_ai_assistant_channel_page.dart`: The active conversation view (message list + typing
-  indicator) embedded inside the home page.
-- `lib/src/chat_ai_assistant_typing_indicator_handler.dart`: Handles the AI typing indicator state.
+- `lib/main.dart` — entry point: Stream client setup and app theme.
+- `lib/src/chat_ai_assistant_home_page.dart` — the single screen: persistent composer, landing view,
+  and history drawer.
+- `lib/src/chat_ai_assistant_channel_page.dart` — the active conversation (message list and typing
+  indicator).
+- `lib/src/chat_ai_assistant_service.dart` — backend calls: start/stop the agent, register tools,
+  summarize a title.
+- `lib/src/chat_ai_assistant_typing_indicator_handler.dart` — AI typing-indicator state.
+- `lib/src/chat_ai_assistant_client_tools.dart` — the client-side tools, the handler their effects
+  land in, and the event listener feeding the registry.
 
 ---
 

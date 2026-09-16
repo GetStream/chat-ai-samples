@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_channel_page.dart';
+import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_client_tools.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_service.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
     hide
@@ -101,11 +102,76 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
 
   final _composerController = ChatComposerController(chatOptions: _chatOptions);
 
+  /// The client-side tools this app offers the AI agent.
+  ///
+  /// Registered once, here, rather than per channel: the registry is just a
+  /// name -> tool map, and the same tools are on offer in every conversation.
+  /// What *is* per channel is telling the backend about them — see
+  /// [_ensureAgentStarted].
+  final _toolRegistry = AIToolRegistry()
+    ..register(const GreetUserTool())
+    ..register(const SetThemeModeTool());
+
+  ChatAIAssistantClientToolListener? _toolListener;
+  bool _alertShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // `StreamChat.of` needs a context with dependencies resolved, so this
+    // can't go in `initState`. Listening on the client rather than the active
+    // channel means invocations keep arriving as the user switches
+    // conversations.
+    _toolListener ??= ChatAIAssistantClientToolListener(
+      client: StreamChat.of(context).client,
+      registry: _toolRegistry,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    ChatAIAssistantToolActionHandler().pendingAlert.addListener(_showPendingAlert);
+  }
+
   @override
   void dispose() {
+    ChatAIAssistantToolActionHandler()
+        .pendingAlert
+        .removeListener(_showPendingAlert);
+    _toolListener?.dispose();
     _channelListController.dispose();
     _composerController.dispose();
     super.dispose();
+  }
+
+  /// Presents whatever alert a client tool has queued.
+  ///
+  /// The tool itself can't do this — it has no `BuildContext` — which is
+  /// exactly why `handleInvocation` hands back deferred actions instead of
+  /// running them. This is where they finally reach the widget tree.
+  Future<void> _showPendingAlert() async {
+    final handler = ChatAIAssistantToolActionHandler();
+    final alert = handler.pendingAlert.value;
+    // Re-entrant: `dismissAlert` below nulls the value, firing this again.
+    if (alert == null || _alertShown || !mounted) return;
+
+    _alertShown = true;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(alert.title),
+        content: Text(alert.message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    _alertShown = false;
+    handler.dismissAlert();
   }
 
   Future<void> _ensureAgentStarted(Channel channel) async {
@@ -120,22 +186,43 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
         channelId,
         platform: 'openai',
       );
+
+      // Tools are registered per channel, after the agent exists. The backend
+      // persists them, so re-registering an already-known channel is
+      // redundant rather than harmful — and doing it unconditionally is what
+      // keeps a channel created by an older build up to date with the tools
+      // this build actually has.
+      await ChatAIAssistantService().registerTools(
+        channelId,
+        _toolRegistry.registrationPayloads(),
+      );
     } catch (e) {
-      debugPrint('Failed to start AI agent: $e');
+      debugPrint('Failed to start AI agent or register tools: $e');
     }
   }
 
-  Future<void> _maybeSetLocalTitle(Channel channel, String firstMessage) async {
-    // Best-effort local title. Unlike the iOS sample, which calls a
-    // `/summarize` backend endpoint to AI-generate a title, this stays
-    // entirely client-side — no backend changes for this sample.
-    final title = firstMessage.length > 40
+  Future<void> _maybeSetChannelTitle(Channel channel, String firstMessage) async {
+    // Name the conversation after its first message: `/summarize` asks the
+    // backend's model for a short title. Fall back to a truncated copy of the
+    // message if that call fails, rather than leaving it unnamed.
+    var title = firstMessage.length > 40
         ? '${firstMessage.substring(0, 40)}…'
         : firstMessage;
+
+    try {
+      final summary = await ChatAIAssistantService().summarize(
+        firstMessage,
+        platform: 'openai',
+      );
+      if (summary != null && summary.trim().isNotEmpty) title = summary.trim();
+    } catch (e) {
+      debugPrint('Failed to summarize channel title, using the message: $e');
+    }
+
     try {
       await channel.updatePartial(set: {'name': title});
     } catch (e) {
-      debugPrint('Failed to set local channel title: $e');
+      debugPrint('Failed to set channel title: $e');
     }
   }
 
@@ -189,7 +276,7 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
 
     if (isNewChannel) {
       unawaited(
-        _maybeSetLocalTitle(channel, text.trim().isNotEmpty ? text : 'Photo'),
+        _maybeSetChannelTitle(channel, text.trim().isNotEmpty ? text : 'Photo'),
       );
     }
   }

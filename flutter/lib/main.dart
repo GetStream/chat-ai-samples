@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:marionette_flutter/marionette_flutter.dart';
+import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_client_tools.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_home_page.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
@@ -30,13 +31,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Stream Chat AI Assistant',
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
-      themeMode: ThemeMode.light,
-      home: const ChatAIAssistantHomePage(),
-      builder: (_, child) => StreamChat(client: client, child: child),
+    // The theme is driven by a notifier rather than a constant so
+    // `SetThemeModeTool` — a client-side tool the AI agent can invoke — has
+    // something visible to change. Ask the assistant to switch to dark mode.
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ChatAIAssistantToolActionHandler().themeMode,
+      builder: (context, themeMode, _) => MaterialApp(
+        title: 'Stream Chat AI Assistant',
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        themeMode: themeMode,
+        home: const ChatAIAssistantHomePage(),
+        builder: (_, child) => StreamChat(client: client, child: child),
+      ),
     );
   }
 }

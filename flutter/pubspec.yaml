@@ -19,7 +19,7 @@ dependencies:
     # Local path to a sibling checkout of github.com/GetStream/stream-chat-flutter.
     # Adjust this path (or switch to a version constraint) once the package is
     # published to pub.dev.
-    path: ../../stream-chat-flutter/packages/stream_chat_flutter_ai
+    path: ../../stream-chat-flutter-ai/packages/stream_chat_flutter_ai
   uuid: ^4.5.1
 
 dev_dependencies:

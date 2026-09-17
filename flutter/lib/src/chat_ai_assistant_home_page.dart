@@ -330,23 +330,33 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
           ),
         ),
       ),
+      // The composer lives in the body, not in `bottomNavigationBar`. Scaffold
+      // positions a bottom navigation bar at its own full height and only
+      // applies the keyboard inset to the *body*, so a composer placed there
+      // stays pinned to the bottom of the screen and the keyboard opens on top
+      // of it. Inside the body it rides above the keyboard, which is what a
+      // text field needs.
       body: SafeArea(
-        child: activeChannel == null
-            ? _LandingView(onSuggestionTap: _sendMessage)
-            : ChatAIAssistantConversationView(
-                key: ValueKey(activeChannel.cid),
-                channel: activeChannel,
-              ),
-      ),
-      bottomNavigationBar: SafeArea(
-        // No `minimum` padding here — `ChatComposer` now supplies its own
-        // 8px margin internally; adding one here too would double it up.
-        child: ChatComposer(
-          controller: _composerController,
-          enableSpeechToText: true,
-          onSendPressed: (text, option, attachments) =>
-              _sendMessage(text, option: option, attachments: attachments),
-          onStopPressed: () => _activeChannel?.stopAIResponse(),
+        child: Column(
+          children: [
+            Expanded(
+              child: activeChannel == null
+                  ? _LandingView(onSuggestionTap: _sendMessage)
+                  : ChatAIAssistantConversationView(
+                      key: ValueKey(activeChannel.cid),
+                      channel: activeChannel,
+                    ),
+            ),
+            // No extra padding — `ChatComposer` supplies its own 8px margin
+            // internally; adding one here too would double it up.
+            ChatComposer(
+              controller: _composerController,
+              enableSpeechToText: true,
+              onSendPressed: (text, option, attachments) =>
+                  _sendMessage(text, option: option, attachments: attachments),
+              onStopPressed: () => _activeChannel?.stopAIResponse(),
+            ),
+          ],
         ),
       ),
     );

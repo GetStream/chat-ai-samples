@@ -339,6 +339,7 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
       body: SafeArea(
         child: Column(
           children: [
+            const _ConnectionBanner(),
             Expanded(
               child: activeChannel == null
                   ? _LandingView(onSuggestionTap: _sendMessage)
@@ -359,6 +360,74 @@ class _ChatAIAssistantHomePageState extends State<ChatAIAssistantHomePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A thin banner shown whenever the realtime connection is not healthy.
+///
+/// Worth having in a sample, because a dropped connection is otherwise
+/// invisible and looks like the assistant misbehaving: the app keeps rendering
+/// and sending, but AI replies arrive empty — the agent creates a message and
+/// fills it with follow-up updates that never land — and client-tool
+/// invocations are missed silently, since those are channel events too.
+///
+/// Renders nothing while connected, so it costs no space in the normal case.
+class _ConnectionBanner extends StatelessWidget {
+  const _ConnectionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return StreamConnectionStatusBuilder(
+      statusBuilder: (context, status) {
+        final (String? message, Color? background, Color? foreground) = switch (status) {
+          ConnectionStatus.connected => (null, null, null),
+          ConnectionStatus.connecting => (
+              'Reconnecting…',
+              colors.secondaryContainer,
+              colors.onSecondaryContainer,
+            ),
+          ConnectionStatus.disconnected => (
+              'Offline — new messages and AI actions may not arrive',
+              colors.errorContainer,
+              colors.onErrorContainer,
+            ),
+        };
+
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.topCenter,
+          child: message == null
+              ? const SizedBox(width: double.infinity)
+              : Container(
+                  width: double.infinity,
+                  color: background,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (status == ConnectionStatus.connecting) ...[
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Flexible(
+                        child: Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: foreground, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        );
+      },
     );
   }
 }

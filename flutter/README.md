@@ -28,6 +28,10 @@ conversations live in a drawer reached by edge-swiping from the left.
 - **Client-side tools**: the assistant can trigger real behaviour in the app — see below.
 - **AI-generated titles**: a new conversation is named after its first message, summarized by the
   backend.
+- **Connection banner**: a strip at the top of the screen while the realtime connection is
+  reconnecting or offline. Without it a dropped connection is invisible — AI replies land empty and
+  tool invocations are missed, which reads as the assistant misbehaving rather than as a network
+  problem.
 
 ## Client-side tools
 

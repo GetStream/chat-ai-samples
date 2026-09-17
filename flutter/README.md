@@ -61,8 +61,8 @@ How a tool call travels:
 
 Two properties of this protocol shape the code, and are worth knowing before you add a tool:
 
-- **Nothing is returned to the model.** A tool is a side effect, not a function call with a result,
-  so none of them return a value.
+- **Nothing is returned to the model.** A tool is a side effect, not a function call with a result:
+  the invocation event carries no field for one, so none of the tools here return a value.
 - **Registrations are persisted by the backend** and re-applied when an agent restarts. A
   conversation registered by an older build of the app can therefore invoke a tool the current build
   no longer has, which is why `dispatch` returning `false` is normal rather than an error.
@@ -70,6 +70,22 @@ Two properties of this protocol shape the code, and are worth knowing before you
 Tools hand back deferred actions instead of acting directly, since a tool object has no
 `BuildContext` and can't know whether the app is even foregrounded. Those actions land in
 `ChatAIAssistantToolActionHandler`, which the widget tree listens to.
+
+### "Client tool … invocation dispatched."
+
+Running against `ai-sdk-sample`, every tool call is followed by an assistant message reading
+`Client tool "greetUser" invocation dispatched.` That text comes from the **backend**, not from this
+app and not from `stream_chat_flutter_ai`. The Node SDK wraps each registered tool so that, once it
+has sent the invocation event, it returns that string as the tool's result to the model — which then
+lands in the channel like any other reply.
+
+It reports that the event was *dispatched*, not that your tool ran: it is returned as soon as the
+event is sent, so it says the same thing whether the tool succeeded, threw, or belongs to a build of
+the app that no longer registers it.
+
+None of this is part of the protocol `stream_chat_flutter_ai` implements — it takes no backend
+dependency, and a different backend can return something else, or nothing, or not surface it as a
+message at all. If you don't want the line in your transcripts, change what your backend returns.
 
 ## Getting started
 

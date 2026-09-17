@@ -21,6 +21,10 @@ conversations live in a drawer reached by edge-swiping from the left.
   agents on its own.
 - **Streaming responses**: replies render as plain markdown with `StreamingMessageView` — no avatar,
   no bubble.
+- **Rich replies**: fenced code is syntax-highlighted, LaTeX is typeset, chart fences render as
+  charts, and links open in the browser. The package renders the chrome but ships no grammars or
+  math engine — `lib/src/code_highlighter.dart` and the `mathBuilder` in
+  `chat_ai_assistant_channel_page.dart` are where this app supplies them.
 - **Typing indicator**: `AITypingIndicatorView` reflects whether the assistant is thinking, checking
   sources, or generating.
 - **AI composer**: `ChatComposer` with suggestion chips, attachments, speech-to-text, and a trailing
@@ -145,6 +149,8 @@ flutter run
 - `lib/src/chat_ai_assistant_typing_indicator_handler.dart` — AI typing-indicator state.
 - `lib/src/chat_ai_assistant_client_tools.dart` — the client-side tools, the handler their effects
   land in, and the event listener feeding the registry.
+- `lib/src/code_highlighter.dart` — `re_highlight` grammars supplied to the package's
+  `codeHighlighter` seam. Drop languages you do not need; an unregistered one renders plain.
 
 ---
 

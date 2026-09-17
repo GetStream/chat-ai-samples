@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/chat_ai_assistant_typing_indicator_handler.dart';
+import 'package:stream_chat_ai_assistant_flutter_example/src/code_highlighter.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
     hide
         StreamingMessageView,
@@ -8,6 +10,7 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart'
         TypewriterController,
         StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Renders the message list and AI typing indicator for [channel].
 ///
@@ -149,6 +152,32 @@ class AIMessageItem extends StatelessWidget {
         text: message.text ?? '',
         onTypewriterStateChanged: onTypewriterStateChanged,
         styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
+        // The package parses LaTeX but ships no math engine, so supplying one
+        // is what makes formulas typeset instead of rendering as raw TeX.
+        mathBuilder: (context, tex, style, {required inline}) => Math.tex(
+          tex,
+          textStyle: style,
+          mathStyle: inline ? MathStyle.text : MathStyle.display,
+          // A formula the engine can't parse falls back to its source rather
+          // than throwing — models emit malformed TeX often enough that this
+          // is a normal outcome, not an error.
+          onErrorFallback: (error) => Text(tex, style: style),
+        ),
+        // Models reach for `\$…\$` far more often than `\(…\)`, which is the
+        // only delimiter recognised by default.
+        useDollarDelimitersForMath: true,
+        // Same seam, for code fences: the package draws the block, the host
+        // supplies the grammars. See `code_highlighter.dart`.
+        codeHighlighter: highlightCode,
+        onTapLink: (text, href, title) async {
+          if (href == null) return;
+          final uri = Uri.tryParse(href);
+          // Assistants produce links constantly, and without this they are
+          // simply inert — no tap target, no feedback, no explanation.
+          if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+            debugPrint('Could not open link: \$href');
+          }
+        },
       ),
     );
   }

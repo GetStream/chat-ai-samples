@@ -22,11 +22,7 @@ dependencies:
   re_highlight: ^0.0.3
   stream_chat: ^10.0.1
   stream_chat_flutter: ^10.0.1
-  stream_chat_flutter_ai:
-    # Local path to a sibling checkout of github.com/GetStream/stream-chat-flutter.
-    # Adjust this path (or switch to a version constraint) once the package is
-    # published to pub.dev.
-    path: ../../stream-chat-flutter-ai/packages/stream_chat_flutter_ai
+  stream_chat_flutter_ai: ^0.1.0
   # Opens links the assistant puts in its replies.
   url_launcher: ^6.3.1
   uuid: ^4.5.1

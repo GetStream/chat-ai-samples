@@ -1192,10 +1192,11 @@ packages:
   stream_chat_flutter_ai:
     dependency: "direct main"
     description:
-      path: "../../stream-chat-flutter-ai/packages/stream_chat_flutter_ai"
-      relative: true
-    source: path
-    version: "0.0.1"
+      name: stream_chat_flutter_ai
+      sha256: "3008c9fda36bbcaf645b5e26a61f81df2ce4087349a52f45351492c752a51284"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   stream_chat_flutter_core:
     dependency: transitive
     description:

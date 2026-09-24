@@ -24,7 +24,7 @@ conversations live in a drawer reached by edge-swiping from the left.
 - **Rich replies**: fenced code is syntax-highlighted, LaTeX is typeset, chart fences render as
   charts, and links open in the browser. The package renders the chrome but ships no grammars or
   math engine — `lib/src/code_highlighter.dart` and the `mathBuilder` in
-  `chat_ai_assistant_channel_page.dart` are where this app supplies them.
+  `lib/src/ai_message_item.dart` are where this app supplies them.
 - **Typing indicator**: `AITypingIndicatorView` reflects whether the assistant is thinking, checking
   sources, or generating.
 - **AI composer**: `ChatComposer` with suggestion chips, attachments, speech-to-text, and a trailing
@@ -41,7 +41,7 @@ conversations live in a drawer reached by edge-swiping from the left.
 
 Client-side tools let the assistant do things in the app rather than only talk about them: show an
 alert, navigate, read a sensor. Two ship here, both in
-[`lib/src/chat_ai_assistant_client_tools.dart`](lib/src/chat_ai_assistant_client_tools.dart):
+[`lib/src/client_tools.dart`](lib/src/client_tools.dart):
 
 | Tool | Arguments | Effect | Ask the assistant |
 |---|---|---|---|
@@ -51,25 +51,24 @@ alert, navigate, read a sensor. Two ship here, both in
 How a tool call travels:
 
 1. Each tool implements `AIClientTool` and goes into an `AIToolRegistry`, created once in
-   `ChatAIAssistantHomePage`.
+   `HomePage`.
 2. When a conversation's agent starts, the registry's `registrationPayloads()` are POSTed to the
    backend's `/register-tools`, telling the model which tools exist.
 3. The model calls one, and the agent sends a `custom_client_tool_invocation` event down the normal
    chat connection.
-4. `ChatAIAssistantClientToolListener` parses that event and dispatches it to the registry, which
+4. `ClientToolListener` parses that event and dispatches it to the registry, which
    runs the matching tool.
 
 Two properties of this protocol shape the code, and are worth knowing before you add a tool:
 
 - **Nothing is returned to the model.** A tool is a side effect, not a function call with a result:
   the invocation event carries no field for one, so none of the tools here return a value.
-- **Registrations are persisted by the backend** and re-applied when an agent restarts. A
+- **Registrations are kept by the backend** (in memory, in `ai-sdk-sample`) and re-applied when an agent restarts. A
   conversation registered by an older build of the app can therefore invoke a tool the current build
   no longer has, which is why `dispatch` returning `false` is normal rather than an error.
 
-Tools hand back deferred actions instead of acting directly, since a tool object has no
-`BuildContext` and can't know whether the app is even foregrounded. Those actions land in
-`ChatAIAssistantToolActionHandler`, which the widget tree listens to.
+Tools hand back deferred actions instead of acting directly, so the registry decides when they run.
+Each tool here takes a callback — `HomePage` passes one that shows the dialog or changes the theme.
 
 ### "Client tool … invocation dispatched."
 
@@ -114,37 +113,41 @@ npm start
 Use the same Stream app for the backend and the Flutter app, or the agent will never appear in your
 conversations.
 
-### 2. Point at `stream_chat_flutter_ai`
+On Android, `localhost` is the device or emulator itself, not your machine. Forward the port before
+running the app:
 
-This sample depends on `stream_chat_flutter_ai` via a **local path**, pointing at a sibling checkout
-of [`GetStream/stream-chat-flutter-ai`](https://github.com/GetStream/stream-chat-flutter-ai):
-
-```yaml
-stream_chat_flutter_ai:
-  path: ../../stream-chat-flutter-ai/packages/stream_chat_flutter_ai
+```sh
+adb reverse tcp:3000 tcp:3000
 ```
 
-Adjust the path to wherever you cloned it. Once the package is published to pub.dev this becomes a
-version constraint like the other Stream dependencies.
+The app allows plain HTTP only to local addresses (see
+`android/app/src/main/res/xml/network_security_config.xml`). If the backend can't be reached, the app
+says so in a snackbar when you start or open a conversation.
 
-### 3. Configure the app
+### 2. Configure the app
 
-Set your Stream API key and a user token in `lib/main.dart`:
+`lib/main.dart` ships with a demo API key and user token. Replace them with your own:
 
 ```dart
 final client = StreamChatClient('your_api_key');
-
-final user = await client.connectUser(
-  User(id: 'your_user_id'),
-  'your_user_token',
-);
+await client.connectUser(User(id: 'your_user_id'), 'your_user_token');
 ```
 
-### 4. Run it
+The API key must belong to the same Stream app as the backend's `.env`, and the token must be signed
+with that app's secret.
+
+### 3. Run it
 
 ```sh
 flutter pub get
 flutter run
+```
+
+`lib/main_dev.dart` runs the same app with the Marionette binding, so the Marionette MCP server can
+drive it:
+
+```sh
+flutter run -t lib/main_dev.dart
 ```
 
 ## Usage
@@ -156,15 +159,15 @@ flutter run
 ## Project structure
 
 - `lib/main.dart` — entry point: Stream client setup and app theme.
-- `lib/src/chat_ai_assistant_home_page.dart` — the single screen: persistent composer, landing view,
-  and history drawer.
-- `lib/src/chat_ai_assistant_channel_page.dart` — the active conversation (message list and typing
-  indicator).
-- `lib/src/chat_ai_assistant_service.dart` — backend calls: start/stop the agent, register tools,
-  summarize a title.
-- `lib/src/chat_ai_assistant_typing_indicator_handler.dart` — AI typing-indicator state.
-- `lib/src/chat_ai_assistant_client_tools.dart` — the client-side tools, the handler their effects
-  land in, and the event listener feeding the registry.
+- `lib/main_dev.dart` — the same app with the Marionette binding, for driving it from tools.
+- `lib/src/home_page.dart` — the single screen: persistent composer, landing view, and history
+  drawer.
+- `lib/src/conversation_view.dart` — the active conversation: message list and typing indicator.
+- `lib/src/ai_message_item.dart` — how an AI message renders, including code, math and links.
+- `lib/src/agent_service.dart` — backend calls: start the agent, register tools, summarize a title.
+- `lib/src/typing_state_handler.dart` — the assistant's typing state, from `ai_indicator.*` events.
+- `lib/src/client_tools.dart` — the client-side tools and the event listener feeding the registry.
+- `lib/src/connection_banner.dart` — the reconnecting / offline banner.
 - `lib/src/code_highlighter.dart` — `re_highlight` grammars supplied to the package's
   `codeHighlighter` seam. Drop languages you do not need; an unregistered one renders plain.
 

@@ -113,11 +113,13 @@ npm start
 Use the same Stream app for the backend and the Flutter app, or the agent will never appear in your
 conversations.
 
-On Android, `localhost` is the device or emulator itself, not your machine. Forward the port before
-running the app:
+On the Android emulator, the app connects to `http://10.0.2.2:3000`, the emulator's address for your
+machine, so no extra setup is needed. On a physical Android device, forward the port and point the
+app at `localhost`:
 
 ```sh
 adb reverse tcp:3000 tcp:3000
+flutter run --dart-define=AGENT_BASE_URL=http://localhost:3000
 ```
 
 If the backend can't be reached, the app says so in a snackbar when you start or open a conversation.

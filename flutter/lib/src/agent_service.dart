@@ -1,10 +1,18 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 /// Talks to the AI backend: `ai-sdk-sample` from this repository.
 class AgentService {
-  /// On an Android device or emulator, `localhost` is the device itself —
-  /// forward the port with `adb reverse tcp:3000 tcp:3000` (see the README).
-  static const baseUrl = 'http://localhost:3000';
+  /// Where the backend runs. The Android emulator reaches your machine at
+  /// 10.0.2.2, because `localhost` there is the emulator itself.
+  ///
+  /// On a physical device, run `adb reverse tcp:3000 tcp:3000` and pass
+  /// `--dart-define=AGENT_BASE_URL=http://localhost:3000`.
+  static final baseUrl = switch (const String.fromEnvironment('AGENT_BASE_URL')) {
+    '' when !kIsWeb && defaultTargetPlatform == TargetPlatform.android => 'http://10.0.2.2:3000',
+    '' => 'http://localhost:3000',
+    final url => url,
+  };
 
   final _dio = Dio(
     BaseOptions(

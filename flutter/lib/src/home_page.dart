@@ -136,15 +136,22 @@ class _HomePageState extends State<HomePage> {
 
     try {
       await _agentService.startAgent(channelId, platform: _aiPlatform);
-      // Registering again for a channel the backend already knows is harmless,
-      // and keeps it in sync with the tools this build has.
-      await _agentService.registerTools(channelId, _toolRegistry.registrationPayloads());
     } catch (e) {
       debugPrint('Failed to start the AI agent: $e');
       // Without this, the app looks fine but the assistant never replies.
       _showError(
         "Couldn't start the assistant. Is ai-sdk-sample running at ${AgentService.baseUrl}?",
       );
+      return;
+    }
+
+    try {
+      // Registering again for a channel the backend already knows is harmless,
+      // and keeps it in sync with the tools this build has.
+      await _agentService.registerTools(channelId, _toolRegistry.registrationPayloads());
+    } catch (e) {
+      debugPrint('Failed to register client tools: $e');
+      _showError("The assistant is running, but can't use app actions like switching the theme.");
     }
   }
 

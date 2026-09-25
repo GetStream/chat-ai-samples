@@ -5,15 +5,26 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.5.0
-  flutter: ^3.24.0
+  sdk: ^3.11.0
+  flutter: ">=3.41.0"
 
 dependencies:
   flutter:
     sdk: flutter
   dio: ^5.7.0
-  stream_chat: ^9.17.0
-  stream_chat_flutter: ^9.17.0
+  # `stream_chat_flutter_ai` parses LaTeX but ships no math engine, so hosts
+  # that don't render math don't pay for one. This is what lets
+  # `StreamingMessageView.mathBuilder` typeset.
+  flutter_math_fork: ^0.7.4
+  marionette_flutter: ^0.6.0
+  # Likewise for code fences: the package renders their chrome but ships no
+  # grammars, since they dwarf the package itself. See lib/src/code_highlighter.dart.
+  re_highlight: ^0.0.3
+  stream_chat_flutter: ^10.0.1
+  stream_chat_flutter_ai: ^0.1.0
+  # Opens links the assistant puts in its replies.
+  url_launcher: ^6.3.1
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:

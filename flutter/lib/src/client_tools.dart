@@ -12,7 +12,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:stream_chat/stream_chat.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 /// Shows a greeting. Takes no arguments.

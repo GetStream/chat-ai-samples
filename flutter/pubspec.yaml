@@ -20,7 +20,6 @@ dependencies:
   # Likewise for code fences: the package renders their chrome but ships no
   # grammars, since they dwarf the package itself. See lib/src/code_highlighter.dart.
   re_highlight: ^0.0.3
-  stream_chat: ^10.0.1
   stream_chat_flutter: ^10.0.1
   stream_chat_flutter_ai: ^0.1.0
   # Opens links the assistant puts in its replies.

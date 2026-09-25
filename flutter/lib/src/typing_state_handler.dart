@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:stream_chat/stream_chat.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 
 /// Tracks what the AI assistant in [channel] is doing, from the
 /// `ai_indicator.*` events the backend sends.

@@ -1174,7 +1174,7 @@ packages:
     source: hosted
     version: "2.1.4"
   stream_chat:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: stream_chat
       sha256: c3c5d055e943bbd0258905d5d234a231ebc3ec5514270e9054cf1eb229dd18a1

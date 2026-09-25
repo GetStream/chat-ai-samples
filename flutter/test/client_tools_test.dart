@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:stream_chat/stream_chat.dart';
+import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/client_tools.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 

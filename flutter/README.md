@@ -120,9 +120,7 @@ running the app:
 adb reverse tcp:3000 tcp:3000
 ```
 
-The app allows plain HTTP only to local addresses (see
-`android/app/src/main/res/xml/network_security_config.xml`). If the backend can't be reached, the app
-says so in a snackbar when you start or open a conversation.
+If the backend can't be reached, the app says so in a snackbar when you start or open a conversation.
 
 ### 2. Configure the app
 

@@ -68,15 +68,15 @@ When `start-ai-agent` endpoint is called the following happens:
 - ai user with id `ai-bot-{channel-id}` is created using `admin` role, this way it can work on any channel by default.
 - the bot establishes a WS connection and joins the channel.
 - on the new message event, the bot starts talking to Anthropic.
-- a new empty message is created and a new event called `ai_indicator.update` with a `state` value of “AI_STATE_THINKING” is sent to the watchers.
+- a new empty message is created and a new event called `ai_indicator.update` with an `ai_state` value of “AI_STATE_THINKING” is sent to the watchers.
 - the message has a custom data field called `ai_generated` with the value of `true`, to tell the clients it’s AI generated. The sender is the AI Bot from the backend.
-- when the response starts streaming, a new `ai_indicator.clear` event is sent to the watchers. In this case, the client should clear up the typing/thinking UI.
-- in the meantime, the response is streamed, and every 15th chunk is updating the message’s text  (which is cumulative of all the new ones since the last update). At the start, more chunks are sent to improve responsiveness (this is handled server side).
-- when the streaming finishes, the message is updated with its final state.
-- we also have an error state `AI_STATE_ERROR` when something went wrong.
+- when the response starts streaming, an `ai_indicator.update` event with an `ai_state` value of “AI_STATE_GENERATING” is sent to the watchers. The client can hide the thinking UI.
+- in the meantime, the response is streamed, and the message’s text is updated every 15th chunk with OpenAI and every 20th chunk with Anthropic (more often at the start). The text is cumulative of all the new chunks since the last update, and the custom field `generating` is set to `true`.
+- when the streaming finishes, the message is updated with its final text and `generating` set to `false`, and an `ai_indicator.clear` event is sent to the watchers. In this case, the client should clear up the typing/thinking UI.
+- we also have an error state: when something goes wrong, an `ai_indicator.update` event with an `ai_state` value of “AI_STATE_ERROR” is sent. No `ai_indicator.clear` event follows it, so the client should treat it as the end of the response.
 - Translations for the texts should be done client side, based on the state. Currently we have:
    - `AI_STATE_THINKING` → “Thinking”
-   - `AI_STATE_CHECKING_SOURCES` → “Checking external sources”
+   - `AI_STATE_EXTERNAL_SOURCES` → “Checking external sources”
    - in the other states, the indicator is not shown.
 
 ## Stopping the AI Agent

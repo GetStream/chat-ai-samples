@@ -56,6 +56,8 @@ app.post('/start-ai-agent', async (req, res) => {
     channel_type = 'messaging',
     platform = AgentPlatform.OPENAI,
     model,
+    reasoning = false,
+    reasoning_effort,
   } = req.body as StartAIAgentRequest;
 
   console.log('Received request to start AI Agent', req.body);
@@ -96,6 +98,7 @@ app.post('/start-ai-agent', async (req, res) => {
       channelType: channelTypeValue,
       platform: resolvedPlatform,
       model: modelId,
+      reasoning: reasoning === true && { effort: reasoning_effort },
     });
     res.json({ message: 'AI Agent started', data: [] });
   } catch (error) {

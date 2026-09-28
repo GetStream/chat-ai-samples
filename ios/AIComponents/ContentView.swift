@@ -29,7 +29,7 @@ struct ContentView: View {
     @State private var draftChannelId: ChannelId?
     
     //TODO: extract this.
-    let predefinedOptions = ["Create a painting in Renaissance-style", "Create a workout plan for resistance training", "Find the decade that a photo is from", "Help me study vocabulary for an exam", "Tell me the best stocks to invest", "Top 5 restaurants in New York"]
+    let predefinedOptions = ["Explain to me the rules of physics", "Create a painting in Renaissance-style", "Create a workout plan for resistance training", "Find the decade that a photo is from", "Help me study vocabulary for an exam", "Tell me the best stocks to invest", "Top 5 restaurants in New York"]
     
     init() {
         _viewModel = StateObject(wrappedValue: .init())
@@ -182,8 +182,12 @@ struct ContentView: View {
             
             if channelController?.channel?.name == nil {
                 Task {
-                    let summary = try await AgentService.shared.summarize(text: messageData.text, platform: "openai") //TODO: fix this
-                    channelController?.updateChannel(name: summary, imageURL: nil, team: nil)
+                    do {
+                        let summary = try await AgentService.shared.summarize(text: messageData.text, platform: "openai") //TODO: fix this
+                        channelController?.updateChannel(name: summary, imageURL: nil, team: nil)
+                    } catch {
+                        log.error(error)
+                    }
                 }
             }
         }

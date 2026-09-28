@@ -120,7 +120,7 @@
 			packageReferences = (
 				8464FB522EABCB5B00933768 /* XCRemoteSwiftPackageReference "stream-chat-swiftui" */,
 				84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */,
-				84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */,
+				84F35D3C2EDA5E6A0014D30F /* XCLocalSwiftPackageReference "../../StreamChatAI" */,
 				84E231212FC47FB200BABAF0 /* XCRemoteSwiftPackageReference "GenUI" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -370,6 +370,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		84F35D3C2EDA5E6A0014D30F /* XCLocalSwiftPackageReference "../../StreamChatAI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../StreamChatAI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -384,20 +391,12 @@
 			repositoryURL = "https://github.com/GetStream/stream-chat-swiftui";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
+				minimumVersion = 5.11.0;
 			};
 		};
 		84E231212FC47FB200BABAF0 /* XCRemoteSwiftPackageReference "GenUI" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/martinmitrevski/GenUI.git";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
-		};
-		84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/GetStream/stream-chat-swift-ai.git";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -423,7 +422,7 @@
 		};
 		84F35D3D2EDA5E6A0014D30F /* StreamChatAI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */;
+			package = 84F35D3C2EDA5E6A0014D30F /* XCLocalSwiftPackageReference "../../StreamChatAI" */;
 			productName = StreamChatAI;
 		};
 /* End XCSwiftPackageProductDependency section */

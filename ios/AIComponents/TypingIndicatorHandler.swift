@@ -75,6 +75,17 @@ class TypingIndicatorHandler: ObservableObject, EventsControllerDelegate, ChatCh
             return
         }
 
+        if
+            let messageEvent = event as? MessageUpdatedEvent,
+            messageEvent.cid == channelId,
+            messageEvent.message.text.isEmpty,
+            messageEvent.message.extraData["reasoning"]?.stringValue?.isEmpty == false
+        {
+            // The message view shows the reasoning, which replaces the "Thinking" indicator.
+            typingIndicatorShown = false
+            return
+        }
+
         if event is AIIndicatorClearEvent {
             typingIndicatorShown = false
             generatingMessageId = nil

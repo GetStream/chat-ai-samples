@@ -1,6 +1,7 @@
 import {
   AgentPlatform,
   type ClientToolDefinition,
+  type ReasoningEffort,
 } from '@stream-io/chat-ai-sdk';
 
 export type StartAIAgentRequest = {
@@ -8,6 +9,9 @@ export type StartAIAgentRequest = {
   channel_type?: string;
   platform?: AgentPlatform;
   model: string;
+  /** Streams the model's reasoning into the in-progress message. */
+  reasoning?: boolean;
+  reasoning_effort?: ReasoningEffort;
 };
 
 export type StopAIAgentRequest = {

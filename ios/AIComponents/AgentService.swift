@@ -19,9 +19,14 @@ class AgentService {
     
     private let urlSession = URLSession.shared
     
-    func setupAgent(channelId: String, model: String? = nil) async throws {
+    func setupAgent(
+        channelId: String,
+        platform: String = "openai",
+        model: String? = "o4-mini",
+        reasoning: Bool = true
+    ) async throws {
         try await executePostRequest(
-            body: AIAgentRequest(channelId: channelId, model: model),
+            body: AIAgentRequest(channelId: channelId, platform: platform, model: model, reasoning: reasoning),
             endpoint: "start-ai-agent"
         )
     }
@@ -68,13 +73,15 @@ class AgentService {
 
 struct AIAgentRequest: Encodable {
     let channelId: String
-    let platform: String = "openai"
+    var platform: String = "openai"
     let model: String?
+    var reasoning: Bool = false
     
     enum CodingKeys: String, CodingKey {
         case channelId = "channel_id"
         case platform
         case model
+        case reasoning
     }
 }
 

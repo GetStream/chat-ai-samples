@@ -74,6 +74,7 @@ When `start-ai-agent` endpoint is called the following happens:
 - when the streaming finishes, the message is updated with its final state.
 - while generating, the client UI shows a “stop generating” button. If a user taps on it, the client should send an event called `ai_indicator.stop`. This stops the generation of the AI response. The message is shown with its current state.
 - we also have an error state `AI_STATE_ERROR` when something went wrong.
+- if the agent was started with `"reasoning": true` (optionally with `"reasoning_effort"`: `minimal`, `low`, `medium` or `high`) and the model supports reasoning (e.g. `gpt-5-mini`), the model's reasoning is streamed into the message's `reasoning` custom field while the indicator is `AI_STATE_THINKING`. The client can show it in place of the text until the answer starts streaming. The field is removed from the final message.
 - Translations for the texts should be done client side, based on the state. Currently we have:
    - `AI_STATE_THINKING` → “Thinking”
    - `AI_STATE_CHECKING_SOURCES` → “Checking external sources”

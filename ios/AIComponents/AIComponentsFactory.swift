@@ -46,7 +46,8 @@ class AIComponentsViewFactory: ViewFactory {
             let displayText = message.extraData["a2ui_display_text"]?.stringValue ?? message.text
             StreamingMessageView(
                 content: displayText,
-                isGenerating: isGenerating
+                isGenerating: isGenerating,
+                reasoning: message.extraData["reasoning"]?.stringValue
             )
             .padding()
         }

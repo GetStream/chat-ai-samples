@@ -23,11 +23,12 @@ class GreetUserTool implements AIClientTool {
 
   @override
   AIToolDefinition get definition => const AIToolDefinition(
-        name: 'greetUser',
-        description: 'Display a native greeting to the user',
-        instructions: 'Use the greetUser tool when the user asks to be '
-            'greeted. The tool shows a greeting alert in the Flutter app.',
-      );
+    name: 'greetUser',
+    description: 'Display a native greeting to the user',
+    instructions:
+        'Use the greetUser tool when the user asks to be '
+        'greeted. The tool shows a greeting alert in the Flutter app.',
+  );
 
   // Tools return actions instead of running them, so the registry decides
   // when they run.
@@ -43,23 +44,24 @@ class SetThemeModeTool implements AIClientTool {
 
   @override
   AIToolDefinition get definition => const AIToolDefinition(
-        name: 'setThemeMode',
-        description: 'Switch the app between its light and dark theme',
-        instructions: 'Use setThemeMode when the user asks for dark mode, '
-            'light mode, or to change how the app looks.',
-        parameters: {
-          'type': 'object',
-          'properties': {
-            'mode': {
-              'type': 'string',
-              'enum': ['light', 'dark', 'system'],
-              'description': 'The theme the app should switch to.',
-            },
-          },
-          'required': ['mode'],
-          'additionalProperties': false,
+    name: 'setThemeMode',
+    description: 'Switch the app between its light and dark theme',
+    instructions:
+        'Use setThemeMode when the user asks for dark mode, '
+        'light mode, or to change how the app looks.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'mode': {
+          'type': 'string',
+          'enum': ['light', 'dark', 'system'],
+          'description': 'The theme the app should switch to.',
         },
-      );
+      },
+      'required': ['mode'],
+      'additionalProperties': false,
+    },
+  );
 
   @override
   List<AIToolAction> handleInvocation(AIToolInvocation invocation) {
@@ -79,7 +81,7 @@ class SetThemeModeTool implements AIClientTool {
 /// while the user switches conversations.
 class ClientToolListener {
   ClientToolListener({required StreamChatClient client, required AIToolRegistry registry})
-      : _registry = registry {
+    : _registry = registry {
     _subscription = client.on(kClientToolInvocationEventType).listen(_onEvent);
   }
 
@@ -88,12 +90,22 @@ class ClientToolListener {
 
   Future<void> _onEvent(Event event) async {
     final invocation = AIToolInvocation.tryParse(event.toClientToolPayload());
-    if (invocation == null) return;
+    if (invocation == null) {
+      debugPrint('Ignoring a malformed client tool invocation: ${event.extraData}');
+      return;
+    }
 
-    // `false` means no tool has that name, e.g. one an older build of the app
-    // registered. Errors thrown inside a tool go to `FlutterError.onError`.
-    final handled = await _registry.dispatch(invocation);
-    if (!handled) debugPrint('No client tool registered as "${invocation.tool.name}"');
+    try {
+      // `false` means no tool has that name, e.g. one an older build of the
+      // app registered. `dispatch` catches errors thrown inside a tool and
+      // reports them to `FlutterError.onError` and the registry's
+      // `onToolError`; the catch below is a backstop so nothing escapes this
+      // listener as an unhandled async error.
+      final handled = await _registry.dispatch(invocation);
+      if (!handled) debugPrint('No client tool registered as "${invocation.tool.name}"');
+    } catch (error, stack) {
+      debugPrint('Client tool "${invocation.tool.name}" failed: $error\n$stack');
+    }
   }
 
   void dispose() => unawaited(_subscription.cancel());
@@ -105,9 +117,9 @@ extension EventClientToolPayload on Event {
   /// `Event` has no `tool` or `args` fields, so the SDK puts them in
   /// [extraData], while `cid` and `message_id` are regular fields.
   Map<String, Object?> toClientToolPayload() => {
-        'type': type,
-        'cid': cid,
-        'message_id': messageId,
-        ...extraData,
-      };
+    'type': type,
+    'cid': cid,
+    'message_id': messageId,
+    ...extraData,
+  };
 }

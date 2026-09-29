@@ -52,3 +52,25 @@ class AgentService {
     return response.data?['summary'] as String?;
   }
 }
+
+/// Turns a failed [AgentService] call into one line for a snackbar.
+///
+/// "Backend unreachable" and "backend said no" need different fixes, so they
+/// read differently. The response body of the latter goes to the console.
+String describeBackendError(Object error) {
+  if (error is! DioException) return 'Unexpected error: $error';
+  switch (error.type) {
+    case DioExceptionType.connectionError:
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+      return 'Backend unreachable. Is ai-sdk-sample running at ${AgentService.baseUrl}?';
+    case DioExceptionType.receiveTimeout:
+      return 'The backend took too long to respond.';
+    case DioExceptionType.badResponse:
+      final response = error.response;
+      debugPrint('Backend responded ${response?.statusCode}: ${response?.data}');
+      return 'The backend returned an error (HTTP ${response?.statusCode}).';
+    default:
+      return 'Request failed: ${error.message ?? error.type.name}';
+  }
+}

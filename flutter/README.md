@@ -96,6 +96,7 @@ For a step-by-step walkthrough of building this, see the
 - Flutter SDK >= 3.41.0
 - A [Stream account](https://getstream.io/try-for-free/) and API key
 - An OpenAI API key, for the backend
+- For iOS: the project uses Swift Package Manager, which must be enabled (`flutter config --enable-swift-package-manager`)
 
 ### 1. Run the backend
 

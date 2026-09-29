@@ -83,9 +83,21 @@ class _HomePageState extends State<HomePage> {
   final _composerController = ChatComposerController(chatOptions: _chatOptions);
   Channel? _activeChannel;
 
+  /// Set while a new conversation is being created, so a second tap on send
+  /// or a suggestion can't create a second channel.
+  bool _isStartingChannel = false;
+
+  /// One start per channel, shared by everything that needs the agent: the
+  /// send path waits on the same future the drawer started. Failed starts are
+  /// removed, so the next send tries again.
+  final _agentStarts = <String, Future<bool>>{};
+
+  /// Channels whose agent is still starting, for the progress hint.
+  final _startingAgents = <String>{};
+
   /// The client-side tools this app offers the AI agent, the same in every
   /// conversation.
-  late final _toolRegistry = AIToolRegistry()
+  late final _toolRegistry = AIToolRegistry(onToolError: _onToolError)
     ..register(GreetUserTool(onGreet: _showGreeting))
     ..register(SetThemeModeTool(onChange: widget.onThemeModeChanged));
 
@@ -94,9 +106,16 @@ class _HomePageState extends State<HomePage> {
 
   late final _channelListController = StreamChannelListController(
     client: widget.client,
-    filter: Filter.in_('members', [widget.client.state.currentUser!.id]),
+    filter: Filter.in_('members', [_currentUserId]),
     limit: 30,
   );
+
+  /// `main` only builds this page after `connectUser` succeeded.
+  String get _currentUserId {
+    final user = widget.client.state.currentUser;
+    assert(user != null, 'HomePage needs a connected user');
+    return user?.id ?? '';
+  }
 
   @override
   void initState() {
@@ -120,29 +139,40 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Greetings!'),
         content: const Text('👋 Hello there! The assistant asked me to greet you.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
         ],
       ),
     );
   }
 
-  /// Starts the AI agent for [channel] and registers the client tools with it.
-  Future<void> _ensureAgentStarted(Channel channel) async {
-    final channelId = channel.id;
-    if (channelId == null) return;
+  void _onToolError(AIToolInvocation invocation, Object error, StackTrace stack) {
+    _showError('The assistant\'s "${invocation.tool.name}" action failed.');
+  }
 
+  /// Starts the AI agent for [channel] and registers the client tools with it.
+  ///
+  /// Returns whether the agent is running. Concurrent callers share one start.
+  Future<bool> _ensureAgentStarted(Channel channel) {
+    final channelId = channel.id;
+    if (channelId == null) return Future.value(false);
+
+    return _agentStarts.putIfAbsent(channelId, () async {
+      if (mounted) setState(() => _startingAgents.add(channelId));
+      final started = await _startAgent(channelId);
+      if (!started) unawaited(_agentStarts.remove(channelId));
+      if (mounted) setState(() => _startingAgents.remove(channelId));
+      return started;
+    });
+  }
+
+  Future<bool> _startAgent(String channelId) async {
     try {
       await _agentService.startAgent(channelId, platform: _aiPlatform);
     } catch (e) {
       debugPrint('Failed to start the AI agent: $e');
       // Without this, the app looks fine but the assistant never replies.
-      _showError(
-        "Couldn't start the assistant. Is ai-sdk-sample running at ${AgentService.baseUrl}?",
-      );
-      return;
+      _showError("Couldn't start the assistant. ${describeBackendError(e)}");
+      return false;
     }
 
     try {
@@ -151,8 +181,12 @@ class _HomePageState extends State<HomePage> {
       await _agentService.registerTools(channelId, _toolRegistry.registrationPayloads());
     } catch (e) {
       debugPrint('Failed to register client tools: $e');
-      _showError("The assistant is running, but can't use app actions like switching the theme.");
+      _showError(
+        "The assistant is running, but can't use app actions like switching the theme. "
+        '${describeBackendError(e)}',
+      );
     }
+    return true;
   }
 
   void _showError(String message) {
@@ -177,41 +211,76 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Puts an unsent message back in the composer, which empties itself as soon
+  /// as send is pressed. Skipped if the user has already typed something new.
+  void _restoreComposer(String text, ChatOption? option, List<XFile> attachments) {
+    if (!mounted || _composerController.hasContent) return;
+    _composerController.textEditingController.text = text;
+    _composerController.addAttachments(attachments);
+    if (option != null) _composerController.selectChatOption(option);
+  }
+
   Future<void> _sendMessage(
     String text, {
     ChatOption? option,
     List<XFile> attachments = const [],
   }) async {
     if (text.trim().isEmpty && attachments.isEmpty) return;
-
-    var channel = _activeChannel;
-    final isNewChannel = channel == null;
-    if (channel == null) {
-      channel = widget.client.channel(
-        'messaging',
-        id: const Uuid().v4(),
-        extraData: {
-          'members': [widget.client.state.currentUser!.id],
-        },
-      );
-      await channel.watch();
-      if (!mounted) return;
-      setState(() => _activeChannel = channel);
-      // Wait for the agent before sending: it only answers messages that
-      // arrive after it has started.
-      await _ensureAgentStarted(channel);
+    if (_isStartingChannel) {
+      _restoreComposer(text, option, attachments);
+      return;
     }
 
-    // `sendMessage` uploads the attachments itself.
-    final messageAttachments = await Future.wait(
-      attachments.map((file) => file.toAttachment(type: AttachmentType.image)),
-    );
-    await channel.sendMessage(
-      Message(
-        text: option == null ? text : '${option.text}: $text',
-        attachments: messageAttachments,
-      ),
-    );
+    var channel = _activeChannel;
+    if (channel == null) {
+      _isStartingChannel = true;
+      try {
+        channel = widget.client.channel(
+          'messaging',
+          id: const Uuid().v4(),
+          extraData: {
+            'members': [_currentUserId],
+          },
+        );
+        await channel.watch();
+      } catch (e) {
+        debugPrint('Failed to create the conversation: $e');
+        _showError("Couldn't start a new conversation. Check your connection and try again.");
+        _restoreComposer(text, option, attachments);
+        return;
+      } finally {
+        _isStartingChannel = false;
+      }
+      if (!mounted) return;
+      setState(() => _activeChannel = channel);
+    }
+
+    // Wait for the agent before sending: it only answers messages that
+    // arrive after it has started. If it can't start, keep the message in the
+    // composer rather than send it to a channel nobody will answer in.
+    if (!await _ensureAgentStarted(channel)) {
+      _restoreComposer(text, option, attachments);
+      return;
+    }
+
+    final isNewChannel = channel.state?.messages.isEmpty ?? true;
+    try {
+      // `sendMessage` uploads the attachments itself.
+      final messageAttachments = await Future.wait(
+        attachments.map((file) => file.toAttachment(type: AttachmentType.image)),
+      );
+      await channel.sendMessage(
+        Message(
+          text: option == null ? text : '${option.text}: $text',
+          attachments: messageAttachments,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Failed to send the message: $e');
+      _showError("Couldn't send your message. Please try again.");
+      _restoreComposer(text, option, attachments);
+      return;
+    }
 
     if (isNewChannel) {
       unawaited(_setChannelTitle(channel, text.trim().isNotEmpty ? text : 'Photo'));
@@ -264,6 +333,7 @@ class _HomePageState extends State<HomePage> {
                           _composerController.isGenerating = isGenerating,
                     ),
             ),
+            if (_startingAgents.contains(activeChannel?.id)) const _StartingAssistantHint(),
             ChatComposer(
               controller: _composerController,
               enableSpeechToText: true,
@@ -274,6 +344,25 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A thin progress bar and a label above the composer while the agent starts.
+class _StartingAssistantHint extends StatelessWidget {
+  const _StartingAssistantHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const LinearProgressIndicator(minHeight: 2),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Text('Starting assistant…', style: Theme.of(context).textTheme.bodySmall),
+        ),
+      ],
     );
   }
 }

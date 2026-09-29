@@ -17,11 +17,7 @@ import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 /// Give it a key derived from the channel (e.g. `ValueKey(channel.cid)`), so
 /// switching channels creates a fresh [TypingStateHandler].
 class ConversationView extends StatefulWidget {
-  const ConversationView({
-    super.key,
-    required this.channel,
-    this.onGeneratingChanged,
-  });
+  const ConversationView({super.key, required this.channel, this.onGeneratingChanged});
 
   final Channel channel;
 
@@ -116,26 +112,32 @@ class AITypingIndicatorStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    // `error` wins over a still-running typewriter: the reply won't finish.
     final indicatorText = switch ((typewriterState, aiTypingState)) {
+      (_, AITypingState.error) => 'Something went wrong. Please try again.',
       (TypewriterState.typing, _) || (_, AITypingState.generating) => 'Generating',
       (_, AITypingState.thinking) => 'Thinking',
       (_, AITypingState.checkingSources) => 'Checking sources',
       _ => null,
     };
+    final isError = aiTypingState == AITypingState.error;
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: switch (indicatorText) {
         final text? => Container(
-            key: ValueKey(text),
-            width: double.infinity,
-            color: Colors.grey[200],
-            padding: const EdgeInsets.all(8),
-            child: AITypingIndicatorView(
-              text: text,
-              textStyle: const TextStyle(color: Colors.black, fontSize: 16),
-            ),
-          ),
+          key: ValueKey(text),
+          width: double.infinity,
+          color: isError ? colors.errorContainer : colors.surfaceContainerHighest,
+          padding: const EdgeInsets.all(8),
+          child: isError
+              ? Text(text, style: TextStyle(color: colors.onErrorContainer, fontSize: 16))
+              : AITypingIndicatorView(
+                  text: text,
+                  textStyle: TextStyle(color: colors.onSurface, fontSize: 16),
+                ),
+        ),
         null => const SizedBox.shrink(),
       },
     );

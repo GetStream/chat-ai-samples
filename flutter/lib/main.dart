@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/home_page.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
+
+import 'src/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

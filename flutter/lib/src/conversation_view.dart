@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/ai_message_item.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/typing_state_handler.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
@@ -11,6 +9,9 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart'
         TypewriterController,
         StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
+
+import 'ai_message_item.dart';
+import 'typing_state_handler.dart';
 
 /// The message list and AI typing indicator for [channel].
 ///

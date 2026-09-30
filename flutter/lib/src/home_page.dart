@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/agent_service.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/client_tools.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/connection_banner.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/conversation_view.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
+
+import 'agent_service.dart';
+import 'client_tools.dart';
+import 'connection_banner.dart';
+import 'conversation_view.dart';
 
 /// Prompts offered on the "new chat" screen, sent as-is when tapped.
 const _landingSuggestions = [

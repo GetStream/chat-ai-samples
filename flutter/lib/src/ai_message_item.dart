@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:stream_chat_ai_assistant_flutter_example/src/code_highlighter.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
     hide StreamingMessageView, TypewriterState;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'code_highlighter.dart';
 
 /// Renders an AI message as streaming markdown, without a bubble or avatar.
 ///

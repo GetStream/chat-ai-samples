@@ -84,9 +84,13 @@ class _HomePageState extends State<HomePage> {
   final _composerController = ChatComposerController(chatOptions: _chatOptions);
   Channel? _activeChannel;
 
-  /// Set while a new conversation is being created, so a second tap on send
-  /// or a suggestion can't create a second channel.
-  bool _isStartingChannel = false;
+  /// The new conversation being created, if any. A second send while it is in
+  /// flight waits on it, so it neither creates a second channel nor gets lost.
+  Future<Channel?>? _channelCreation;
+
+  /// Channels whose first message already claimed the title, so two messages
+  /// sent before the title exists only title the conversation once.
+  final _titleClaims = <String>{};
 
   /// One start per channel, shared by everything that needs the agent: the
   /// send path waits on the same future the drawer started. Failed starts are
@@ -221,39 +225,44 @@ class _HomePageState extends State<HomePage> {
     if (option != null) _composerController.selectChatOption(option);
   }
 
+  /// Creates and opens a new conversation, or returns null after showing an
+  /// error. Concurrent senders share one call through [_channelCreation].
+  Future<Channel?> _createChannel() async {
+    try {
+      final channel = widget.client.channel(
+        'messaging',
+        id: const Uuid().v4(),
+        extraData: {
+          'members': [_currentUserId],
+        },
+      );
+      await channel.watch();
+      if (!mounted) return null;
+      setState(() => _activeChannel = channel);
+      return channel;
+    } catch (e) {
+      debugPrint('Failed to create the conversation: $e');
+      _showError("Couldn't start a new conversation. Check your connection and try again.");
+      return null;
+    } finally {
+      _channelCreation = null;
+    }
+  }
+
   Future<void> _sendMessage(
     String text, {
     ChatOption? option,
     List<XFile> attachments = const [],
   }) async {
     if (text.trim().isEmpty && attachments.isEmpty) return;
-    if (_isStartingChannel) {
-      _restoreComposer(text, option, attachments);
-      return;
-    }
 
     var channel = _activeChannel;
     if (channel == null) {
-      _isStartingChannel = true;
-      try {
-        channel = widget.client.channel(
-          'messaging',
-          id: const Uuid().v4(),
-          extraData: {
-            'members': [_currentUserId],
-          },
-        );
-        await channel.watch();
-      } catch (e) {
-        debugPrint('Failed to create the conversation: $e');
-        _showError("Couldn't start a new conversation. Check your connection and try again.");
+      channel = await (_channelCreation ??= _createChannel());
+      if (channel == null) {
         _restoreComposer(text, option, attachments);
         return;
-      } finally {
-        _isStartingChannel = false;
       }
-      if (!mounted) return;
-      setState(() => _activeChannel = channel);
     }
 
     // Wait for the agent before sending: it only answers messages that
@@ -264,7 +273,8 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    final isNewChannel = channel.state?.messages.isEmpty ?? true;
+    final cid = channel.cid ?? '';
+    final titleIt = (channel.state?.messages.isEmpty ?? true) && _titleClaims.add(cid);
     try {
       // `sendMessage` uploads the attachments itself.
       final messageAttachments = await Future.wait(
@@ -279,11 +289,12 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       debugPrint('Failed to send the message: $e');
       _showError("Couldn't send your message. Please try again.");
+      if (titleIt) _titleClaims.remove(cid);
       _restoreComposer(text, option, attachments);
       return;
     }
 
-    if (isNewChannel) {
+    if (titleIt) {
       unawaited(_setChannelTitle(channel, text.trim().isNotEmpty ? text : 'Photo'));
     }
   }

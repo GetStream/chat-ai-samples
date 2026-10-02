@@ -31,6 +31,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import io.getstream.chat.android.ai.a2ui.A2uiEvent
+import io.getstream.chat.android.ai.a2ui.compose.A2uiSurface
 import io.getstream.chat.android.ai.compose.sample.presentation.chat.ChatUiState
 import io.getstream.chat.android.ai.compose.ui.component.StreamingText
 import io.getstream.chat.android.compose.state.messages.attachments.AttachmentState
@@ -43,14 +45,33 @@ import io.getstream.chat.android.models.Message
  * User messages appear on the right with a colored bubble.
  * Assistant messages fill the width without a bubble.
  *
+ * An assistant message can also have an A2UI surface, rendered below its text.
+ *
  * @param message The message to display
  * @param modifier Modifier to be applied to the message item
+ * @param onA2uiEvent Called with the input changes and actions of the A2UI surface
  */
 @Composable
 public fun ChatMessageItem(
     message: ChatUiState.Message,
     modifier: Modifier = Modifier,
+    onA2uiEvent: (A2uiEvent) -> Unit = {},
 ) {
+    val surface = message.a2ui
+    if (message.role is ChatUiState.Message.Role.Assistant && surface != null) {
+        // Keep the surface out of the SelectionContainer, so that its inputs and buttons
+        // behave like normal controls.
+        Column(modifier = modifier.fillMaxWidth()) {
+            if (message.content.isNotBlank()) {
+                SelectionContainer {
+                    StreamingText(text = message.content, animate = message.isGenerating)
+                }
+            }
+            A2uiSurface(state = surface, onEvent = onA2uiEvent)
+        }
+        return
+    }
+
     val isUser = message.role is ChatUiState.Message.Role.User
 
     SelectionContainer(modifier = modifier) {

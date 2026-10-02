@@ -21,6 +21,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiRepository
 import io.getstream.chat.android.ai.compose.sample.domain.isFromAi
+import io.getstream.chat.android.ai.a2ui.A2uiEvent
+import io.getstream.chat.android.ai.a2ui.A2uiSurfaceState
 import io.getstream.chat.android.ai.compose.ui.component.MessageData
 import io.getstream.chat.android.client.ChatClient
 import io.getstream.chat.android.client.api.state.watchChannelAsState
@@ -99,6 +101,9 @@ class ChatViewModel(
     // Message to be sent once the AI agent is started
     private var pendingMessage: StreamMessage? = null
 
+    // A2UI surface of each message, with the user input applied
+    private val a2uiSurfaces = A2uiSurfaceStore()
+
     init {
         cid.filterNotNull()
             .onEach { _uiState.update { state -> state.copy(isLoading = state.messages.isEmpty()) } }
@@ -124,7 +129,9 @@ class ChatViewModel(
                 val title = channel.name.takeIf(String::isNotBlank) ?: "New Chat"
 
                 val messages = channel.messages
-                    .mapNotNull { message -> message.toChatMessage(currentUserId.value) }
+                    .mapNotNull { message ->
+                        message.toChatMessage(currentUserId.value, a2uiSurfaces.surfaceOf(message))
+                    }
                     .reversed()
 
                 _uiState.update { state ->
@@ -214,6 +221,32 @@ class ChatViewModel(
                 }
             } else {
                 sendMessage(cid, readyMessage)
+            }
+        }
+    }
+
+    /**
+     * Handles an event of the A2UI surface of the message [messageId].
+     *
+     * - [A2uiEvent.ValueChanged] updates the surface, so the input shows the new value.
+     * - [A2uiEvent.ActionTriggered] sends a user message with the action. The backend answers
+     *   these actions itself, without the LLM, so the assistant is not set to Thinking.
+     */
+    fun onA2uiEvent(messageId: String, event: A2uiEvent) {
+        val surface = a2uiSurfaces.apply(messageId, event) ?: return
+        when (event) {
+            is A2uiEvent.ValueChanged -> _uiState.update { state ->
+                state.copy(
+                    messages = state.messages.map { message ->
+                        if (message.id == messageId) message.copy(a2ui = surface) else message
+                    },
+                )
+            }
+
+            is A2uiEvent.ActionTriggered -> {
+                val cid = cid.value ?: return
+                logger.d { "Sending A2UI action ${event.name} from surface ${surface.surfaceId}" }
+                sendMessage(cid, buildA2uiActionMessage(surface.surfaceId, event, currentUserId.value))
             }
         }
     }
@@ -385,8 +418,12 @@ class ChatViewModel(
     }
 }
 
-private fun StreamMessage.toChatMessage(currentUserId: String): ChatUiState.Message? {
-    if (text.isBlank()) {
+private fun StreamMessage.toChatMessage(
+    currentUserId: String,
+    a2ui: A2uiSurfaceState? = null,
+): ChatUiState.Message? {
+    // An assistant message can have only an A2UI surface and no text.
+    if (text.isBlank() && a2ui == null) {
         return null
     }
 
@@ -403,6 +440,7 @@ private fun StreamMessage.toChatMessage(currentUserId: String): ChatUiState.Mess
         content = text,
         attachments = attachments,
         isGenerating = extraData["generating"] == true,
+        a2ui = a2ui,
     )
 }
 

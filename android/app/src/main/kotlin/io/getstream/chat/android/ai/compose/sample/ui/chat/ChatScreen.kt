@@ -195,6 +195,7 @@ fun ChatScreen(
                         ChatMessageItem(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             message = message,
+                            onA2uiEvent = { event -> chatViewModel.onA2uiEvent(message.id, event) },
                         )
                     }
                 }

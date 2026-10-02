@@ -11,6 +11,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        // The A2UI renderer uses java.time, which needs desugaring below API 26.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -46,6 +48,9 @@ dependencies {
     implementation("io.getstream:stream-chat-android-ai-compose:0.3.0")
 
     implementation(libs.bundles.stream.chat)
+
+    implementation(project(":a2ui-compose"))
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     implementation(libs.kotlinx.coroutines.core)
 

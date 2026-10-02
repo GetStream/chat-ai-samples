@@ -19,12 +19,52 @@ This sample project is a ChatGPT-style assistant that demonstrates how the Compo
 - Thinking/checking/generating indicators that mirror the assistant's real status.
 - A drawer-based conversation list with "New chat" and delete actions.
 - Conversation history titles that come from Stream channels so sessions feel persistent.
+- Agent-generated UI (A2UI): restaurant cards, a booking form, and a confirmation, rendered from the AI message.
 
 ## Sample backend project 
 
 You also need a backend that provides the AI responses used by the app. Run one of the provided NodeJS integrations locally, such as the [AI SDK sample](https://github.com/GetStream/chat-ai-samples/tree/main/ai-sdk-sample) or [Langchain sample](https://github.com/GetStream/chat-ai-samples/tree/main/langchain-sample).
 
 When you deploy your backend, update the `baseUrl` you pass into `ChatDependencies` inside `android/app/src/main/kotlin/io/getstream/chat/android/ai/compose/sample/App.kt` so the Retrofit client points at the correct service.
+
+## Agent-generated UI (A2UI)
+
+The sample renders [A2UI](https://a2ui.org) v0.9 surfaces that the AI SDK sample attaches to AI messages. To try it, set these values in `ai-sdk-sample/.env` and start the backend:
+
+```
+OPENAI_API_KEY=your_api_key
+A2UI_PROTOCOL=v0.9
+```
+
+Then ask "Top 3 restaurants in New York", tap **Book Now** on a card, change the booking form, and tap **Confirm reservation**.
+
+The renderer is local to this sample and has two modules:
+
+- `a2ui-core`: pure Kotlin, with JVM unit tests. It parses the `a2ui_v09` message field, applies the messages to an immutable surface state, and resolves data bindings, list templates, and the context of actions.
+- `a2ui-compose`: `A2uiSurface(state, onEvent)`, a stateless Compose renderer. It supports `Text`, `Image`, `Row`, `Column`, `List`, `Card`, `Button`, `TextField`, and `DateTimeInput` from the basic catalog.
+
+`ChatViewModel` keeps the surface of each message, so form input survives scrolling and configuration changes. `ChatMessageItem` renders the surface below the text of the assistant message:
+
+```kotlin
+A2uiSurface(
+    state = surface,
+    onEvent = { event -> chatViewModel.onA2uiEvent(message.id, event) },
+)
+```
+
+When the user taps a button, the sample sends a user message with the action in `a2ui_interaction` (a JSON string) and the surface id in `a2ui_surface_id`. The backend answers these actions itself, without the LLM.
+
+To change how a component looks, override it in the catalog:
+
+```kotlin
+A2uiSurface(
+    state = surface,
+    onEvent = onEvent,
+    catalog = A2uiCatalog.Basic.with("Card") { scope -> MyCard(scope) },
+)
+```
+
+To update the test payloads after a backend change, run `node --import ../../ai-sdk-sample/ts-esm-loader.mjs scripts/generate-fixtures.ts` from `android/a2ui-core`.
 
 ## Project details
 
@@ -69,31 +109,24 @@ Attach it to the bottom of your `LazyColumn` so the indicator appears right wher
 
 ```kotlin
 ChatComposer(
-    text = state.inputText,
-    attachments = state.attachments,
-    onTextChange = chatViewModel::onInputTextChange,
-    onAttachmentsAdded = chatViewModel::onAttachmentsAdded,
-    onAttachmentRemoved = chatViewModel::onAttachmentRemoved,
     onSendClick = chatViewModel::sendMessage,
     onStopClick = chatViewModel::stopStreaming,
-    isStreaming = state.assistantState.isBusy(),
+    isGenerating = state.assistantState.isBusy(),
 )
 ```
 
-Because the component simply emits callbacks, you can plug it into any view model or state container.
+The composer keeps its own text and attachments, and passes them to `onSendClick` as `MessageData`. Because the component simply emits callbacks, you can plug it into any view model or state container.
 
 ### Speech to Text Button
 
 `SpeechToTextButton` wraps Android's speech recognizer with Compose-friendly state so you can turn microphone dictation into prompts. It requests audio permission, toggles recording, and returns partial and final transcripts via a single callback.
 
 ```kotlin
-val speechState = rememberSpeechToTextButtonState()
+val speechState = rememberSpeechToTextButtonState(
+    onFinalResult = { transcript -> onTextChange(transcript) },
+)
 
-SpeechToTextButton(
-    state = speechState,
-) { transcript ->
-    chatViewModel.onInputTextChange(transcript)
-}
+SpeechToTextButton(state = speechState)
 ```
 
 Its included into the composer `ChatComposer` but you can embed it directly inside custom toolbars to let users dictate prompts hands-free.
@@ -115,7 +148,7 @@ if (message.attachments.isNotEmpty()) {
 }
 ```
 
-Combined with the `StorageHelperWrapper`, attachments from device storage are converted into Stream-ready payloads before being sent to your backend and to other clients.
+`ChatViewModel` uses `AttachmentStorageHelper` to convert attachments from device storage into Stream-ready payloads before they are sent to your backend and to other clients.
 
 ### Conversation History Drawer
 

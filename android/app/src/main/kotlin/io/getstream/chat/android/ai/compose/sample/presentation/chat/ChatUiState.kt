@@ -16,6 +16,7 @@
 
 package io.getstream.chat.android.ai.compose.sample.presentation.chat
 
+import io.getstream.chat.android.ai.a2ui.A2uiSurfaceState
 import io.getstream.chat.android.models.Attachment
 
 /**
@@ -53,6 +54,7 @@ data class ChatUiState(
      * @param content The text content of the message
      * @param attachments List of attachments associated with the message
      * @param isGenerating Indicates if the message is currently being generated
+     * @param a2ui The A2UI surface attached to the message, with the user input applied
      */
     data class Message(
         val id: String,
@@ -60,6 +62,7 @@ data class ChatUiState(
         val content: String,
         val attachments: List<Attachment>,
         val isGenerating: Boolean,
+        val a2ui: A2uiSurfaceState? = null,
     ) {
         /**
          * Represents the role of a message sender in the conversation.

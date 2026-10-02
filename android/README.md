@@ -24,7 +24,7 @@ This sample project is a ChatGPT-style assistant that demonstrates how the Compo
 
 You also need a backend that provides the AI responses used by the app. Run one of the provided NodeJS integrations locally, such as the [AI SDK sample](https://github.com/GetStream/chat-ai-samples/tree/main/ai-sdk-sample) or [Langchain sample](https://github.com/GetStream/chat-ai-samples/tree/main/langchain-sample).
 
-When you deploy your backend, update the `baseUrl` you pass into `ChatDependencies` inside `android/stream-chat-android-ai-compose-sample/src/main/kotlin/io/getstream/chat/android/ai/compose/sample/App.kt` so the Retrofit client points at the correct service.
+When you deploy your backend, update the `baseUrl` you pass into `ChatDependencies` inside `android/app/src/main/kotlin/io/getstream/chat/android/ai/compose/sample/App.kt` so the Retrofit client points at the correct service.
 
 ## Project details
 

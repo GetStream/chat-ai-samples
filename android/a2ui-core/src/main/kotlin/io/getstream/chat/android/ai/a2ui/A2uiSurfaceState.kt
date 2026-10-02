@@ -81,9 +81,11 @@ public sealed interface A2uiEvent {
 public object A2uiReducer {
 
     /**
-     * Builds the state of a surface by applying all the messages of [payload].
+     * Builds the state of a surface by applying all the messages of [payload]. Like the
+     * reducer for one message, it creates the surface even when `createSurface` is missing.
      *
-     * @return The state, or null if the surface ends up deleted or never created.
+     * @return The state, or null if the surface ends up deleted or no message of [payload]
+     * is for its surface.
      */
     public fun reduce(payload: A2uiPayload): A2uiSurfaceState? =
         payload.messages

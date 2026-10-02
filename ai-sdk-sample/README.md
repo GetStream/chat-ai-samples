@@ -34,6 +34,9 @@ MEM0_CONFIG_JSON=
 MEM0_DEFAULT_USER_ID=
 MEM0_DEFAULT_AGENT_ID=
 MEM0_DEFAULT_APP_ID=
+
+# Optional A2UI protocol version (v0.8 when not set)
+A2UI_PROTOCOL=
 ```
 
 You can provide a key for either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, depending on which one you would use. The `OPENWEATHER_API_KEY` is optional, in case you want to use the function calling example with OpenAI.
@@ -41,6 +44,15 @@ You can provide a key for either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, depend
 ### Enabling persistent memory with Mem0
 
 If you set `MEM0_API_KEY`, the server will automatically wrap supported Vercel AI SDK providers (OpenAI, Anthropic, Google/Gemini) with the [Mem0](https://docs.mem0.ai/integrations/vercel-ai-sdk) provider so chat history can be stored and retrieved automatically. The Stream user ID from each incoming message becomes the Mem0 `user_id`, which means the same person is remembered across channels, even though each channel spins up its own AI agent. Set `MEM0_DEFAULT_AGENT_ID` (and optionally `MEM0_DEFAULT_APP_ID`) to the same value across deployments to guarantee that memories span every channel. You can further customize the behavior by supplying JSON in `MEM0_CONFIG_JSON` or overriding IDs with the dedicated env vars listed above. When Mem0 is disabled or the chosen AI provider is not yet supported, the server falls back to the base model without memory.
+
+### Choosing the A2UI protocol version
+
+For restaurant requests (for example "Top 3 restaurants in New York"), the server attaches agent-generated UI ([A2UI](https://a2ui.org)) to the AI message. The booking form and the confirmation are A2UI messages too. Set `A2UI_PROTOCOL` to choose the protocol version:
+
+- Not set (default): the server sends A2UI v0.8 in the `a2ui` message field. The iOS sample renders this version.
+- `A2UI_PROTOCOL=v0.9`: the server sends A2UI v0.9 in the `a2ui_v09` message field. The Android sample renders this version.
+
+The server sends only one of the two fields, because both together are larger than the 5 KB limit for message custom data. With `v0.9`, the iOS sample shows only the plain text of the message.
 
 ### Install the dependencies
 

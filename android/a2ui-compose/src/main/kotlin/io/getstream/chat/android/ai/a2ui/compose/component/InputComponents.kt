@@ -78,7 +78,8 @@ public fun A2uiTextField(scope: A2uiComponentScope) {
     val path = scope.context.boundPath("value")
     val value = scope.context.string("value").orEmpty()
     val variant = scope.context.string("variant")
-    val validation = scope.context.string("validationRegexp")?.let { runCatching { Regex(it) }.getOrNull() }
+    val pattern = scope.context.string("validationRegexp")
+    val validation = remember(pattern) { pattern?.let { runCatching { Regex(it) }.getOrNull() } }
 
     // While the user types, the field is the source of truth: the value in the state can be
     // an older text that is still on its way back. A change from outside (e.g. a new data

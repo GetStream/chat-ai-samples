@@ -16,39 +16,68 @@
 
 package io.getstream.chat.android.ai.compose.sample.ui.components
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 /**
- * Provides a fresh ViewModelStore for the composable content.
- * The store is cleared when the composable leaves the composition.
+ * Provides a ViewModelStore for the composable content, identified by [keys].
+ *
+ * The store is kept across configuration changes (e.g. a rotation), so the ViewModels of the
+ * content keep their state. It is cleared when the content leaves the composition for another
+ * reason, e.g. when the user opens another chat.
  */
 @Composable
 internal fun ViewModelStore(
     vararg keys: Any?,
     content: @Composable () -> Unit,
 ) {
-    // Create a fresh ViewModelStore on each new composition
-    val viewModelStore = remember { ViewModelStore() }
+    val key = keys.toList()
+    val holder = viewModel<ViewModelStoreHolder>()
+    val activity = LocalActivity.current
+    val viewModelStore = remember(holder, key) { holder.storeFor(key) }
     val viewModelStoreOwner = remember(viewModelStore) {
         object : ViewModelStoreOwner {
             override val viewModelStore: ViewModelStore get() = viewModelStore
         }
     }
 
-    // Clear the store when the composition is disposed
-    DisposableEffect(keys) {
+    // Clear the store when the content is disposed, unless the activity is only recreated
+    DisposableEffect(holder, key) {
         onDispose {
-            viewModelStore.clear()
+            if (activity?.isChangingConfigurations != true) {
+                holder.clear(key)
+            }
         }
     }
 
     CompositionLocalProvider(LocalViewModelStoreOwner provides viewModelStoreOwner) {
         content()
+    }
+}
+
+/**
+ * Keeps the ViewModelStores of [ViewModelStore] by key, in the scope of the activity.
+ */
+internal class ViewModelStoreHolder : ViewModel() {
+
+    private val stores = mutableMapOf<List<Any?>, ViewModelStore>()
+
+    fun storeFor(key: List<Any?>): ViewModelStore = stores.getOrPut(key) { ViewModelStore() }
+
+    fun clear(key: List<Any?>) {
+        stores.remove(key)?.clear()
+    }
+
+    override fun onCleared() {
+        stores.values.forEach(ViewModelStore::clear)
+        stores.clear()
     }
 }

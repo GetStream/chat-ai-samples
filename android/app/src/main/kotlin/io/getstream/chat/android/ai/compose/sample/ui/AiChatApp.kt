@@ -127,12 +127,15 @@ public fun AiChatApp(
             val navigationKey = selectedConversationId ?: "new-chat-$newChatRevision"
 
             AnimatedContent(
-                targetState = navigationKey,
-            ) { navigationKey ->
+                targetState = selectedConversationId to navigationKey,
+            ) { (conversationId, navigationKey) ->
                 ViewModelStore(navigationKey) {
                     ChatScreen(
                         modifier = Modifier.fillMaxSize(),
-                        conversationId = selectedConversationId,
+                        // Use the id of this content, not selectedConversationId: while the
+                        // transition runs, the outgoing content must keep its own conversation,
+                        // or it creates a second ViewModel that stops the agent when disposed.
+                        conversationId = conversationId,
                         chatDependencies = chatDependencies,
                         onMenuClick = { scope.launch { drawerState.open() } },
                         onNewChatClick = {

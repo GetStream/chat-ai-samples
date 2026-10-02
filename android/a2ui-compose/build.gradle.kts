@@ -24,6 +24,16 @@ android {
         compose = true
     }
 
+    // A library has no targetSdk, so its test APK would target minSdk. Android then shows a
+    // "This app was built for an older version of Android" dialog during the instrumented tests.
+    testOptions {
+        targetSdk = 36
+    }
+
+    lint {
+        targetSdk = 36
+    }
+
     sourceSets {
         // The instrumented tests render the same backend payloads as the core unit tests.
         getByName("androidTest").assets.srcDir("../a2ui-core/src/test/resources")

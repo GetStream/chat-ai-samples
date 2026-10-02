@@ -9,7 +9,7 @@ lifecycle = "2.9.4"
 activityCompose = "1.11.0"
 composeBom = "2025.11.00"
 streamLog = "1.3.4"
-streamChatAndroid = "6.27.0"
+streamChatAndroid = "7.13.0"
 retrofit = "2.11.0"
 okhttp = "4.12.0"
 moshi = "1.15.1"
@@ -30,8 +30,6 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 stream-log = { group = "io.getstream", name = "stream-log", version.ref = "streamLog" }
 stream-chat-android-client = { group = "io.getstream", name = "stream-chat-android-client", version.ref = "streamChatAndroid" }
-stream-chat-android-state = { group = "io.getstream", name = "stream-chat-android-state", version.ref = "streamChatAndroid" }
-stream-chat-android-offline = { group = "io.getstream", name = "stream-chat-android-offline", version.ref = "streamChatAndroid" }
 stream-chat-android-compose = { group = "io.getstream", name = "stream-chat-android-compose", version.ref = "streamChatAndroid" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
@@ -49,8 +47,6 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 stream-chat = [
     "stream-log",
     "stream-chat-android-client",
-    "stream-chat-android-state",
-    "stream-chat-android-offline",
     "stream-chat-android-compose"
 ]
 retrofit = [

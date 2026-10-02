@@ -59,7 +59,6 @@ import io.getstream.chat.android.ai.compose.sample.ui.components.ChatScaffold
 import io.getstream.chat.android.ai.compose.sample.ui.components.ChatTopBar
 import io.getstream.chat.android.ai.compose.ui.component.AITypingIndicator
 import io.getstream.chat.android.ai.compose.ui.component.ChatComposer
-import io.getstream.chat.android.compose.ui.util.StorageHelperWrapper
 import kotlinx.coroutines.delay
 
 @Composable
@@ -77,7 +76,7 @@ fun ChatScreen(
         factory = ChatViewModelFactory(
             chatAiRepository = chatDependencies.chatAiRepository,
             conversationId = conversationId,
-            storageHelper = StorageHelperWrapper(appContext),
+            appContext = appContext,
         ),
     )
 
@@ -147,14 +146,9 @@ fun ChatScreen(
                             ),
                         ),
                     ),
-                text = state.inputText,
-                attachments = state.attachments,
-                onAttachmentsAdded = chatViewModel::onAttachmentsAdded,
-                onAttachmentRemoved = chatViewModel::onAttachmentRemoved,
-                onTextChange = chatViewModel::onInputTextChange,
                 onSendClick = chatViewModel::sendMessage,
                 onStopClick = chatViewModel::stopStreaming,
-                isStreaming = isAssistantBusy,
+                isGenerating = isAssistantBusy,
             )
         },
     ) { contentPadding ->

@@ -43,7 +43,7 @@ kotlin {
 }
 
 dependencies {
-    implementation("io.getstream:stream-chat-android-ai-compose:0.1.0")
+    implementation("io.getstream:stream-chat-android-ai-compose:0.3.0")
 
     implementation(libs.bundles.stream.chat)
 

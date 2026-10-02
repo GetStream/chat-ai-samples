@@ -16,25 +16,28 @@
 
 package io.getstream.chat.android.ai.compose.sample.presentation.chat
 
-import android.net.Uri
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiRepository
 import io.getstream.chat.android.ai.compose.sample.domain.isFromAi
+import io.getstream.chat.android.ai.compose.ui.component.MessageData
 import io.getstream.chat.android.client.ChatClient
+import io.getstream.chat.android.client.api.state.watchChannelAsState
 import io.getstream.chat.android.client.channel.subscribeFor
 import io.getstream.chat.android.client.events.AIIndicatorClearEvent
 import io.getstream.chat.android.client.events.AIIndicatorStopEvent
 import io.getstream.chat.android.client.events.AIIndicatorUpdatedEvent
 import io.getstream.chat.android.client.events.ChatEvent
 import io.getstream.chat.android.client.extensions.cidToTypeAndId
-import io.getstream.chat.android.compose.ui.util.StorageHelperWrapper
+import io.getstream.chat.android.core.internal.InternalStreamChatApi
 import io.getstream.chat.android.models.ChannelCapabilities
 import io.getstream.chat.android.models.EventType
 import io.getstream.chat.android.models.User
-import io.getstream.chat.android.state.extensions.watchChannelAsState
+import io.getstream.chat.android.ui.common.helper.internal.AttachmentStorageHelper
 import io.getstream.log.taggedLogger
 import io.getstream.result.Error
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +53,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import io.getstream.chat.android.models.Message as StreamMessage
 
@@ -59,17 +63,20 @@ import io.getstream.chat.android.models.Message as StreamMessage
  *
  * @param chatClient The Stream Chat client instance
  * @param chatAiRepository Repository for Chat AI operations
+ * @param appContext Application context, used to read attachment files from picker URIs.
  * @param conversationId Optional conversation ID. If null, a new conversation will be created on first message.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, InternalStreamChatApi::class)
 class ChatViewModel(
     private val chatClient: ChatClient,
     private val chatAiRepository: ChatAiRepository,
-    private val storageHelper: StorageHelperWrapper,
+    appContext: Context,
     conversationId: String?,
 ) : ViewModel() {
 
     private val logger by taggedLogger()
+
+    private val attachmentStorageHelper = AttachmentStorageHelper(appContext)
 
     private val cid = MutableStateFlow(conversationId)
 
@@ -140,86 +147,74 @@ class ChatViewModel(
     }
 
     /**
-     * Updates the input text state when the user types in the input field.
-     */
-    fun onInputTextChange(text: String) {
-        _uiState.update { state -> state.copy(inputText = text) }
-    }
-
-    /**
-     * Adds attachments to the current composer state.
-     *
-     * @param attachments List of URIs representing the attachments to add
-     */
-    fun onAttachmentsAdded(attachments: List<Uri>) {
-        _uiState.update { state -> state.copy(attachments = state.attachments + attachments) }
-    }
-
-    /**
-     * Removes an attachment from the current composer state.
-     *
-     * @param attachment URI of the attachment to remove
-     */
-    fun onAttachmentRemoved(attachment: Uri) {
-        _uiState.update { state -> state.copy(attachments = state.attachments - attachment) }
-    }
-
-    /**
      * Sends a message via Stream Chat.
      *
      * This function:
      * - Validates that the input text is not empty and the assistant is not busy
-     * - Optimistically updates the UI by adding the message, clearing the input, and setting assistant state to Thinking
+     * - Builds lightweight attachments off the main thread
+     * - Optimistically updates the UI by adding the message and setting assistant state to Thinking
+     * - Copies the attachment files to the local cache before sending
      * - If no channel exists (cid is null), creates a new channel first and queues the message to be sent after the AI agent starts
      * - If a channel exists, sends the message immediately
+     *
+     * @param data The text and attachments from the composer.
      */
-    fun sendMessage() {
-        val text = _uiState.value.inputText.trim()
+    fun sendMessage(data: MessageData) {
+        val text = data.text.trim()
         if (text.isEmpty() || _uiState.value.assistantState.isBusy()) {
             return
         }
 
-        val message = StreamMessage(
-            text = text,
-            user = User(id = currentUserId.value),
-            // Note: This accessing data on the disk, we should defer it to a background thread
-            attachments = storageHelper.getAttachmentsFromUris(_uiState.value.attachments.toList()),
-        )
-
-        // Optimistically add the message to UI
-        _uiState.update { state ->
-            state.copy(
-                messages = listOfNotNull(message.toChatMessage(currentUserId.value)) + state.messages,
-                inputText = "",
-                attachments = emptySet(),
-                assistantState = ChatUiState.AssistantState.Thinking,
-            )
-        }
-
-        val cid = cid.value
-
-        if (cid == null) {
-            // Create a new channel before sending the first message
-            // Add a pending message to send after AI agent starts
-            pendingMessage = message
-
-            val memberIds = listOf(currentUserId.value)
-            chatClient.createChannel(
-                channelType = "messaging",
-                channelId = UUID.randomUUID().toString(),
-                memberIds = memberIds,
-                extraData = emptyMap(),
-            ).enqueue { result ->
-                result.onSuccess { newChannel ->
-                    val newCid = newChannel.cid
-                    this@ChatViewModel.cid.value = newCid // Trigger channel observation and AI agent start
-                    logger.d { "Created new channel with cid: $newCid" }
-                }.onError { e ->
-                    logger.e { "Failed to create channel: ${e.message}" }
-                }
+        viewModelScope.launch {
+            val lightweightAttachments = withContext(Dispatchers.IO) {
+                val metadata = attachmentStorageHelper.resolveMetadata(data.attachments.toList())
+                attachmentStorageHelper.toAttachments(metadata)
             }
-        } else {
-            sendMessage(cid, message)
+
+            val message = StreamMessage(
+                text = text,
+                user = User(id = currentUserId.value),
+                attachments = lightweightAttachments,
+            )
+
+            // Optimistically add the message to UI
+            _uiState.update { state ->
+                state.copy(
+                    messages = listOfNotNull(message.toChatMessage(currentUserId.value)) + state.messages,
+                    assistantState = ChatUiState.AssistantState.Thinking,
+                )
+            }
+
+            // Copies picker URIs into local cache files. Suspend; dispatches IO internally.
+            val readyMessage = message.copy(
+                attachments = attachmentStorageHelper.resolveAttachmentFiles(message.attachments),
+            )
+
+            val cid = cid.value
+
+            if (cid == null) {
+                // Create a new channel before sending the first message
+                // Add a pending message to send after AI agent starts
+                pendingMessage = readyMessage
+
+                val memberIds = listOf(currentUserId.value)
+                chatClient.createChannel(
+                    channelType = "messaging",
+                    channelId = UUID.randomUUID().toString(),
+                    memberIds = memberIds,
+                    extraData = emptyMap(),
+                ).enqueue { result ->
+                    result.onSuccess { newChannel ->
+                        val newCid = newChannel.cid
+                        this@ChatViewModel.cid.value = newCid // Trigger channel observation and AI agent start
+                        logger.d { "Created new channel with cid: $newCid" }
+                    }.onError { e ->
+                        logger.e { "Failed to create channel: ${e.message}" }
+                    }
+                }
+            } else {
+                sendMessage(cid, readyMessage)
+            }
         }
     }
 

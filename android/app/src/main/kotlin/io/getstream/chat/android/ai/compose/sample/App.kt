@@ -19,11 +19,9 @@ package io.getstream.chat.android.ai.compose.sample
 import android.app.Application
 import android.os.StrictMode
 import io.getstream.chat.android.client.ChatClient
+import io.getstream.chat.android.client.api.ChatClientConfig
 import io.getstream.chat.android.client.logger.ChatLogLevel
 import io.getstream.chat.android.models.User
-import io.getstream.chat.android.offline.plugin.factory.StreamOfflinePluginFactory
-import io.getstream.chat.android.state.plugin.config.StatePluginConfig
-import io.getstream.chat.android.state.plugin.factory.StreamStatePluginFactory
 import io.getstream.log.AndroidStreamLogger
 import io.getstream.log.streamLog
 
@@ -53,13 +51,8 @@ class App : Application() {
         AndroidStreamLogger.installOnDebuggableApp(this)
 
         val logLevel = if (BuildConfig.DEBUG) ChatLogLevel.ALL else ChatLogLevel.NOTHING
-        val offlinePluginFactory = StreamOfflinePluginFactory(appContext = applicationContext)
-        val statePluginFactory = StreamStatePluginFactory(
-            config = StatePluginConfig(backgroundSyncEnabled = true, userPresence = true),
-            appContext = applicationContext,
-        )
         val chatClient = ChatClient.Builder("uun7ywwamhs9", applicationContext)
-            .withPlugins(offlinePluginFactory, statePluginFactory)
+            .config(ChatClientConfig(userPresence = true))
             .logLevel(logLevel)
             .build()
 

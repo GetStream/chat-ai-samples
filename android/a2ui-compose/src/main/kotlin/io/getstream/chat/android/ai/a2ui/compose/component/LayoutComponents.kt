@@ -37,6 +37,10 @@ import io.getstream.chat.android.ai.a2ui.compose.A2uiComponentScope
 
 /**
  * Renders `Row`: children side by side, with `justify`, `align` and the child `weight`.
+ *
+ * A child without `weight` gets at most an equal share of the width and keeps its own size
+ * inside it. Without this, a child that fills the width (e.g. a `TextField`) would leave no
+ * space for the children after it.
  */
 @Composable
 public fun A2uiRow(scope: A2uiComponentScope) {
@@ -60,7 +64,7 @@ public fun A2uiRow(scope: A2uiComponentScope) {
                 scope.Child(
                     node = child,
                     modifier = Modifier
-                        .then(if (weight != null) Modifier.weight(weight) else Modifier)
+                        .weight(weight ?: 1f, fill = weight != null)
                         .then(if (align == "stretch") Modifier.fillMaxHeight() else Modifier),
                 )
             }

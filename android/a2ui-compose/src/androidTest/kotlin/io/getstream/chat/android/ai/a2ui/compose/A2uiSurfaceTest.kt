@@ -83,6 +83,9 @@ internal class A2uiSurfaceTest {
 
     private lateinit var inputModeManager: InputModeManager
 
+    /** The OK button of the pickers, in the language of the device. */
+    private val ok = InstrumentationRegistry.getInstrumentation().targetContext.getString(android.R.string.ok)
+
     /** Renders [initial] like an owner would: value changes are applied to the state. */
     private fun render(initial: A2uiSurfaceState, catalog: A2uiCatalog = A2uiCatalog.Basic) {
         composeRule.setContent {
@@ -178,8 +181,8 @@ internal class A2uiSurfaceTest {
         val field = composeRule.onNodeWithTag("booking-time")
         field.assertIsEnabled()
         field.performClick()
-        composeRule.onNodeWithText("OK").performClick() // Date picker
-        composeRule.onNodeWithText("OK").performClick() // Time picker
+        composeRule.onNodeWithText(ok).performClick() // Date picker
+        composeRule.onNodeWithText(ok).performClick() // Time picker
 
         val change = events.single() as A2uiEvent.ValueChanged
         assertEquals("/reservationTime", change.path)
@@ -208,7 +211,7 @@ internal class A2uiSurfaceTest {
 
         composeRule.onNodeWithTag("booking-time").performSemanticsAction(SemanticsActions.OnClick)
 
-        composeRule.onNodeWithText("OK").assertIsDisplayed()
+        composeRule.onNodeWithText(ok).assertIsDisplayed()
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -223,7 +226,7 @@ internal class A2uiSurfaceTest {
         field.assertIsFocused()
         field.performKeyInput { pressKey(Key.Enter) }
 
-        composeRule.onNodeWithText("OK").assertIsDisplayed()
+        composeRule.onNodeWithText(ok).assertIsDisplayed()
     }
 
     @Test

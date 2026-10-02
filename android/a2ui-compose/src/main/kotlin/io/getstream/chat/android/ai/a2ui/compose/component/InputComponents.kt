@@ -16,8 +16,8 @@
 
 package io.getstream.chat.android.ai.a2ui.compose.component
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,9 +40,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -110,6 +115,9 @@ public fun A2uiTextField(scope: A2uiComponentScope) {
  * Renders `DateTimeInput` as a read-only field that opens a date picker, a time picker, or
  * both, depending on `enableDate` and `enableTime`. The `value` is ISO 8601 in the data model
  * and is shown in the local format of the device.
+ *
+ * The whole field, including its icon, is one button: it opens the picker on a tap, with the
+ * keyboard (Enter, D-pad center), TalkBack and Switch Access.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,29 +136,37 @@ public fun A2uiDateTimeInput(scope: A2uiComponentScope) {
     var pickedDate by rememberSaveable { mutableStateOf<String?>(null) }
     val initial = dateTime ?: ZonedDateTime.now(zone)
 
-    val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions.collect { interaction ->
-            if (interaction is PressInteraction.Release) picker = if (enableDate) Picker.Date else Picker.Time
-        }
-    }
-
-    // readOnly (not disabled) keeps the normal colors of an input.
-    OutlinedTextField(
-        value = shown,
-        onValueChange = {},
-        readOnly = true,
-        singleLine = true,
-        label = label?.let { { Text(it) } },
-        trailingIcon = {
-            Icon(painterResource(R.drawable.a2ui_ic_calendar), contentDescription = null)
-        },
-        interactionSource = interactionSource,
+    Box(
         modifier = scope.modifier
             .fillMaxWidth()
-            .padding(LocalA2uiLeafMargin.current)
-            .testTag(scope.component.id),
-    )
+            .padding(LocalA2uiLeafMargin.current),
+    ) {
+        // readOnly (not disabled) keeps the normal colors of an input. The field is only for
+        // the look: the layer on top handles input and accessibility.
+        OutlinedTextField(
+            value = shown,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = label?.let { { Text(it) } },
+            trailingIcon = {
+                Icon(painterResource(R.drawable.a2ui_ic_calendar), contentDescription = null)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusProperties { canFocus = false }
+                .clearAndSetSemantics {},
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(role = Role.Button) {
+                    picker = if (enableDate) Picker.Date else Picker.Time
+                }
+                .semantics { contentDescription = listOfNotNull(label, shown.ifEmpty { null }).joinToString(", ") }
+                .testTag(scope.component.id),
+        )
+    }
 
     fun write(date: LocalDate, time: LocalTime) {
         val value = A2uiDateTime.format(ZonedDateTime.of(date, time, zone), enableDate, enableTime)

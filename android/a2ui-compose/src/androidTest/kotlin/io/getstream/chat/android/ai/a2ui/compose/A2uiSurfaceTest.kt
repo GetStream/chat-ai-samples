@@ -22,7 +22,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.InputModeManager
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionContains
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -30,6 +43,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -59,10 +75,13 @@ internal class A2uiSurfaceTest {
 
     private val events = mutableListOf<A2uiEvent>()
 
+    private lateinit var inputModeManager: InputModeManager
+
     /** Renders [initial] like an owner would: value changes are applied to the state. */
     private fun render(initial: A2uiSurfaceState, catalog: A2uiCatalog = A2uiCatalog.Basic) {
         composeRule.setContent {
             var state by remember { mutableStateOf(initial) }
+            inputModeManager = LocalInputModeManager.current
             MaterialTheme {
                 A2uiSurface(
                     state = state,
@@ -147,6 +166,40 @@ internal class A2uiSurfaceTest {
             A2uiDateTime.parse(change.value as String, zone)?.toInstant(),
         )
         assertNotNull(Regex("""\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})""").matchEntire(change.value as String))
+    }
+
+    @Test
+    fun dateTimeInput_isOneButtonWithItsLabelAndValue() {
+        render(fixture("booking-form"))
+
+        composeRule.onNodeWithTag("booking-time")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHasClickAction()
+            .assertContentDescriptionContains("Reservation time", substring = true)
+    }
+
+    @Test
+    fun dateTimeInput_opensWithTheAccessibilityClickAction() {
+        render(fixture("booking-form"))
+
+        composeRule.onNodeWithTag("booking-time").performSemanticsAction(SemanticsActions.OnClick)
+
+        composeRule.onNodeWithText("OK").assertIsDisplayed()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun dateTimeInput_opensWithTheEnterKey() {
+        render(fixture("booking-form"))
+
+        // Like a hardware keyboard user: in keyboard mode, the field can take focus.
+        composeRule.runOnIdle { inputModeManager.requestInputMode(InputMode.Keyboard) }
+        val field = composeRule.onNodeWithTag("booking-time")
+        field.performSemanticsAction(SemanticsActions.RequestFocus)
+        field.assertIsFocused()
+        field.performKeyInput { pressKey(Key.Enter) }
+
+        composeRule.onNodeWithText("OK").assertIsDisplayed()
     }
 
     @Test

@@ -17,6 +17,7 @@
 package io.getstream.chat.android.ai.compose.sample
 
 import io.getstream.chat.android.ai.compose.sample.data.api.ChatAiApi
+import io.getstream.chat.android.ai.compose.sample.data.repository.AiAgentSessions
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiRepository
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiService
 import io.getstream.chat.android.ai.compose.sample.di.NetworkModule
@@ -32,6 +33,9 @@ public class ChatDependencies(
 ) {
 
     public val chatAiRepository: ChatAiRepository
+
+    /** Tracks which chat screens use the AI agent of each channel. */
+    public val aiAgentSessions: AiAgentSessions = AiAgentSessions()
 
     init {
         val moshi = networkModule.createMoshi()

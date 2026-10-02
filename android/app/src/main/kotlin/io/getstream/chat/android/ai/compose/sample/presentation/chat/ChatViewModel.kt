@@ -19,6 +19,7 @@ package io.getstream.chat.android.ai.compose.sample.presentation.chat
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.getstream.chat.android.ai.compose.sample.data.repository.AiAgentSessions
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiRepository
 import io.getstream.chat.android.ai.compose.sample.domain.isFromAi
 import io.getstream.chat.android.ai.a2ui.A2uiEvent
@@ -65,6 +66,7 @@ import io.getstream.chat.android.models.Message as StreamMessage
  *
  * @param chatClient The Stream Chat client instance
  * @param chatAiRepository Repository for Chat AI operations
+ * @param aiAgentSessions Tracks which chat screens use the AI agent of each channel
  * @param appContext Application context, used to read attachment files from picker URIs.
  * @param conversationId Optional conversation ID. If null, a new conversation will be created on first message.
  */
@@ -72,6 +74,7 @@ import io.getstream.chat.android.models.Message as StreamMessage
 class ChatViewModel(
     private val chatClient: ChatClient,
     private val chatAiRepository: ChatAiRepository,
+    private val aiAgentSessions: AiAgentSessions,
     appContext: Context,
     conversationId: String?,
 ) : ViewModel() {
@@ -108,6 +111,7 @@ class ChatViewModel(
         cid.filterNotNull()
             .onEach { _uiState.update { state -> state.copy(isLoading = state.messages.isEmpty()) } }
             // Start the AI agent
+            .onEach(aiAgentSessions::acquire)
             .onEach(::startAIAgentForChannel)
             // Subscribe to channel events
             .onEach { cid ->
@@ -400,7 +404,9 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
-        cid.value?.let(::stopAIAgent)
+        // Another screen can still use the agent of this channel, e.g. the same chat opened
+        // from the drawer while this new chat is leaving.
+        cid.value?.takeIf(aiAgentSessions::release)?.let(::stopAIAgent)
     }
 
     private fun stopAIAgent(cid: String, onSuccess: () -> Unit = {}) {

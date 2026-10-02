@@ -19,6 +19,7 @@ package io.getstream.chat.android.ai.compose.sample.di
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import io.getstream.chat.android.ai.compose.sample.data.repository.AiAgentSessions
 import io.getstream.chat.android.ai.compose.sample.data.repository.ChatAiRepository
 import io.getstream.chat.android.ai.compose.sample.presentation.chat.ChatViewModel
 import io.getstream.chat.android.client.ChatClient
@@ -27,6 +28,7 @@ import io.getstream.chat.android.client.ChatClient
  * Factory for creating ChatViewModel with dependencies.
  *
  * @param chatAiRepository Repository that powers AI requests for the chat experience.
+ * @param aiAgentSessions Tracks which chat screens use the AI agent of each channel.
  * @param chatClient The Stream Chat client instance. Defaults to [ChatClient.instance] if not provided.
  * @param conversationId The optional channel ID (CID) for an existing conversation.
  * If null, a new conversation will be created when the first message is sent.
@@ -34,6 +36,7 @@ import io.getstream.chat.android.client.ChatClient
  */
 class ChatViewModelFactory(
     private val chatAiRepository: ChatAiRepository,
+    private val aiAgentSessions: AiAgentSessions,
     private val chatClient: ChatClient = ChatClient.instance(),
     private val conversationId: String?,
     private val appContext: Context,
@@ -54,6 +57,7 @@ class ChatViewModelFactory(
         return ChatViewModel(
             chatClient = chatClient,
             chatAiRepository = chatAiRepository,
+            aiAgentSessions = aiAgentSessions,
             conversationId = conversationId,
             appContext = appContext,
         ) as T

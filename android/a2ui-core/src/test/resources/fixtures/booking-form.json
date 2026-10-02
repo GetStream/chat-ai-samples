@@ -1,0 +1,137 @@
+{
+  "version": "v0.9",
+  "surfaceId": "restaurant-booking-form",
+  "messages": [
+    {
+      "version": "v0.9",
+      "createSurface": {
+        "surfaceId": "restaurant-booking-form",
+        "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+      }
+    },
+    {
+      "version": "v0.9",
+      "updateComponents": {
+        "surfaceId": "restaurant-booking-form",
+        "components": [
+          {
+            "id": "root",
+            "component": "Column",
+            "children": [
+              "booking-title",
+              "booking-image",
+              "booking-address",
+              "booking-party",
+              "booking-time",
+              "booking-dietary",
+              "booking-submit"
+            ]
+          },
+          {
+            "id": "booking-title",
+            "component": "Text",
+            "variant": "h2",
+            "text": {
+              "path": "/title"
+            }
+          },
+          {
+            "id": "booking-image",
+            "component": "Image",
+            "url": {
+              "path": "/imageUrl"
+            },
+            "fit": "cover",
+            "variant": "mediumFeature"
+          },
+          {
+            "id": "booking-address",
+            "component": "Text",
+            "text": {
+              "path": "/address"
+            }
+          },
+          {
+            "id": "booking-party",
+            "component": "TextField",
+            "label": "Party size",
+            "variant": "number",
+            "value": {
+              "path": "/partySize"
+            }
+          },
+          {
+            "id": "booking-time",
+            "component": "DateTimeInput",
+            "label": "Reservation time",
+            "enableDate": true,
+            "enableTime": true,
+            "value": {
+              "path": "/reservationTime"
+            }
+          },
+          {
+            "id": "booking-dietary",
+            "component": "TextField",
+            "label": "Dietary requirements",
+            "value": {
+              "path": "/dietary"
+            }
+          },
+          {
+            "id": "booking-submit",
+            "component": "Button",
+            "child": "booking-submit-text",
+            "variant": "primary",
+            "action": {
+              "event": {
+                "name": "submit_booking",
+                "context": {
+                  "restaurantName": {
+                    "path": "/restaurantName"
+                  },
+                  "address": {
+                    "path": "/address"
+                  },
+                  "imageUrl": {
+                    "path": "/imageUrl"
+                  },
+                  "partySize": {
+                    "path": "/partySize"
+                  },
+                  "reservationTime": {
+                    "path": "/reservationTime"
+                  },
+                  "dietary": {
+                    "path": "/dietary"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "booking-submit-text",
+            "component": "Text",
+            "text": "Confirm reservation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "v0.9",
+      "updateDataModel": {
+        "surfaceId": "restaurant-booking-form",
+        "path": "/",
+        "value": {
+          "title": "Reserve a table at Xi'an Famous Foods",
+          "restaurantName": "Xi'an Famous Foods",
+          "address": "81 St Marks Pl, New York, NY 10003",
+          "imageUrl": "https://images.unsplash.com/photo-1559050019-6c1d1a20f86b?auto=format&fit=crop&w=900&q=80",
+          "partySize": "2",
+          "reservationTime": "2026-10-02T19:00:00Z",
+          "dietary": "None"
+        }
+      }
+    }
+  ]
+}

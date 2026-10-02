@@ -16,7 +16,7 @@ export const RESTAURANTS: Restaurant[] = [
     name: "Xi'an Famous Foods",
     detail: 'Hand-pulled noodles and bold Xi’an-style spices served fast.',
     imageUrl:
-      'https://images.unsplash.com/photo-1559050019-6c1d1a20f86b?auto=format&fit=crop&w=900&q=80',
+      'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?auto=format&fit=crop&w=900&q=80',
     rating: '4.7 / 5',
     infoLink: 'https://www.xianfoods.com/',
     address: '81 St Marks Pl, New York, NY 10003',
@@ -40,7 +40,7 @@ export const RESTAURANTS: Restaurant[] = [
     name: 'RedFarm',
     detail: 'Modern Chinese small plates with playful presentation.',
     imageUrl:
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80&sat=-20',
+      'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=900&q=80',
     rating: '4.5 / 5',
     infoLink: 'https://redfarmnyc.com/',
     address: '529 Hudson St, New York, NY 10014',

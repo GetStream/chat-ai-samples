@@ -41,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -79,22 +80,26 @@ public fun A2uiTextField(scope: A2uiComponentScope) {
     val variant = scope.context.string("variant")
     val validation = scope.context.string("validationRegexp")?.let { runCatching { Regex(it) }.getOrNull() }
 
-    // Keep the selection locally. The text comes from the state, so a change from outside
-    // (e.g. a new data model) replaces it.
+    // While the user types, the field is the source of truth: the value in the state can be
+    // an older text that is still on its way back. A change from outside (e.g. a new data
+    // model) replaces the text when the field doesn't have focus.
     var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
-    LaunchedEffect(value) {
-        if (field.text != value) field = TextFieldValue(value, TextRange(value.length))
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(value, focused) {
+        if (!focused && field.text != value) field = TextFieldValue(value, TextRange(value.length))
     }
 
     OutlinedTextField(
         value = field,
         onValueChange = { newValue ->
+            val changed = newValue.text != field.text
             field = newValue
-            if (path != null && newValue.text != value) scope.send(A2uiEvent.ValueChanged(path, newValue.text))
+            if (path != null && changed) scope.send(A2uiEvent.ValueChanged(path, newValue.text))
         },
         modifier = scope.modifier
             .fillMaxWidth()
             .padding(LocalA2uiLeafMargin.current)
+            .onFocusChanged { focused = it.isFocused }
             .testTag(scope.component.id),
         label = scope.context.string("label")?.let { label -> { Text(label) } },
         isError = validation != null && field.text.isNotEmpty() && !validation.matches(field.text),

@@ -44,10 +44,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -148,6 +150,24 @@ internal class A2uiSurfaceTest {
             ),
             submit.context,
         )
+    }
+
+    @Test
+    fun textField_keepsWhatTheUserTypedWhenAnOlderValueComesBack() {
+        // The owner applies events later than the user types, like a ViewModel round trip.
+        var state by mutableStateOf(fixture("booking-form"))
+        composeRule.setContent {
+            MaterialTheme { A2uiSurface(state = state, onEvent = { events += it }) }
+        }
+        val field = composeRule.onNodeWithTag("booking-dietary")
+
+        field.performTextInput("X")
+        field.performTextInput("Y")
+        // Only the first change arrives back: the state now has an older text.
+        composeRule.runOnIdle { state = A2uiReducer.reduce(state, events.first()) }
+
+        field.assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("NoneXY")))
+        assertEquals(A2uiEvent.ValueChanged("/dietary", "NoneXY"), events.last())
     }
 
     @Test

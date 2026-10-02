@@ -62,7 +62,8 @@ public object JsonPointer {
 
     /**
      * Returns a copy of [root] with [value] at the absolute [path]. Missing parents are
-     * created as maps. In a list, the index `-` or the list size appends a new item.
+     * created as maps. In a list, the index `-` or the list size appends a new item. An index
+     * that is not a number or is out of range changes nothing.
      */
     public fun set(root: Any?, path: String, value: Any?): Any? = set(root, segments(path), value)
 
@@ -81,11 +82,11 @@ public object JsonPointer {
         val rest = segments.drop(1)
         if (node is List<*>) {
             val index = if (key == "-") node.size else key.toIntOrNull()
-            if (index != null && index in 0..node.size) {
-                val list = node.toMutableList()
-                if (index == node.size) list.add(set(null, rest, value)) else list[index] = set(node[index], rest, value)
-                return list
-            }
+            // Keep the list: turning it into a map would lose its items.
+            if (index == null || index !in 0..node.size) return node
+            val list = node.toMutableList()
+            if (index == node.size) list.add(set(null, rest, value)) else list[index] = set(node[index], rest, value)
+            return list
         }
         val map = LinkedHashMap<String, Any?>()
         node.asStringMap()?.let(map::putAll)

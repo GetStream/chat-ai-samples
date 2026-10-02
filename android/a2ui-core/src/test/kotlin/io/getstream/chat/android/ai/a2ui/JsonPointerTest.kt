@@ -71,6 +71,13 @@ internal class JsonPointerTest {
     }
 
     @Test
+    fun `set with an invalid list index keeps the list unchanged`() {
+        assertEquals(model, JsonPointer.set(model, "/items/5/name", "x"))
+        assertEquals(model, JsonPointer.set(model, "/items/x", "x"))
+        assertEquals(model, JsonPointer.set(model, "/items/-1", "x"))
+    }
+
+    @Test
     fun `set at the root replaces the whole model`() {
         assertEquals(mapOf("x" to 1.0), JsonPointer.set(model, "/", mapOf("x" to 1.0)))
     }

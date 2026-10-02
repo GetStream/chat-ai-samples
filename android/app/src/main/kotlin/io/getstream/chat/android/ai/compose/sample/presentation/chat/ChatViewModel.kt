@@ -33,6 +33,7 @@ import io.getstream.chat.android.client.events.AIIndicatorStopEvent
 import io.getstream.chat.android.client.events.AIIndicatorUpdatedEvent
 import io.getstream.chat.android.client.events.ChatEvent
 import io.getstream.chat.android.client.extensions.cidToTypeAndId
+import io.getstream.chat.android.client.utils.observable.Disposable
 import io.getstream.chat.android.core.internal.InternalStreamChatApi
 import io.getstream.chat.android.models.ChannelCapabilities
 import io.getstream.chat.android.models.EventType
@@ -107,6 +108,9 @@ class ChatViewModel(
     // A2UI surface of each message, with the user input applied
     private val a2uiSurfaces = A2uiSurfaceStore()
 
+    // Subscription to the events of the current channel
+    private var channelEvents: Disposable? = null
+
     init {
         cid.filterNotNull()
             .onEach { _uiState.update { state -> state.copy(isLoading = state.messages.isEmpty()) } }
@@ -116,7 +120,8 @@ class ChatViewModel(
             // Subscribe to channel events
             .onEach { cid ->
                 logger.d { "Subscribing to chat events for channel: $cid" }
-                chatClient.channel(cid).subscribeFor<ChatEvent>(::handleChatEvent)
+                channelEvents?.dispose()
+                channelEvents = chatClient.channel(cid).subscribeFor<ChatEvent>(::handleChatEvent)
             }
             // Observe messages in the channel
             .flatMapLatest { cid ->
@@ -270,7 +275,7 @@ class ChatViewModel(
             pendingMessage?.let { message ->
                 sendMessage(cid, message) {
                     // Remove from pending once sent
-                    pendingMessage = message
+                    pendingMessage = null
                     // Summarize after the first message is sent
                     viewModelScope.launch {
                         val platform = "openai"
@@ -404,6 +409,7 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
+        channelEvents?.dispose()
         // Another screen can still use the agent of this channel, e.g. the same chat opened
         // from the drawer while this new chat is leaving.
         cid.value?.takeIf(aiAgentSessions::release)?.let(::stopAIAgent)

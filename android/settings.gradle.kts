@@ -19,6 +19,8 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "android"
-include(":stream-chat-android-ai-compose-sample")
+rootProject.name = "chat-ai-android-sample"
+include(":app")
+include(":a2ui-core")
+include(":a2ui-compose")
  

@@ -1,0 +1,75 @@
+{
+  "version": "v0.9",
+  "surfaceId": "restaurant-booking-confirmation",
+  "messages": [
+    {
+      "version": "v0.9",
+      "createSurface": {
+        "surfaceId": "restaurant-booking-confirmation",
+        "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+      }
+    },
+    {
+      "version": "v0.9",
+      "updateComponents": {
+        "surfaceId": "restaurant-booking-confirmation",
+        "components": [
+          {
+            "id": "root",
+            "component": "Column",
+            "children": [
+              "booking-confirm-title",
+              "booking-confirm-image",
+              "booking-confirm-details",
+              "booking-confirm-note"
+            ]
+          },
+          {
+            "id": "booking-confirm-title",
+            "component": "Text",
+            "variant": "h2",
+            "text": {
+              "path": "/title"
+            }
+          },
+          {
+            "id": "booking-confirm-image",
+            "component": "Image",
+            "url": {
+              "path": "/imageUrl"
+            },
+            "fit": "cover",
+            "variant": "mediumFeature"
+          },
+          {
+            "id": "booking-confirm-details",
+            "component": "Text",
+            "text": {
+              "path": "/bookingDetails"
+            }
+          },
+          {
+            "id": "booking-confirm-note",
+            "component": "Text",
+            "text": {
+              "path": "/note"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "version": "v0.9",
+      "updateDataModel": {
+        "surfaceId": "restaurant-booking-confirmation",
+        "path": "/",
+        "value": {
+          "title": "Reservation confirmed for Xi'an Famous Foods",
+          "bookingDetails": "Table for 4 on Fri, Oct 2, 7:00 PM GMT+1 with dietary notes: Vegetarian.",
+          "imageUrl": "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?auto=format&fit=crop&w=900&q=80",
+          "note": "We have shared your booking details with the restaurant. Expect a confirmation email shortly."
+        }
+      }
+    }
+  ]
+}

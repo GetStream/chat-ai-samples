@@ -8,6 +8,11 @@ import {
   buildBookingFormPayload,
   type BookingSubmissionContext,
 } from './restaurant.ts';
+import {
+  buildBookingConfirmationPayloadV09,
+  buildBookingFormPayloadV09,
+  useA2uiV09,
+} from './restaurant-v09.ts';
 
 type InteractionPayload = {
   userAction?: {
@@ -75,20 +80,24 @@ export const createA2uiInteractionHandler = (): UserMessageHandler => {
 
     switch (interaction.actionName) {
       case 'book_restaurant': {
-        const payload = buildBookingFormPayload(submissionContext);
         await channel.sendMessage({
           text: '',
           ai_generated: true,
-          a2ui: payload,
+          ...(useA2uiV09
+            ? { a2ui_v09: buildBookingFormPayloadV09(submissionContext) }
+            : { a2ui: buildBookingFormPayload(submissionContext) }),
         } as any);
         return true;
       }
       case 'submit_booking': {
-        const payload = buildBookingConfirmationPayload(submissionContext);
         await channel.sendMessage({
           text: '',
           ai_generated: true,
-          a2ui: payload,
+          ...(useA2uiV09
+            ? {
+                a2ui_v09: buildBookingConfirmationPayloadV09(submissionContext),
+              }
+            : { a2ui: buildBookingConfirmationPayload(submissionContext) }),
         } as any);
         return true;
       }

@@ -85,9 +85,9 @@ class AnthropicAgent:
                     )
 
                 anthropic_stream = await self.anthropic.messages.create(
-                    max_tokens=1024,
+                    max_tokens=16000,
                     messages=list(reversed(messages)),
-                    model="claude-3-5-sonnet-20241022",
+                    model="claude-opus-5-5",
                     stream=True,
                 )
 

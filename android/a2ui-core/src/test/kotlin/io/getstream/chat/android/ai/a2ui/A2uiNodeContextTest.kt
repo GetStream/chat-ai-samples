@@ -124,23 +124,61 @@ internal class A2uiNodeContextTest {
         assertEquals("2.5", context.string("w"))
     }
 
+    /** Returns all the nodes of the tree, depth first. */
+    private fun A2uiSurfaceState.allNodes(node: A2uiNode = checkNotNull(root)): List<A2uiNode> {
+        val context = context(node)
+        return listOf(node) + (listOfNotNull(context.child()) + context.children()).flatMap { allNodes(it) }
+    }
+
     @Test
-    fun `missing children are skipped and a component cycle stops`() {
+    fun `missing children are skipped`() {
         val components = listOf(
-            A2uiComponent("root", "Column", mapOf("children" to listOf("missing", "loop"))),
+            A2uiComponent("root", "Column", mapOf("children" to listOf("missing", "text"))),
+            A2uiComponent("text", "Text", mapOf("text" to "Hi")),
+        ).associateBy { it.id }
+        val state = A2uiSurfaceState("s", components = components)
+
+        assertEquals(listOf("text"), state.context(checkNotNull(state.root)).children().map { it.component.id })
+    }
+
+    @Test
+    fun `a component that contains itself is not repeated`() {
+        val components = listOf(
+            A2uiComponent("root", "Column", mapOf("children" to listOf("loop"))),
             A2uiComponent("loop", "Card", mapOf("child" to "loop")),
         ).associateBy { it.id }
         val state = A2uiSurfaceState("s", components = components)
 
-        val children = state.context(checkNotNull(state.root)).children()
-        assertEquals(listOf("loop"), children.map { it.component.id })
-        var node: A2uiNode? = children.single()
-        var depth = 0
-        while (node != null) {
-            node = state.context(node).child()
-            depth++
-        }
-        assertTrue("depth $depth", depth in 2..40)
+        assertEquals(listOf("root", "loop"), state.allNodes().map { it.component.id })
+    }
+
+    @Test
+    fun `a cycle with many children stops at once`() {
+        // Without the check, this doubles at every level until the depth limit.
+        val root = A2uiComponent("root", "Column", mapOf("children" to listOf("root", "root")))
+        val state = A2uiSurfaceState("s", components = mapOf("root" to root))
+
+        assertEquals(1, state.allNodes().size)
+    }
+
+    @Test
+    fun `a template can repeat itself for nested data`() {
+        // A comment shows its text and then its replies, with the same component.
+        val components = listOf(
+            A2uiComponent("root", "List", mapOf("children" to mapOf("componentId" to "comment", "path" to "/comments"))),
+            A2uiComponent("comment", "Column", mapOf("children" to listOf("comment-text", "replies"))),
+            A2uiComponent("comment-text", "Text", mapOf("text" to mapOf("path" to "text"))),
+            A2uiComponent("replies", "List", mapOf("children" to mapOf("componentId" to "comment", "path" to "replies"))),
+        ).associateBy { it.id }
+        val data = mapOf(
+            "comments" to listOf(
+                mapOf("text" to "First", "replies" to listOf(mapOf("text" to "Reply", "replies" to emptyList<Any>()))),
+            ),
+        )
+        val state = A2uiSurfaceState("s", components = components, dataModel = data)
+
+        val texts = state.allNodes().filter { it.component.id == "comment-text" }.map { state.context(it).string("text") }
+        assertEquals(listOf("First", "Reply"), texts)
     }
 
     @Test

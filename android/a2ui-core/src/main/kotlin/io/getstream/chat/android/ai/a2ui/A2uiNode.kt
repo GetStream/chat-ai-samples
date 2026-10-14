@@ -24,12 +24,15 @@ package io.getstream.chat.android.ai.a2ui
  * path (e.g. `/items/0`) inside a template.
  * @param key A key that is unique among the siblings of this node and stable across updates.
  * @param depth The depth of the node in the tree. The root has depth 0.
+ * @param ancestors The component id and scope of every node above this one. A component can
+ * appear inside itself only with another scope, e.g. a template for nested replies.
  */
 public data class A2uiNode(
     val component: A2uiComponent,
     val scope: String,
     val key: String,
     val depth: Int,
+    val ancestors: Set<Pair<String, String>> = emptySet(),
 )
 
 /**
@@ -128,11 +131,17 @@ public class A2uiNodeContext(
     private fun childNode(id: String, scope: String, key: String): A2uiNode? {
         if (node.depth >= MAX_DEPTH) return null
         val component = state.components[id] ?: return null
-        return A2uiNode(component, scope, key, node.depth + 1)
+        val ancestors = node.ancestors + (node.component.id to node.scope)
+        // A component inside itself with the same data would repeat forever.
+        if ((id to scope) in ancestors) return null
+        return A2uiNode(component, scope, key, node.depth + 1, ancestors)
     }
 
     private companion object {
-        /** Stops the tree at this depth, so that a component cycle can't loop forever. */
+        /**
+         * Stops the tree at this depth. Cycles are already skipped through the ancestors, so
+         * this only limits very deep data.
+         */
         const val MAX_DEPTH = 32
     }
 }

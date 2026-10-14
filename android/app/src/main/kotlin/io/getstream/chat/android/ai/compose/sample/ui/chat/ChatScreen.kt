@@ -172,7 +172,8 @@ fun ChatScreen(
                 ) {
                     // Assistant loading indicator appears at the bottom
                     item(key = "assistant_indicator") {
-                        key(assistantState, currentAssistantMessage) {
+                        // Key on the id: the message also holds its A2UI surface, which changes on every edit.
+                        key(assistantState, currentAssistantMessage?.id) {
                             when (assistantState) {
                                 ChatUiState.AssistantState.Error -> AssistantErrorMessage(
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

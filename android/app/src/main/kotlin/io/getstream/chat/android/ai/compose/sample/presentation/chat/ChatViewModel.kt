@@ -167,8 +167,9 @@ class ChatViewModel(
      *
      * This function:
      * - Validates that the input text is not empty and the assistant is not busy
+     * - Sets the assistant state to Thinking right away, so a second send is rejected
      * - Builds lightweight attachments off the main thread
-     * - Optimistically updates the UI by adding the message and setting assistant state to Thinking
+     * - Optimistically updates the UI by adding the message
      * - Copies the attachment files to the local cache before sending
      * - If no channel exists (cid is null), creates a new channel first and queues the message to be sent after the AI agent starts
      * - If a channel exists, sends the message immediately
@@ -180,6 +181,9 @@ class ChatViewModel(
         if (text.isEmpty() || _uiState.value.assistantState.isBusy()) {
             return
         }
+        // Before the attachments are read off the main thread: until then, a second send
+        // would pass the check above, and on a new chat it would create a second channel.
+        _uiState.update { state -> state.copy(assistantState = ChatUiState.AssistantState.Thinking) }
 
         viewModelScope.launch {
             val lightweightAttachments = withContext(Dispatchers.IO) {
@@ -195,10 +199,7 @@ class ChatViewModel(
 
             // Optimistically add the message to UI
             _uiState.update { state ->
-                state.copy(
-                    messages = listOfNotNull(message.toChatMessage(currentUserId.value)) + state.messages,
-                    assistantState = ChatUiState.AssistantState.Thinking,
-                )
+                state.copy(messages = listOfNotNull(message.toChatMessage(currentUserId.value)) + state.messages)
             }
 
             // Copies picker URIs into local cache files. Suspend; dispatches IO internally.

@@ -67,7 +67,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 /**
  * Renders the payloads of the ai-sdk-sample backend (see `a2ui-core/scripts`) and checks the
@@ -203,6 +206,15 @@ internal class A2uiSurfaceTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .assertHasClickAction()
             .assertContentDescriptionContains("Reservation time", substring = true)
+    }
+
+    @Test
+    fun dateTimeInput_showsTheDefaultTimeInTheTimeZoneOfTheDevice() {
+        // The backend sends the default without an offset, e.g. 2026-10-14T19:00:00.
+        render(fixture("booking-form"))
+
+        val sevenPm = LocalTime.of(19, 0).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        composeRule.onNodeWithTag("booking-time").assertContentDescriptionContains(sevenPm, substring = true)
     }
 
     @Test

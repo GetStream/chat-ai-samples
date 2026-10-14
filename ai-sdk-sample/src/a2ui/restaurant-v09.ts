@@ -261,12 +261,13 @@ const buildPayload = (
   messages: buildSurfaceMessages(surfaceId, components, data),
 });
 
-/** ISO 8601 value for "today at 7 PM" (UTC), used as the form's default time. */
-const defaultReservationTime = (): string => {
-  const date = new Date();
-  date.setUTCHours(19, 0, 0, 0);
-  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
-};
+/**
+ * The form's default time: "today at 7 PM" as an ISO 8601 local time without an offset
+ * (e.g. `2026-10-14T19:00:00`), so each client shows 7 PM in its own time zone. The date is
+ * the server's current UTC date, so it can differ by a day from the client's date.
+ */
+const defaultReservationTime = (): string =>
+  `${new Date().toISOString().slice(0, 10)}T19:00:00`;
 
 export const buildRestaurantPayloadV09 = (
   restaurants: Restaurant[],

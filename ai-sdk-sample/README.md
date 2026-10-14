@@ -52,7 +52,7 @@ For restaurant requests (for example "Top 3 restaurants in New York"), the serve
 - Not set (default): the server sends A2UI v0.8 in the `a2ui` message field. The iOS sample renders this version.
 - `A2UI_PROTOCOL=v0.9`: the server sends A2UI v0.9 in the `a2ui_v09` message field. The Android sample renders this version.
 
-The server sends only one of the two fields, because both together are larger than the 5 KB limit for message custom data. With `v0.9`, the iOS sample shows only the plain text of the message.
+The server sends only one of the two fields, because both together are larger than the 5 KB limit for message custom data. The setting applies to every client of this backend. With `v0.9`, the iOS sample shows only the plain text of the message, and with the default, the Android sample does.
 
 ### Install the dependencies
 

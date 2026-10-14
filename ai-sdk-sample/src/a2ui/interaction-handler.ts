@@ -3,10 +3,10 @@ import type {
   UserMessageHandlerContext,
 } from '@stream-io/chat-ai-sdk';
 import type { MessageResponse } from 'stream-chat';
+import type { BookingSubmissionContext } from './booking.ts';
 import {
   buildBookingConfirmationPayload,
   buildBookingFormPayload,
-  type BookingSubmissionContext,
 } from './restaurant.ts';
 import {
   buildBookingConfirmationPayloadV09,

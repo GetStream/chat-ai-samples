@@ -1,8 +1,16 @@
-import type { Restaurant } from './restaurant-data.ts';
 import {
-  formatReservationTime,
+  BOOKING_CONFIRMATION_NOTE,
+  BOOKING_CONFIRM_SURFACE_ID,
+  BOOKING_FORM_SURFACE_ID,
+  LIST_SURFACE_ID,
+  bookingAddress,
+  bookingConfirmationTitle,
+  bookingDetailsText,
+  bookingFormTitle,
+  bookingImageUrl,
   type BookingSubmissionContext,
-} from './restaurant.ts';
+} from './booking.ts';
+import type { Restaurant } from './restaurant-data.ts';
 
 /**
  * A2UI v0.9 versions of the restaurant surfaces built in `restaurant.ts`.
@@ -19,11 +27,6 @@ export const useA2uiV09 = process.env.A2UI_PROTOCOL === 'v0.9';
 const VERSION = 'v0.9';
 const BASIC_CATALOG_ID =
   'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json';
-
-const LIST_SURFACE_ID = 'restaurant-finder';
-const BOOKING_FORM_SURFACE_ID = 'restaurant-booking-form';
-const BOOKING_CONFIRM_SURFACE_ID = 'restaurant-booking-confirmation';
-const FALLBACK_IMAGE_URL = 'https://picsum.photos/seed/booking/800/600';
 
 const RESTAURANT_LIST_COMPONENTS: Array<Record<string, unknown>> = [
   {
@@ -291,10 +294,10 @@ export const buildBookingFormPayloadV09 = (
   details: BookingSubmissionContext,
 ): Record<string, unknown> =>
   buildPayload(BOOKING_FORM_SURFACE_ID, BOOKING_FORM_COMPONENTS, {
-    title: `Reserve a table at ${details.restaurantName}`,
+    title: bookingFormTitle(details),
     restaurantName: details.restaurantName,
-    address: details.address || 'Address unavailable',
-    imageUrl: details.imageUrl || FALLBACK_IMAGE_URL,
+    address: bookingAddress(details),
+    imageUrl: bookingImageUrl(details),
     partySize: details.partySize ?? '2',
     reservationTime: defaultReservationTime(),
     dietary: details.dietary ?? 'None',
@@ -304,8 +307,8 @@ export const buildBookingConfirmationPayloadV09 = (
   details: BookingSubmissionContext,
 ): Record<string, unknown> =>
   buildPayload(BOOKING_CONFIRM_SURFACE_ID, BOOKING_CONFIRM_COMPONENTS, {
-    title: `Reservation confirmed for ${details.restaurantName}`,
-    bookingDetails: `Table for ${details.partySize ?? '2'} on ${formatReservationTime(details.reservationTime) ?? 'your selected date'} with dietary notes: ${details.dietary ?? 'None'}.`,
-    imageUrl: details.imageUrl || FALLBACK_IMAGE_URL,
-    note: 'We have shared your booking details with the restaurant. Expect a confirmation email shortly.',
+    title: bookingConfirmationTitle(details),
+    bookingDetails: bookingDetailsText(details),
+    imageUrl: bookingImageUrl(details),
+    note: BOOKING_CONFIRMATION_NOTE,
   });

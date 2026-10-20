@@ -30,6 +30,9 @@ and desktop.
 - **Agent steps**: reasoning and tool calls render above the reply with `AIMessagePartsView`, tool
   calls can ask for approval, and client tools can return a result — see
   [Agent steps](#agent-steps) for what the backend needs to send.
+- **Generative UI**: A2UI surfaces the backend attaches to a reply, like a restaurant list and a
+  booking form, render under it with Flutter's [`genui`](https://pub.dev/packages/genui) — see
+  [Generative UI (A2UI)](#generative-ui-a2ui).
 - **Rich replies**: fenced code is syntax-highlighted (in a light or dark palette, following the
   code block), LaTeX is typeset, chart fences render as
   charts, and links open in the browser. The package renders the chrome but ships no grammars or
@@ -119,6 +122,32 @@ from the call's target and only once, then update the step — and make `/tool-r
 after 30 seconds counts as failed, so the user can answer again. The payloads follow the
 [`stream_chat_flutter_ai` docs](https://github.com/GetStream/stream-chat-flutter-ai/tree/main/packages/stream_chat_flutter_ai#agent-steps-aimessagepartsview).
 
+## Generative UI (A2UI)
+
+Replies can carry agent-generated UI in the [A2UI](https://a2ui.org) protocol, which the app renders
+with the [`genui`](https://pub.dev/packages/genui) basic catalog
+([`lib/src/a2ui.dart`](lib/src/a2ui.dart)). The app reads A2UI v0.9 only, from the `a2ui_v09`
+message field, so start `ai-sdk-sample` with that version:
+
+```sh
+A2UI_PROTOCOL=v0.9 npm start
+```
+
+Then ask "Top 3 restaurants in New York":
+
+1. The reply shows a list of restaurant cards, each with a **Book Now** button.
+2. Tapping one sends a user message ("Book a table at …") whose `a2ui_interaction` field holds the
+   action as `{"userAction":{"name":"book_restaurant","context":{…}}}`. The backend answers it
+   without the model, with a booking form.
+3. Fill in the form and tap **Confirm reservation**: a `submit_booking` action, answered with a
+   confirmation card.
+
+What is typed into a form is kept per message, so it survives scrolling and message updates. Action
+messages also carry `a2ui_surface_id`, `a2ui_display_text` (shown in the bubble instead of the
+text), `a2ui_action_name`, `a2ui_query_text`, `a2ui_action_context` and `a2ui_source_message_id`,
+like the iOS sample's. Surfaces follow the app's light or dark theme. Without
+`A2UI_PROTOCOL=v0.9` the backend sends v0.8, and the app shows only the reply's text.
+
 ## Getting started
 
 For a step-by-step walkthrough of building this, see the
@@ -190,6 +219,8 @@ flutter run -t lib/main_dev.dart
 - **Browse history**: edge-swipe from the left (or use the side panel on a wide screen), and tap
   "New chat" there to start over.
 - **Try a tool**: ask the assistant to greet you, or to switch the app to dark mode.
+- **Try generative UI**: with the backend on A2UI v0.9, ask for "Top 3 restaurants in New York" and
+  book one.
 
 ## Project structure
 
@@ -203,6 +234,7 @@ flutter run -t lib/main_dev.dart
   tool calls.
 - `lib/src/conversation_view.dart` — the active conversation: message list and typing indicator.
 - `lib/src/ai_message_item.dart` — how an AI message renders, including code, math and links.
+- `lib/src/a2ui.dart` — A2UI surfaces: parsing, one surface per message, and the action messages.
 - `lib/src/agent_service.dart` — backend calls: start the agent, register tools, summarize a title,
   and send tool approvals and results.
 - `lib/src/typing_state_handler.dart` — the assistant's typing state, from `ai_indicator.*` events.

@@ -11,11 +11,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # The A2UI message types `genui` takes.
+  a2ui_core: ^0.1.1
   dio: ^5.7.0
   # `stream_chat_flutter_ai` parses LaTeX but ships no math engine, so hosts
   # that don't render math don't pay for one. This is what lets
   # `StreamingMessageView.mathBuilder` typeset.
   flutter_math_fork: ^0.7.4
+  # Renders the A2UI v0.9 surfaces the backend attaches to AI messages. See lib/src/a2ui.dart.
+  genui: ^0.10.4
   marionette_flutter: ^0.6.0
   # Likewise for code fences: the package renders their chrome but ships no
   # grammars, since they dwarf the package itself. See lib/src/code_highlighter.dart.

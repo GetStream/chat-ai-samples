@@ -331,6 +331,18 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Sends a message the conversation built, such as an A2UI action, which the
+  /// agent answers.
+  Future<void> _sendBuiltMessage(Channel channel, Message message) async {
+    if (!await _agentStarter.ensureStarted(channel)) return;
+    try {
+      await channel.sendMessage(message.copyWith(extraData: {...message.extraData, 'client_id': clientId}));
+    } catch (e) {
+      debugPrint('Failed to send the message: $e');
+      _showError("Couldn't send your message. Please try again.");
+    }
+  }
+
   Future<void> _stopResponse() async {
     // Don't wait for the rest of the reply to type out: the user asked to stop.
     _composerController.isGenerating = false;
@@ -376,6 +388,7 @@ class _HomePageState extends State<HomePage> {
                     channel: activeChannel,
                     agentSteps: _agentSteps.of(activeChannel),
                     onGeneratingChanged: (isGenerating) => _composerController.isGenerating = isGenerating,
+                    onSendMessage: _sendBuiltMessage,
                   ),
           ),
           if (_agentStarter.isStarting(activeChannel?.id)) const _StartingAssistantHint(),

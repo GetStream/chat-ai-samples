@@ -2,25 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
-import 'package:stream_chat_flutter/stream_chat_flutter.dart'
-    hide StreamingMessageView, TypewriterState;
+import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide StreamingMessageView, TypewriterState;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'agent_steps.dart';
 import 'code_highlighter.dart';
 
-/// Renders an AI message as streaming markdown, without a bubble or avatar.
+/// How fast a reply types out, per character.
+const replyTypingSpeed = Duration(milliseconds: 10);
+
+/// Renders an AI message as streaming markdown, without a bubble or avatar,
+/// under the agent's steps (reasoning and tool calls), if it wrote any.
 ///
 /// The user's own messages keep the SDK's regular bubble.
 class AIMessageItem extends StatelessWidget {
   const AIMessageItem({
     super.key,
     required this.message,
+    this.expectMoreText = false,
+    this.onFinished,
     this.onTypewriterStateChanged,
+    this.approver,
   });
 
   final Message message;
+
+  /// Whether the backend may still add text to [message].
+  final bool expectMoreText;
+
+  /// Called once [message] is completely on screen.
+  final VoidCallback? onFinished;
+
   final ValueChanged<TypewriterState>? onTypewriterStateChanged;
+
+  /// Asks under each tool call waiting for this user's approval.
+  final AIToolApprover? approver;
 
   @override
   Widget build(BuildContext context) {
@@ -29,21 +46,38 @@ class AIMessageItem extends StatelessWidget {
       color: context.streamColorScheme.textPrimary,
     );
 
+    final steps = message.agentSteps;
+    final reply = StreamingMessageView(
+      text: message.text ?? '',
+      expectMoreText: expectMoreText,
+      typingSpeed: replyTypingSpeed,
+      onFinished: onFinished,
+      onTypewriterStateChanged: onTypewriterStateChanged,
+      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
+
+      // Optional extras. The package renders code blocks, formulas and
+      // links, but the app supplies the grammars, math engine and link
+      // handling.
+      codeHighlighter: highlightCode,
+      mathBuilder: _buildMath,
+      // Models write `$…$` more often than the default `\(…\)` / `\[…\]`.
+      useDollarDelimitersForMath: true,
+      onTapLink: (text, href, title) => _openLink(href),
+    );
+
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: StreamingMessageView(
-        text: message.text ?? '',
-        onTypewriterStateChanged: onTypewriterStateChanged,
-        styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
-
-        // Optional extras. The package renders code blocks, formulas and
-        // links, but the app supplies the grammars, math engine and link
-        // handling.
-        codeHighlighter: highlightCode,
-        mathBuilder: _buildMath,
-        // Models write `$…$` more often than the default `\(…\)` / `\[…\]`.
-        useDollarDelimitersForMath: true,
-        onTapLink: (text, href, title) => _openLink(href),
+      // Always a column, so the reply keeps its typewriter state when the
+      // first step arrives.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (steps.isNotEmpty) ...[
+            AIMessagePartsView(parts: steps, approver: approver),
+            const SizedBox(height: 12),
+          ],
+          reply,
+        ],
       ),
     );
   }

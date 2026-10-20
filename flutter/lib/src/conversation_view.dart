@@ -1,16 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
-    hide
-        StreamingMessageView,
-        AITypingIndicatorView,
-        TypewriterState,
-        TypewriterController,
-        StreamTypewriterBuilder;
+    hide StreamingMessageView, AITypingIndicatorView, TypewriterState, TypewriterController, StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
+import 'agent_steps.dart';
 import 'ai_message_item.dart';
+import 'generating_tracker.dart';
 import 'typing_state_handler.dart';
 
 /// The message list and AI typing indicator for [channel].
@@ -18,12 +17,16 @@ import 'typing_state_handler.dart';
 /// Give it a key derived from the channel (e.g. `ValueKey(channel.cid)`), so
 /// switching channels creates a fresh [TypingStateHandler].
 class ConversationView extends StatefulWidget {
-  const ConversationView({super.key, required this.channel, this.onGeneratingChanged});
+  const ConversationView({super.key, required this.channel, this.agentSteps, this.onGeneratingChanged});
 
   final Channel channel;
 
-  /// Called when the assistant starts or stops replying, so the composer can
-  /// swap its send button for a stop button.
+  /// Answers this conversation's tool calls. Owned by the caller, so it
+  /// outlives this view and a reopened conversation doesn't rerun a call.
+  final ConversationAgentSteps? agentSteps;
+
+  /// Called when the assistant starts replying, and again once its reply is
+  /// fully on screen, so the composer can show a stop button in between.
   final ValueChanged<bool>? onGeneratingChanged;
 
   @override
@@ -31,22 +34,44 @@ class ConversationView extends StatefulWidget {
 }
 
 class _ConversationViewState extends State<ConversationView> {
-  late final _typingStateHandler = TypingStateHandler(channel: widget.channel)
-    ..addListener(_reportGenerating);
+  late final _typingStateHandler = TypingStateHandler(channel: widget.channel);
+  late final GeneratingTracker _generating;
   var _typewriterState = TypewriterState.idle;
+  StreamSubscription<List<Message>>? _messagesSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _generating = GeneratingTracker(
+      typingState: _typingStateHandler,
+      replyText: _replyText,
+      onChanged: (isGenerating) => widget.onGeneratingChanged?.call(isGenerating),
+      typingSpeed: replyTypingSpeed,
+    );
+    final agentSteps = widget.agentSteps;
+    if (agentSteps != null) {
+      // Every update, so a call that starts waiting mid-reply runs too.
+      _messagesSubscription = widget.channel.state?.messagesStream.listen(agentSteps.handle);
+    }
+  }
 
   @override
   void dispose() {
+    unawaited(_messagesSubscription?.cancel());
+    _generating.dispose();
     _typingStateHandler.dispose();
     super.dispose();
   }
 
-  /// Follows the backend only: stopping can't cancel text that has already
-  /// arrived and is still being revealed by the typewriter.
-  void _reportGenerating() {
-    widget.onGeneratingChanged?.call(switch (_typingStateHandler.value) {
-      AITypingState.thinking || AITypingState.checkingSources || AITypingState.generating => true,
-      _ => false,
+  String? _replyText(String messageId) {
+    final messages = widget.channel.state?.messages ?? const <Message>[];
+    return messages.where((message) => message.id == messageId).firstOrNull?.text;
+  }
+
+  /// Items leave the tree while it is locked, so report after the frame.
+  void _onReplyDisposed(String messageId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _generating.replyDisposed(messageId);
     });
   }
 
@@ -69,19 +94,24 @@ class _ConversationViewState extends State<ConversationView> {
             child: StreamMessageListView(
               // A new channel is created together with its first message, so
               // the default "no messages yet" text would only flash briefly.
-              builders: StreamMessageListViewBuilders(
-                empty: (context) => const Center(
-                  child: SizedBox.square(
-                    dimension: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              ),
+              // Not a spinner: a first message that fails leaves it empty.
+              builders: StreamMessageListViewBuilders(empty: (context) => const SizedBox.shrink()),
               messageBuilder: (context, message, defaultProps) {
                 if (message.isAI) {
-                  return AIMessageItem(
-                    message: message,
-                    onTypewriterStateChanged: _onTypewriterStateChanged,
+                  // Rebuilt on every state change, so `expectMoreText` drops
+                  // as soon as the backend is done.
+                  return _OnDispose(
+                    onDispose: () => _onReplyDisposed(message.id),
+                    child: ValueListenableBuilder(
+                      valueListenable: _typingStateHandler,
+                      builder: (context, _, _) => AIMessageItem(
+                        message: message,
+                        expectMoreText: _typingStateHandler.isBusy && message.id == _typingStateHandler.messageId,
+                        onFinished: () => _generating.replyFinished(message.id),
+                        onTypewriterStateChanged: _onTypewriterStateChanged,
+                        approver: widget.agentSteps?.approver,
+                      ),
+                    ),
                   );
                 }
                 return DefaultStreamMessageItem(props: defaultProps);
@@ -99,6 +129,28 @@ class _ConversationViewState extends State<ConversationView> {
       ),
     );
   }
+}
+
+/// Calls [onDispose] when [child] leaves the tree.
+class _OnDispose extends StatefulWidget {
+  const _OnDispose({required this.onDispose, required this.child});
+
+  final VoidCallback onDispose;
+  final Widget child;
+
+  @override
+  State<_OnDispose> createState() => _OnDisposeState();
+}
+
+class _OnDisposeState extends State<_OnDispose> {
+  @override
+  void dispose() {
+    widget.onDispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class AITypingIndicatorStateView extends StatelessWidget {

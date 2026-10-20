@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 /// Talks to the AI backend: `ai-sdk-sample` from this repository.
 class AgentService {
@@ -14,23 +15,29 @@ class AgentService {
     final url => url,
   };
 
-  final _dio = Dio(
-    BaseOptions(
-      baseUrl: baseUrl,
-      // Dio waits forever by default, and the first message of a new chat
-      // waits on `/start-ai-agent`. That endpoint makes several Stream API
-      // calls of its own, hence the roomier receive timeout.
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-    ),
+  /// [dio] is for tests; the default one talks to [baseUrl].
+  AgentService({Dio? dio}) : _dio = dio ?? Dio(_options);
+
+  static final _options = BaseOptions(
+    baseUrl: baseUrl,
+    // Dio waits forever by default, and the first message of a new chat
+    // waits on `/start-ai-agent`. That endpoint makes several Stream API
+    // calls of its own, hence the roomier receive timeout.
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 30),
   );
+
+  final Dio _dio;
 
   /// Starts the AI agent in [channelId], which then answers every new message.
   Future<void> startAgent(String channelId, {String? platform}) async {
-    await _dio.post<void>('/start-ai-agent', data: {
-      'channel_id': channelId,
-      if (platform != null) 'platform': platform,
-    });
+    await _dio.post<void>(
+      '/start-ai-agent',
+      data: {
+        'channel_id': channelId,
+        if (platform != null) 'platform': platform,
+      },
+    );
   }
 
   /// Tells the backend which client-side tools this app can run.
@@ -43,12 +50,57 @@ class AgentService {
     await _dio.post<void>('/register-tools', data: {'channel_id': channelId, 'tools': tools});
   }
 
+  /// Sends the user's answer to a tool call waiting for approval.
+  ///
+  /// None of this repository's backends implements `/tool-approval` yet. The
+  /// backend should accept it only from the call's target, only once, and then
+  /// update the call's `ai_tool_call` step.
+  Future<void> answerToolCall({
+    required String channelId,
+    required AIToolCallPart call,
+    required AIToolApprovalDecision decision,
+    required AIClientIdentity identity,
+  }) async {
+    await _dio.post<void>(
+      '/tool-approval',
+      data: {
+        'channel_id': channelId,
+        'tool_call_id': call.id,
+        'user_id': identity.userId,
+        'client_id': ?identity.clientId,
+        'decision': decision.value,
+      },
+    );
+  }
+
+  /// Sends what a client tool returned, for the agent to carry on with.
+  ///
+  /// Not implemented by this repository's backends yet either. It should be
+  /// idempotent on `tool_call_id`: a retry can send the same result twice.
+  Future<void> sendToolResult({
+    required String channelId,
+    required AIToolCallPart call,
+    required AIClientToolResult result,
+    required String clientId,
+  }) async {
+    await _dio.post<void>(
+      '/tool-results',
+      data: {
+        'channel_id': channelId,
+        ...result.toJson(toolCallId: call.id, clientId: clientId),
+      },
+    );
+  }
+
   /// Asks the backend to boil [text] down to a short conversation title.
   Future<String?> summarize(String text, {String? platform}) async {
-    final response = await _dio.post<Map<String, Object?>>('/summarize', data: {
-      'text': text,
-      if (platform != null) 'platform': platform,
-    });
+    final response = await _dio.post<Map<String, Object?>>(
+      '/summarize',
+      data: {
+        'text': text,
+        if (platform != null) 'platform': platform,
+      },
+    );
     return response.data?['summary'] as String?;
   }
 }

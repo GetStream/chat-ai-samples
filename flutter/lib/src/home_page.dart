@@ -5,6 +5,7 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 import 'agent_service.dart';
+import 'agent_steps.dart';
 import 'client_tools.dart';
 import 'connection_banner.dart';
 import 'conversation_view.dart';
@@ -102,9 +103,17 @@ class _HomePageState extends State<HomePage> {
 
   /// The client-side tools this app offers the AI agent, the same in every
   /// conversation.
-  late final _toolRegistry = AIToolRegistry(onToolError: _onToolError)
-    ..register(GreetUserTool(onGreet: _showGreeting))
-    ..register(SetThemeModeTool(onChange: widget.onThemeModeChanged));
+  late final _clientTools = <AIClientTool>[
+    GreetUserTool(onGreet: _showGreeting),
+    SetThemeModeTool(onChange: widget.onThemeModeChanged),
+    const LocalTimeTool(),
+  ];
+
+  /// Runs the tools invoked by `custom_client_tool_invocation` events.
+  late final _toolRegistry = AIToolRegistry(onToolError: _onToolError);
+
+  /// The user and install that tool calls in agent steps are matched against.
+  late final _identity = AIClientIdentity(userId: _currentUserId, clientId: clientId);
 
   /// Listens on the client, so it keeps working across conversations.
   late final ClientToolListener _toolListener;
@@ -125,6 +134,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _clientTools.forEach(_toolRegistry.register);
     _toolListener = ClientToolListener(client: widget.client, registry: _toolRegistry);
   }
 
@@ -193,6 +203,13 @@ class _HomePageState extends State<HomePage> {
     }
     return true;
   }
+
+  ConversationAgentSteps _createAgentSteps(Channel channel) => ConversationAgentSteps(
+    channelId: channel.id ?? '',
+    identity: _identity,
+    tools: _clientTools,
+    agentService: _agentService,
+  );
 
   void _showError(String message) {
     if (!mounted) return;
@@ -284,6 +301,8 @@ class _HomePageState extends State<HomePage> {
         Message(
           text: option == null ? text : '${option.text}: $text',
           attachments: messageAttachments,
+          // Tells the agent which install to send client tool calls to.
+          extraData: {'client_id': clientId},
         ),
       );
     } catch (e) {
@@ -343,6 +362,7 @@ class _HomePageState extends State<HomePage> {
                   : ConversationView(
                       key: ValueKey(activeChannel.cid),
                       channel: activeChannel,
+                      createAgentSteps: _createAgentSteps,
                       onGeneratingChanged: (isGenerating) => _composerController.isGenerating = isGenerating,
                     ),
             ),

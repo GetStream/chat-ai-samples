@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
@@ -5,17 +7,22 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart'
     hide StreamingMessageView, AITypingIndicatorView, TypewriterState, TypewriterController, StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
+import 'agent_steps.dart';
 import 'ai_message_item.dart';
 import 'typing_state_handler.dart';
 
 /// The message list and AI typing indicator for [channel].
 ///
 /// Give it a key derived from the channel (e.g. `ValueKey(channel.cid)`), so
-/// switching channels creates a fresh [TypingStateHandler].
+/// switching channels creates a fresh [TypingStateHandler] and
+/// [ConversationAgentSteps].
 class ConversationView extends StatefulWidget {
-  const ConversationView({super.key, required this.channel, this.onGeneratingChanged});
+  const ConversationView({super.key, required this.channel, this.createAgentSteps, this.onGeneratingChanged});
 
   final Channel channel;
+
+  /// Creates what answers this conversation's tool calls, once per view.
+  final ConversationAgentSteps Function(Channel channel)? createAgentSteps;
 
   /// Called when the assistant starts replying, and again once its reply is
   /// fully on screen, so the composer can show a stop button in between.
@@ -34,8 +41,23 @@ class _ConversationViewState extends State<ConversationView> {
   /// `ai_indicator.clear`.
   String? _revealingReplyId;
 
+  late final _agentSteps = widget.createAgentSteps?.call(widget.channel);
+  StreamSubscription<List<Message>>? _messagesSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    final agentSteps = _agentSteps;
+    if (agentSteps != null) {
+      // Every update, so a call that starts waiting mid-reply runs too.
+      _messagesSubscription = widget.channel.state?.messagesStream.listen(agentSteps.handle);
+    }
+  }
+
   @override
   void dispose() {
+    unawaited(_messagesSubscription?.cancel());
+    _agentSteps?.dispose();
     _typingStateHandler.dispose();
     super.dispose();
   }
@@ -106,6 +128,7 @@ class _ConversationViewState extends State<ConversationView> {
                       expectMoreText: _typingStateHandler.isBusy && message.id == _typingStateHandler.messageId,
                       onFinished: () => _onReplyFinished(message.id),
                       onTypewriterStateChanged: _onTypewriterStateChanged,
+                      approver: _agentSteps?.approver,
                     ),
                   );
                 }

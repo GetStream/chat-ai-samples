@@ -6,9 +6,11 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide StreamingMess
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'agent_steps.dart';
 import 'code_highlighter.dart';
 
-/// Renders an AI message as streaming markdown, without a bubble or avatar.
+/// Renders an AI message as streaming markdown, without a bubble or avatar,
+/// under the agent's steps (reasoning and tool calls), if it wrote any.
 ///
 /// The user's own messages keep the SDK's regular bubble.
 class AIMessageItem extends StatelessWidget {
@@ -18,6 +20,7 @@ class AIMessageItem extends StatelessWidget {
     this.expectMoreText = false,
     this.onFinished,
     this.onTypewriterStateChanged,
+    this.approver,
   });
 
   final Message message;
@@ -30,6 +33,9 @@ class AIMessageItem extends StatelessWidget {
 
   final ValueChanged<TypewriterState>? onTypewriterStateChanged;
 
+  /// Asks under each tool call waiting for this user's approval.
+  final AIToolApprover? approver;
+
   @override
   Widget build(BuildContext context) {
     // Use the same text style as the regular message bubbles.
@@ -37,23 +43,37 @@ class AIMessageItem extends StatelessWidget {
       color: context.streamColorScheme.textPrimary,
     );
 
+    final steps = message.agentSteps;
+    final reply = StreamingMessageView(
+      text: message.text ?? '',
+      expectMoreText: expectMoreText,
+      onFinished: onFinished,
+      onTypewriterStateChanged: onTypewriterStateChanged,
+      styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
+
+      // Optional extras. The package renders code blocks, formulas and
+      // links, but the app supplies the grammars, math engine and link
+      // handling.
+      codeHighlighter: highlightCode,
+      mathBuilder: _buildMath,
+      // Models write `$…$` more often than the default `\(…\)` / `\[…\]`.
+      useDollarDelimitersForMath: true,
+      onTapLink: (text, href, title) => _openLink(href),
+    );
+
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: StreamingMessageView(
-        text: message.text ?? '',
-        expectMoreText: expectMoreText,
-        onFinished: onFinished,
-        onTypewriterStateChanged: onTypewriterStateChanged,
-        styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
-
-        // Optional extras. The package renders code blocks, formulas and
-        // links, but the app supplies the grammars, math engine and link
-        // handling.
-        codeHighlighter: highlightCode,
-        mathBuilder: _buildMath,
-        // Models write `$…$` more often than the default `\(…\)` / `\[…\]`.
-        useDollarDelimitersForMath: true,
-        onTapLink: (text, href, title) => _openLink(href),
+      // Always a column, so the reply keeps its typewriter state when the
+      // first step arrives.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (steps.isNotEmpty) ...[
+            AIMessagePartsView(parts: steps, approver: approver),
+            const SizedBox(height: 12),
+          ],
+          reply,
+        ],
       ),
     );
   }

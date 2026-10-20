@@ -23,7 +23,7 @@ class ConversationView extends StatefulWidget {
     required this.channel,
     this.agentSteps,
     this.onGeneratingChanged,
-    this.onSendMessage,
+    required this.onSendMessage,
   });
 
   final Channel channel;
@@ -36,8 +36,9 @@ class ConversationView extends StatefulWidget {
   /// fully on screen, so the composer can show a stop button in between.
   final ValueChanged<bool>? onGeneratingChanged;
 
-  /// Sends a message the view built itself, such as an A2UI action.
-  final Future<void> Function(Channel channel, Message message)? onSendMessage;
+  /// Sends a message the view built itself, such as an A2UI action. Throws if
+  /// the message couldn't be sent; the view shows the error.
+  final Future<void> Function(Channel channel, Message message) onSendMessage;
 
   @override
   State<ConversationView> createState() => _ConversationViewState();
@@ -51,6 +52,13 @@ class _ConversationViewState extends State<ConversationView> {
 
   /// Outlives the message items, so form input survives scrolling.
   final _surfaces = A2uiSurfaceStore();
+
+  late final _actions = A2uiActionSender(
+    send: (message) => widget.onSendMessage(widget.channel, message),
+    onError: (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(error)));
+    },
+  );
 
   @override
   void initState() {
@@ -98,11 +106,6 @@ class _ConversationViewState extends State<ConversationView> {
     });
   }
 
-  void _onSurfaceAction(Message source, A2uiAction action) {
-    final message = buildA2uiActionMessage(action, sourceMessageId: source.id);
-    unawaited(widget.onSendMessage?.call(widget.channel, message));
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamChannel(
@@ -130,18 +133,16 @@ class _ConversationViewState extends State<ConversationView> {
                         onTypewriterStateChanged: _onTypewriterStateChanged,
                         approver: widget.agentSteps?.approver,
                         surface: _surfaces.surfaceOf(message),
-                        onSurfaceAction: (action) => _onSurfaceAction(message, action),
+                        onSurfaceAction: (action) => unawaited(_actions.handle(action, sourceMessageId: message.id)),
                       ),
                     ),
                   );
                 }
                 // An A2UI action shows what the user did, not what the model reads.
-                if (message.extraData[a2uiDisplayTextKey] case final String displayText) {
-                  return DefaultStreamMessageItem(
-                    props: defaultProps.copyWith(message: message.copyWith(text: displayText)),
-                  );
-                }
-                return DefaultStreamMessageItem(props: defaultProps);
+                final displayed = displayedA2uiMessage(message);
+                return DefaultStreamMessageItem(
+                  props: identical(displayed, message) ? defaultProps : defaultProps.copyWith(message: displayed),
+                );
               },
             ),
           ),

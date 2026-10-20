@@ -332,15 +332,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Sends a message the conversation built, such as an A2UI action, which the
-  /// agent answers.
+  /// agent answers. Throws if it couldn't go out; the conversation shows that.
   Future<void> _sendBuiltMessage(Channel channel, Message message) async {
+    // The starter reports why the agent didn't start, including a channel
+    // without an id.
     if (!await _agentStarter.ensureStarted(channel)) return;
-    try {
-      await channel.sendMessage(message.copyWith(extraData: {...message.extraData, 'client_id': clientId}));
-    } catch (e) {
-      debugPrint('Failed to send the message: $e');
-      _showError("Couldn't send your message. Please try again.");
-    }
+    await channel.sendMessage(message.copyWith(extraData: {...message.extraData, 'client_id': clientId}));
   }
 
   Future<void> _stopResponse() async {

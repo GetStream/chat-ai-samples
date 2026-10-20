@@ -50,7 +50,7 @@ If you set `MEM0_API_KEY`, the server will automatically wrap supported Vercel A
 For restaurant requests (for example "Top 3 restaurants in New York"), the server attaches agent-generated UI ([A2UI](https://a2ui.org)) to the AI message. The booking form and the confirmation are A2UI messages too. Set `A2UI_PROTOCOL` to choose the protocol version:
 
 - Not set (default): the server sends A2UI v0.8 in the `a2ui` message field. The iOS sample renders this version.
-- `A2UI_PROTOCOL=v0.9`: the server sends A2UI v0.9 in the `a2ui_v09` message field. The Android sample renders this version.
+- `A2UI_PROTOCOL=v0.9`: the server sends A2UI v0.9 in the `a2ui_v09` message field. The Android and Flutter samples render this version.
 
 The server sends only one of the two fields, because both together are larger than the 5 KB limit for message custom data. The setting applies to every client of this backend. With `v0.9`, the iOS sample shows only the plain text of the message, and with the default, the Android sample does.
 

@@ -142,11 +142,14 @@ Then ask "Top 3 restaurants in New York":
 3. Fill in the form and tap **Confirm reservation**: a `submit_booking` action, answered with a
    confirmation card.
 
-What is typed into a form is kept per message, so it survives scrolling and message updates. Action
-messages also carry `a2ui_surface_id`, `a2ui_display_text` (shown in the bubble instead of the
-text), `a2ui_action_name`, `a2ui_query_text`, `a2ui_action_context` and `a2ui_source_message_id`,
-like the iOS sample's. Surfaces follow the app's light or dark theme. Without
-`A2UI_PROTOCOL=v0.9` the backend sends v0.8, and the app shows only the reply's text.
+What is typed into a form is kept per message, so it survives scrolling and message updates, but not
+switching to another conversation and back. Action messages also carry `a2ui_surface_id`,
+`a2ui_display_text`, `a2ui_action_name`, `a2ui_action_label` (when the action has one),
+`a2ui_query_text`, `a2ui_action_context` and `a2ui_source_message_id`, like the iOS sample's. One
+difference: Flutter puts the display label in the message text, while iOS puts the query there, so
+the bubble shows `a2ui_display_text` for action messages from other clients. Surfaces follow the
+app's light or dark theme. Without `A2UI_PROTOCOL=v0.9` the backend sends v0.8, and the app shows
+only the reply's text.
 
 ## Getting started
 

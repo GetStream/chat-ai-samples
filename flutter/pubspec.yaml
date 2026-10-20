@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
   # The A2UI message types `genui` takes.
   a2ui_core: ^0.1.1
+  # Compares A2UI payloads across message updates.
+  collection: ^1.19.1
   dio: ^5.7.0
   # `stream_chat_flutter_ai` parses LaTeX but ships no math engine, so hosts
   # that don't render math don't pay for one. This is what lets

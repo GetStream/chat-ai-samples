@@ -8,6 +8,8 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
@@ -32,40 +34,64 @@ extension MessageAgentSteps on Message {
 
 /// Answers the tool calls in one conversation that wait for this device.
 ///
-/// Keep one per conversation: a new runner doesn't know what an old one ran.
+/// Keep one per conversation for the app's lifetime: a new runner doesn't
+/// know what an old one ran.
 class ConversationAgentSteps {
   ConversationAgentSteps({
     required this.channelId,
     required AIClientIdentity identity,
     required List<AIClientTool> tools,
     required AgentService agentService,
-  }) : approver = AIToolApprover(
-         identity: identity,
-         decide: (call, decision) => agentService.answerToolCall(
-           channelId: channelId,
-           call: call,
-           decision: decision,
-           identity: identity,
-         ),
-       ),
-       runner = AIClientToolRunner(
-         identity: identity,
-         tools: tools,
-         send: (call, result) => agentService.sendToolResult(
-           channelId: channelId,
-           call: call,
-           result: result,
-           clientId: identity.clientId ?? '',
-         ),
-       );
+    required this.onError,
+  }) {
+    approver = AIToolApprover(
+      identity: identity,
+      // A call whose step never changes after the answer can be answered again.
+      sentTimeout: const Duration(seconds: 30),
+      decide: (call, decision) async {
+        try {
+          await agentService.answerToolCall(channelId: channelId, call: call, decision: decision, identity: identity);
+        } catch (e) {
+          _reportOnce(call, "Couldn't send your answer to the assistant. ${describeBackendError(e)}");
+          rethrow;
+        }
+      },
+    );
+    runner = AIClientToolRunner(
+      identity: identity,
+      tools: tools,
+      send: (call, result) => agentService.sendToolResult(
+        channelId: channelId,
+        call: call,
+        result: result,
+        clientId: identity.clientId!,
+      ),
+      onToolError: (call, error, stack) => _reportOnce(call, 'The assistant\'s "${call.name}" action failed.'),
+      onDeliveryError: (call, result, error, stack) => _reportOnce(
+        call,
+        "Couldn't send the \"${call.name}\" result to the assistant. ${describeBackendError(error)}",
+      ),
+    );
+  }
 
   final String channelId;
 
+  /// Shows the user that a tool call went wrong.
+  final ValueChanged<String> onError;
+
   /// Asks under each call waiting for this user's approval.
-  final AIToolApprover approver;
+  late final AIToolApprover approver;
 
   /// Runs each `awaiting_client` call targeted at this install, once.
-  final AIClientToolRunner runner;
+  late final AIClientToolRunner runner;
+
+  /// Calls already reported, since the runner retries a delivery on every
+  /// update while its call waits.
+  final _reported = <String>{};
+
+  void _reportOnce(AIToolCallPart call, String message) {
+    if (_reported.add(call.id)) onError(message);
+  }
 
   /// Runs the client tool calls in [messages]. Safe to call on every update.
   void handle(Iterable<Message> messages) {
@@ -79,5 +105,24 @@ class ConversationAgentSteps {
   void dispose() {
     runner.close();
     approver.dispose();
+  }
+}
+
+/// One [ConversationAgentSteps] per conversation, kept across reopening it so
+/// a call that still waits doesn't run twice.
+class AgentStepsByChannel {
+  AgentStepsByChannel(this._create);
+
+  final ConversationAgentSteps Function(Channel channel) _create;
+  final _byCid = <String, ConversationAgentSteps>{};
+
+  /// The steps of [channel], created on first use.
+  ConversationAgentSteps of(Channel channel) => _byCid.putIfAbsent(channel.cid!, () => _create(channel));
+
+  void dispose() {
+    for (final steps in _byCid.values) {
+      steps.dispose();
+    }
+    _byCid.clear();
   }
 }

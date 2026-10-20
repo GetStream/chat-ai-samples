@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stream_chat_ai_assistant_flutter_example/src/draft_channel.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
@@ -8,12 +10,20 @@ void main() {
   late DraftChannel draft;
   var failNext = false;
 
+  /// When set, the next create waits for it, and fails if it does.
+  Completer<void>? gate;
+
   setUp(() {
     client = StreamChatClient('test-key');
     created = [];
     failNext = false;
+    gate = null;
     draft = DraftChannel(
       create: () async {
+        if (gate case final pending?) {
+          gate = null;
+          await pending.future;
+        }
         if (failNext) {
           failNext = false;
           throw StateError('offline');
@@ -83,13 +93,44 @@ void main() {
     expect(created, [channel]);
   });
 
-  testWidgets('a draft that failed in the background is retried on send', (tester) async {
+  testWidgets('sending while the draft is being created waits for that one', (tester) async {
+    final pending = gate = Completer();
+    draft.onTextChanged('Hello');
+    await tester.pump(const Duration(seconds: 1));
+
+    final taken = draft.take();
+    pending.complete();
+
+    expect(await taken, same(created.single));
+  });
+
+  testWidgets('a draft that fails after send was pressed is retried', (tester) async {
+    final pending = gate = Completer();
     failNext = true;
     draft.onTextChanged('Hello');
     await tester.pump(const Duration(seconds: 1));
 
-    final channel = await draft.take();
+    final taken = draft.take();
+    pending.complete();
 
+    expect(await taken, same(created.single));
+  });
+
+  testWidgets('a restored channel is the next draft', (tester) async {
+    final channel = await draft.take();
+    draft.restore(channel);
+    draft.onTextChanged('Hello again');
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(await draft.take(), same(channel));
     expect(created, [channel]);
+  });
+
+  testWidgets('dispose cancels a pending draft', (tester) async {
+    draft.onTextChanged('Hello');
+    draft.dispose();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(created, isEmpty);
   });
 }

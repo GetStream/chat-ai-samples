@@ -31,6 +31,29 @@ void main() {
     expect(tester.state<ScaffoldState>(find.byType(Scaffold)).hasDrawer, isFalse);
   });
 
+  testWidgets('the split view starts exactly at the breakpoint', (tester) async {
+    await pumpAt(tester, HomeLayout.splitViewBreakpoint - 1);
+    expect(find.text('History'), findsNothing);
+
+    tester.view.physicalSize = const Size(HomeLayout.splitViewBreakpoint, 900);
+    await tester.pump();
+    expect(find.text('History'), findsOneWidget);
+  });
+
+  testWidgets('going back to narrow moves the history into the drawer', (tester) async {
+    await pumpAt(tester, 1000);
+    await tester.tap(find.byType(TextButton));
+
+    tester.view.physicalSize = const Size(400, 900);
+    await tester.pump();
+
+    expect(find.text('History'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
+    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+    await tester.pumpAndSettle();
+    expect(find.text('History'), findsOneWidget);
+  });
+
   testWidgets('the conversation keeps its state across the switch', (tester) async {
     await pumpAt(tester, 400);
     await tester.tap(find.byType(TextButton));

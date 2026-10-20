@@ -9,6 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'agent_steps.dart';
 import 'code_highlighter.dart';
 
+/// How fast a reply types out, per character.
+const replyTypingSpeed = Duration(milliseconds: 10);
+
 /// Renders an AI message as streaming markdown, without a bubble or avatar,
 /// under the agent's steps (reasoning and tool calls), if it wrote any.
 ///
@@ -47,6 +50,7 @@ class AIMessageItem extends StatelessWidget {
     final reply = StreamingMessageView(
       text: message.text ?? '',
       expectMoreText: expectMoreText,
+      typingSpeed: replyTypingSpeed,
       onFinished: onFinished,
       onTypewriterStateChanged: onTypewriterStateChanged,
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),

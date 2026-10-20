@@ -9,20 +9,21 @@ import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 import 'agent_steps.dart';
 import 'ai_message_item.dart';
+import 'generating_tracker.dart';
 import 'typing_state_handler.dart';
 
 /// The message list and AI typing indicator for [channel].
 ///
 /// Give it a key derived from the channel (e.g. `ValueKey(channel.cid)`), so
-/// switching channels creates a fresh [TypingStateHandler] and
-/// [ConversationAgentSteps].
+/// switching channels creates a fresh [TypingStateHandler].
 class ConversationView extends StatefulWidget {
-  const ConversationView({super.key, required this.channel, this.createAgentSteps, this.onGeneratingChanged});
+  const ConversationView({super.key, required this.channel, this.agentSteps, this.onGeneratingChanged});
 
   final Channel channel;
 
-  /// Creates what answers this conversation's tool calls, once per view.
-  final ConversationAgentSteps Function(Channel channel)? createAgentSteps;
+  /// Answers this conversation's tool calls. Owned by the caller, so it
+  /// outlives this view and a reopened conversation doesn't rerun a call.
+  final ConversationAgentSteps? agentSteps;
 
   /// Called when the assistant starts replying, and again once its reply is
   /// fully on screen, so the composer can show a stop button in between.
@@ -33,21 +34,21 @@ class ConversationView extends StatefulWidget {
 }
 
 class _ConversationViewState extends State<ConversationView> {
-  late final _typingStateHandler = TypingStateHandler(channel: widget.channel)..addListener(_onTypingStateChanged);
+  late final _typingStateHandler = TypingStateHandler(channel: widget.channel);
+  late final GeneratingTracker _generating;
   var _typewriterState = TypewriterState.idle;
-
-  /// The reply that keeps the stop button up until it is fully on screen. The
-  /// typewriter usually trails the backend, so this outlives the
-  /// `ai_indicator.clear`.
-  String? _revealingReplyId;
-
-  late final _agentSteps = widget.createAgentSteps?.call(widget.channel);
   StreamSubscription<List<Message>>? _messagesSubscription;
 
   @override
   void initState() {
     super.initState();
-    final agentSteps = _agentSteps;
+    _generating = GeneratingTracker(
+      typingState: _typingStateHandler,
+      replyText: _replyText,
+      onChanged: (isGenerating) => widget.onGeneratingChanged?.call(isGenerating),
+      typingSpeed: replyTypingSpeed,
+    );
+    final agentSteps = widget.agentSteps;
     if (agentSteps != null) {
       // Every update, so a call that starts waiting mid-reply runs too.
       _messagesSubscription = widget.channel.state?.messagesStream.listen(agentSteps.handle);
@@ -57,37 +58,21 @@ class _ConversationViewState extends State<ConversationView> {
   @override
   void dispose() {
     unawaited(_messagesSubscription?.cancel());
-    _agentSteps?.dispose();
+    _generating.dispose();
     _typingStateHandler.dispose();
     super.dispose();
   }
 
-  void _onTypingStateChanged() {
-    final handler = _typingStateHandler;
-    if (handler.isBusy) {
-      _revealingReplyId = handler.messageId;
-    } else if (handler.value == AITypingState.error || handler.wasStopped || !_hasTextToReveal(_revealingReplyId)) {
-      // Nothing left to wait for: `onFinished` never fires for an empty reply.
-      _revealingReplyId = null;
-    }
-    _reportGenerating();
-  }
-
-  bool _hasTextToReveal(String? messageId) {
-    if (messageId == null) return false;
+  String? _replyText(String messageId) {
     final messages = widget.channel.state?.messages ?? const <Message>[];
-    final reply = messages.where((message) => message.id == messageId).firstOrNull;
-    return reply?.text?.isNotEmpty ?? false;
+    return messages.where((message) => message.id == messageId).firstOrNull?.text;
   }
 
-  void _onReplyFinished(String messageId) {
-    if (messageId != _revealingReplyId || _typingStateHandler.isBusy) return;
-    _revealingReplyId = null;
-    _reportGenerating();
-  }
-
-  void _reportGenerating() {
-    widget.onGeneratingChanged?.call(_typingStateHandler.isBusy || _revealingReplyId != null);
+  /// Items leave the tree while it is locked, so report after the frame.
+  void _onReplyDisposed(String messageId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _generating.replyDisposed(messageId);
+    });
   }
 
   void _onTypewriterStateChanged(TypewriterState state) {
@@ -109,26 +94,23 @@ class _ConversationViewState extends State<ConversationView> {
             child: StreamMessageListView(
               // A new channel is created together with its first message, so
               // the default "no messages yet" text would only flash briefly.
-              builders: StreamMessageListViewBuilders(
-                empty: (context) => const Center(
-                  child: SizedBox.square(
-                    dimension: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              ),
+              // Not a spinner: a first message that fails leaves it empty.
+              builders: StreamMessageListViewBuilders(empty: (context) => const SizedBox.shrink()),
               messageBuilder: (context, message, defaultProps) {
                 if (message.isAI) {
                   // Rebuilt on every state change, so `expectMoreText` drops
                   // as soon as the backend is done.
-                  return ValueListenableBuilder(
-                    valueListenable: _typingStateHandler,
-                    builder: (context, _, _) => AIMessageItem(
-                      message: message,
-                      expectMoreText: _typingStateHandler.isBusy && message.id == _typingStateHandler.messageId,
-                      onFinished: () => _onReplyFinished(message.id),
-                      onTypewriterStateChanged: _onTypewriterStateChanged,
-                      approver: _agentSteps?.approver,
+                  return _OnDispose(
+                    onDispose: () => _onReplyDisposed(message.id),
+                    child: ValueListenableBuilder(
+                      valueListenable: _typingStateHandler,
+                      builder: (context, _, _) => AIMessageItem(
+                        message: message,
+                        expectMoreText: _typingStateHandler.isBusy && message.id == _typingStateHandler.messageId,
+                        onFinished: () => _generating.replyFinished(message.id),
+                        onTypewriterStateChanged: _onTypewriterStateChanged,
+                        approver: widget.agentSteps?.approver,
+                      ),
                     ),
                   );
                 }
@@ -147,6 +129,28 @@ class _ConversationViewState extends State<ConversationView> {
       ),
     );
   }
+}
+
+/// Calls [onDispose] when [child] leaves the tree.
+class _OnDispose extends StatefulWidget {
+  const _OnDispose({required this.onDispose, required this.child});
+
+  final VoidCallback onDispose;
+  final Widget child;
+
+  @override
+  State<_OnDispose> createState() => _OnDisposeState();
+}
+
+class _OnDisposeState extends State<_OnDispose> {
+  @override
+  void dispose() {
+    widget.onDispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class AITypingIndicatorStateView extends StatelessWidget {

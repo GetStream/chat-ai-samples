@@ -50,11 +50,7 @@ class AgentService {
     await _dio.post<void>('/register-tools', data: {'channel_id': channelId, 'tools': tools});
   }
 
-  /// Sends the user's answer to a tool call waiting for approval.
-  ///
-  /// None of this repository's backends implements `/tool-approval` yet. The
-  /// backend should accept it only from the call's target, only once, and then
-  /// update the call's `ai_tool_call` step.
+  /// Sends the user's answer to an approval. See the README's Agent steps.
   Future<void> answerToolCall({
     required String channelId,
     required AIToolCallPart call,
@@ -73,10 +69,7 @@ class AgentService {
     );
   }
 
-  /// Sends what a client tool returned, for the agent to carry on with.
-  ///
-  /// Not implemented by this repository's backends yet either. It should be
-  /// idempotent on `tool_call_id`: a retry can send the same result twice.
+  /// Sends what a client tool returned. See the README's Agent steps.
   Future<void> sendToolResult({
     required String channelId,
     required AIToolCallPart call,

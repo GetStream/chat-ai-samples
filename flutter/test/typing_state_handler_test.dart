@@ -96,6 +96,18 @@ void main() {
     expect(handler.messageId, 'reply-2');
   });
 
+  test('a late update of the stopped reply keeps it stopped', () async {
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    emit(aiEvent(EventType.aiIndicatorStop));
+    emit(aiEvent(EventType.aiIndicatorClear, messageId: 'reply-1'));
+    // Sent by the backend before it saw the stop.
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(handler.wasStopped, isTrue);
+    expect(handler.isBusy, isFalse);
+  });
+
   test('stops listening once disposed', () async {
     handler.dispose();
     emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'thinking'));

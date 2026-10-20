@@ -123,9 +123,25 @@ class _HomePageState extends State<HomePage> {
   /// Listens on the client, so it keeps working across conversations.
   late final ClientToolListener _toolListener;
 
+  /// What answers each conversation's tool calls.
+  late final _agentSteps = AgentStepsByChannel(
+    (channel) => ConversationAgentSteps(
+      channelId: channel.id!,
+      identity: _identity,
+      tools: _clientTools,
+      agentService: _agentService,
+      onError: _showError,
+    ),
+  );
+
   late final _channelListController = StreamChannelListController(
     client: widget.client,
-    filter: Filter.in_('members', [_currentUserId]),
+    // Leaves out drafts: channels prepared for a chat that was never sent in.
+    filter: Filter.and([
+      Filter.in_('members', [_currentUserId]),
+      Filter.exists('last_message_at'),
+    ]),
+    eventHandler: _SentChannelsEventHandler(),
     limit: 30,
   );
 
@@ -153,6 +169,7 @@ class _HomePageState extends State<HomePage> {
     _toolListener.dispose();
     _channelListController.dispose();
     _composerController.dispose();
+    _agentSteps.dispose();
     super.dispose();
   }
 
@@ -184,13 +201,6 @@ class _HomePageState extends State<HomePage> {
     if (_activeChannel != null) return;
     _draftChannel.onTextChanged(_composerController.textEditingController.text);
   }
-
-  ConversationAgentSteps _createAgentSteps(Channel channel) => ConversationAgentSteps(
-    channelId: channel.id ?? '',
-    identity: _identity,
-    tools: _clientTools,
-    agentService: _agentService,
-  );
 
   void _showError(String message) {
     if (!mounted) return;
@@ -234,9 +244,19 @@ class _HomePageState extends State<HomePage> {
       },
     );
     await channel.watch();
-    // Nobody can be watching a channel that didn't exist a moment ago.
-    unawaited(_agentStarter.ensureStarted(channel, checkPresence: false));
+    // Nobody can be watching a channel that didn't exist a moment ago. The
+    // send path reports a failure, and tries again.
+    unawaited(_agentStarter.ensureStarted(channel, checkPresence: false, reportErrors: false));
     return channel;
+  }
+
+  /// Goes back to the new-chat screen when a new conversation's first message
+  /// couldn't go out, rather than leave an empty conversation open.
+  void _leaveIfEmpty(Channel channel) {
+    if (!mounted || _activeChannel != channel) return;
+    if (channel.state?.messages.isNotEmpty ?? false) return;
+    _draftChannel.restore(channel);
+    setState(() => _activeChannel = null);
   }
 
   /// Opens a new conversation, the draft if there is one, or returns null
@@ -277,11 +297,12 @@ class _HomePageState extends State<HomePage> {
     // arrive after it has started. If it can't start, keep the message in the
     // composer rather than send it to a channel nobody will answer in.
     if (!await _agentStarter.ensureStarted(channel)) {
+      _leaveIfEmpty(channel);
       _restoreComposer(text, option, attachments);
       return;
     }
 
-    final cid = channel.cid ?? '';
+    final cid = channel.cid!;
     final titleIt = (channel.state?.messages.isEmpty ?? true) && _titleClaims.add(cid);
     try {
       // `sendMessage` uploads the attachments itself.
@@ -300,6 +321,7 @@ class _HomePageState extends State<HomePage> {
       debugPrint('Failed to send the message: $e');
       _showError("Couldn't send your message. Please try again.");
       if (titleIt) _titleClaims.remove(cid);
+      _leaveIfEmpty(channel);
       _restoreComposer(text, option, attachments);
       return;
     }
@@ -316,6 +338,8 @@ class _HomePageState extends State<HomePage> {
       await _activeChannel?.stopAIResponse();
     } catch (e) {
       debugPrint('Failed to stop the AI response: $e');
+      // Still replying, so stop can be pressed again.
+      _composerController.isGenerating = true;
       _showError("Couldn't stop the reply.");
     }
   }
@@ -350,7 +374,7 @@ class _HomePageState extends State<HomePage> {
                 : ConversationView(
                     key: ValueKey(activeChannel.cid),
                     channel: activeChannel,
-                    createAgentSteps: _createAgentSteps,
+                    agentSteps: _agentSteps.of(activeChannel),
                     onGeneratingChanged: (isGenerating) => _composerController.isGenerating = isGenerating,
                   ),
           ),
@@ -417,13 +441,8 @@ class _ConversationHistory extends StatelessWidget {
         Expanded(
           child: StreamChannelListView(
             controller: controller,
-            separatorBuilder: (context, items, index) => items[index].lastMessageAt == null
-                ? const SizedBox.shrink()
-                : defaultChannelListViewSeparatorBuilder(context, items, index),
             itemBuilder: (context, items, index, defaultWidget) {
               final channel = items[index];
-              // A channel prepared for a chat that was never sent in.
-              if (channel.lastMessageAt == null) return const SizedBox.shrink();
               return ListTile(
                 title: Text(channel.name ?? channel.id ?? ''),
                 selected: channel.cid == activeChannel?.cid,
@@ -434,6 +453,16 @@ class _ConversationHistory extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Keeps drafts out of the history, as its query's filter does: the default
+/// adds every channel the user is added to, including a fresh draft.
+class _SentChannelsEventHandler extends StreamChannelListEventHandler {
+  @override
+  void onNotificationAddedToChannel(Event event, StreamChannelListController controller) {
+    if (event.channel?.lastMessageAt == null) return;
+    super.onNotificationAddedToChannel(event, controller);
   }
 }
 

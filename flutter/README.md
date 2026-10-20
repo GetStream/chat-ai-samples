@@ -115,7 +115,8 @@ repository writes them yet, so these light up once yours does:
 Every message the app sends carries `client_id`, which identifies this install (new on each launch),
 so the agent knows which device to target. The backend should accept an approval or result only
 from the call's target and only once, then update the step — and make `/tool-results` idempotent on
-`tool_call_id`, since a retry can post the same result twice. The payloads follow the
+`tool_call_id`, since a retry can post the same result twice. An answer whose step hasn't changed
+after 30 seconds counts as failed, so the user can answer again. The payloads follow the
 [`stream_chat_flutter_ai` docs](https://github.com/GetStream/stream-chat-flutter-ai/tree/main/packages/stream_chat_flutter_ai#agent-steps-aimessagepartsview).
 
 ## Getting started
@@ -197,7 +198,7 @@ flutter run -t lib/main_dev.dart
 - `lib/src/home_page.dart` — the single screen: persistent composer, landing view, and history.
 - `lib/src/home_layout.dart` — history as a drawer on phones, a side panel on wide screens.
 - `lib/src/draft_channel.dart` — creates a new chat's channel while its first message is typed.
-- `lib/src/agent_starter.dart` — starts each channel's agent once, unless one is already watching.
+- `lib/src/agent_starter.dart` — starts a channel's agent whenever none is watching it.
 - `lib/src/agent_steps.dart` — reads agent steps from attachments; answers approvals and client
   tool calls.
 - `lib/src/conversation_view.dart` — the active conversation: message list and typing indicator.
@@ -205,6 +206,7 @@ flutter run -t lib/main_dev.dart
 - `lib/src/agent_service.dart` — backend calls: start the agent, register tools, summarize a title,
   and send tool approvals and results.
 - `lib/src/typing_state_handler.dart` — the assistant's typing state, from `ai_indicator.*` events.
+- `lib/src/generating_tracker.dart` — keeps the stop button up until a reply is fully on screen.
 - `lib/src/client_tools.dart` — the client-side tools and the event listener feeding the registry.
 - `lib/src/connection_banner.dart` — the reconnecting / offline banner.
 - `lib/src/code_highlighter.dart` — `re_highlight` grammars supplied to the package's

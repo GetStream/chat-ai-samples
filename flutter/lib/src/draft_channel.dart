@@ -64,6 +64,14 @@ class DraftChannel {
     return draft.catchError((Object _) => create());
   }
 
+  /// Keeps [channel], whose first message couldn't be sent, as the draft for
+  /// the next try, unless there is a draft already.
+  void restore(Channel channel) {
+    if (_draft != null) return;
+    _cancelTimer();
+    _draft = Future.value(channel);
+  }
+
   void _cancelTimer() {
     _timer?.cancel();
     _timer = null;

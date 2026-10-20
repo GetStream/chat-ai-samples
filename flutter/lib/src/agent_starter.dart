@@ -15,8 +15,8 @@ Future<bool> isAgentWatching(Channel channel) async {
   return hasAgentWatcher(state.watchers ?? const []);
 }
 
-/// Starts the AI agent for a channel and registers the client tools with it,
-/// once per channel.
+/// Starts the AI agent for a channel when none is watching it, and registers
+/// the client tools with it.
 ///
 /// Notifies when a channel starts or stops [isStarting], for a progress hint.
 class AgentStarter extends ChangeNotifier {
@@ -39,70 +39,89 @@ class AgentStarter extends ChangeNotifier {
   /// The AI platform the backend should use.
   final String? platform;
 
-  /// Checked before each start, so an agent that is already there isn't
-  /// started twice.
+  /// Checked on every [ensureStarted], so an agent the backend dropped (a
+  /// restart, an idle stop) is started again.
   final Future<bool> Function(Channel channel) checkAgentWatching;
 
-  /// One start per channel, shared by everything that needs the agent: the
-  /// send path waits on the same future the drawer started. Failed starts are
-  /// removed, so the next send tries again.
-  final _starts = <String, Future<bool>>{};
+  /// The attempt in flight per channel, shared by everything that needs the
+  /// agent: the send path waits on the one the draft started.
+  final _attempts = <String, _Attempt>{};
+
+  /// Channels this starter started an agent in, trusted when a check fails.
+  final _started = <String>{};
+  final _toolsRegistered = <String>{};
   final _starting = <String>{};
   var _disposed = false;
 
   /// Whether the agent of the channel with [channelId] is still starting.
   bool isStarting(String? channelId) => _starting.contains(channelId);
 
-  /// Returns whether the agent is running. Concurrent callers share one start.
+  /// Returns whether the agent is running. Concurrent callers share one
+  /// attempt, whose errors the first caller with [reportErrors] reports.
   ///
   /// Pass `checkPresence: false` for a channel that was just created, which
   /// can't have an agent yet.
-  Future<bool> ensureStarted(Channel channel, {bool checkPresence = true}) {
+  Future<bool> ensureStarted(Channel channel, {bool checkPresence = true, bool reportErrors = true}) async {
     final channelId = channel.id;
-    if (channelId == null) return Future.value(false);
+    if (channelId == null) {
+      if (reportErrors) onError("Couldn't start the assistant: the conversation has no id yet.");
+      return false;
+    }
 
-    return _starts.putIfAbsent(channelId, () async {
-      _setStarting(channelId, true);
-      final started = await _start(channel, channelId, checkPresence: checkPresence);
-      if (!started) unawaited(_starts.remove(channelId));
-      _setStarting(channelId, false);
-      return started;
-    });
+    final attempt = _attempts[channelId] ??= _Attempt(_ensure(channel, channelId, checkPresence: checkPresence));
+    final (:running, :errors) = await attempt.result;
+    if (identical(_attempts[channelId], attempt)) _attempts.remove(channelId);
+    if (reportErrors && !attempt.reported && !_disposed) {
+      attempt.reported = true;
+      errors.forEach(onError);
+    }
+    return running;
   }
 
-  Future<bool> _start(Channel channel, String channelId, {required bool checkPresence}) async {
-    if (!checkPresence || !await _isAgentWatchingSafely(channel)) {
+  Future<_Result> _ensure(Channel channel, String channelId, {required bool checkPresence}) async {
+    if (!checkPresence || !await _isAgentWatching(channel, channelId)) {
+      _setStarting(channelId, true);
       try {
         await agentService.startAgent(channelId, platform: platform);
+        _started.add(channelId);
+        // A new agent may come from a restarted backend that forgot them.
+        _toolsRegistered.remove(channelId);
       } catch (e) {
         debugPrint('Failed to start the AI agent: $e');
+        _started.remove(channelId);
+        _setStarting(channelId, false);
         // Without this, the app looks fine but the assistant never replies.
-        onError("Couldn't start the assistant. ${describeBackendError(e)}");
-        return false;
+        return (running: false, errors: ["Couldn't start the assistant. ${describeBackendError(e)}"]);
       }
     }
 
-    try {
-      // Registering again for a channel the backend already knows is harmless,
-      // and keeps it in sync with the tools this build has.
-      await agentService.registerTools(channelId, toolPayloads());
-    } catch (e) {
-      debugPrint('Failed to register client tools: $e');
-      onError(
-        "The assistant is running, but can't use app actions like switching the theme. "
-        '${describeBackendError(e)}',
-      );
+    final errors = <String>[];
+    if (!_toolsRegistered.contains(channelId)) {
+      _setStarting(channelId, true);
+      try {
+        await agentService.registerTools(channelId, toolPayloads());
+        _toolsRegistered.add(channelId);
+      } catch (e) {
+        // Not remembered, so the next send tries again.
+        debugPrint('Failed to register client tools: $e');
+        errors.add(
+          "The assistant is running, but can't use app actions like switching the theme. "
+          '${describeBackendError(e)}',
+        );
+      }
     }
-    return true;
+    _setStarting(channelId, false);
+    return (running: true, errors: errors);
   }
 
-  /// A failed check falls back to starting the agent, as if none were there.
-  Future<bool> _isAgentWatchingSafely(Channel channel) async {
+  /// A failed check trusts an agent this starter started, and otherwise
+  /// starts one, as if none were there.
+  Future<bool> _isAgentWatching(Channel channel, String channelId) async {
     try {
       return await checkAgentWatching(channel);
     } catch (e) {
       debugPrint('Failed to check for a running AI agent: $e');
-      return false;
+      return _started.contains(channelId);
     }
   }
 
@@ -117,4 +136,13 @@ class AgentStarter extends ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
+}
+
+typedef _Result = ({bool running, List<String> errors});
+
+class _Attempt {
+  _Attempt(this.result);
+
+  final Future<_Result> result;
+  var reported = false;
 }

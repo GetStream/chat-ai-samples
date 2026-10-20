@@ -14,11 +14,15 @@ class TypingStateHandler extends ValueNotifier<AITypingState> {
 
   /// The AI message the latest `ai_indicator.*` event was about. Kept once the
   /// backend goes idle, since that reply may still be typing out.
+  ///
+  /// The backends send `message_id` with every update and clear; only a stop,
+  /// which comes from a client, may lack one.
   String? get messageId => _messageId;
   String? _messageId;
 
   /// Whether someone pressed stop since the latest reply started. Survives the
-  /// `ai_indicator.clear` the backend sends after stopping.
+  /// `ai_indicator.clear` the backend sends after stopping, and late updates
+  /// of the stopped reply are ignored.
   bool get wasStopped => _wasStopped;
   var _wasStopped = false;
 
@@ -37,9 +41,14 @@ class TypingStateHandler extends ValueNotifier<AITypingState> {
       _ => null,
     };
     if (state == null) return;
-    _messageId = event.messageId ?? _messageId;
+    final messageId = event.messageId ?? _messageId;
+    if (messageId != _messageId) {
+      _messageId = messageId;
+      _wasStopped = false;
+    } else if (_wasStopped && event.type == EventType.aiIndicatorUpdate) {
+      return;
+    }
     if (event.type == EventType.aiIndicatorStop) _wasStopped = true;
-    if (event.type == EventType.aiIndicatorUpdate) _wasStopped = false;
     // A repeated state can still carry a new message or stop flag.
     if (value == state) notifyListeners();
     value = state;

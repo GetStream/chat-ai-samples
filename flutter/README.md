@@ -5,7 +5,8 @@ and [`stream_chat_flutter_ai`](https://github.com/GetStream/stream-chat-flutter-
 
 It opens straight into a "new chat" composer rather than a channel list. Type a message or tap a
 suggestion, and an AI agent joins the conversation and streams its reply back as markdown. Past
-conversations live in a drawer reached by edge-swiping from the left.
+conversations live in a drawer reached by edge-swiping from the left, or in a side panel on tablets
+and desktop.
 
 ## Demo
 | App Demo                                                                                      |
@@ -15,13 +16,22 @@ conversations live in a drawer reached by edge-swiping from the left.
 ## Features
 
 - **Chat-first navigation**: no channel list and no app bar — the app is a composer, with history
-  tucked into an edge-swipe drawer.
+  tucked into an edge-swipe drawer. From 720 dp wide the history is a permanent side panel instead,
+  like the iOS sample's split view.
 - **Automatic agent lifecycle**: the agent starts whenever a conversation becomes active, whether
-  newly created or reopened from history. There's no "Start AI" button; the backend stops idle
-  agents on its own.
+  newly created or reopened from history, unless an `ai-bot-*` user already watches the channel.
+  There's no "Start AI" button; the backend stops idle agents on its own.
+- **Faster first reply**: once 5 characters are typed in a new chat, the channel is created and its
+  agent started, so sending doesn't wait for either. One such draft is kept and reused until a
+  message is sent in it, and it stays out of the history until then.
 - **Streaming responses**: replies render as plain markdown with `StreamingMessageView` — no avatar,
-  no bubble.
-- **Rich replies**: fenced code is syntax-highlighted, LaTeX is typeset, chart fences render as
+  no bubble. The stop button stays up until the reply is fully typed out (`onFinished`), not just
+  until the backend is done.
+- **Agent steps**: reasoning and tool calls render above the reply with `AIMessagePartsView`, tool
+  calls can ask for approval, and client tools can return a result — see
+  [Agent steps](#agent-steps) for what the backend needs to send.
+- **Rich replies**: fenced code is syntax-highlighted (in a light or dark palette, following the
+  code block), LaTeX is typeset, chart fences render as
   charts, and links open in the browser. The package renders the chrome but ships no grammars or
   math engine — `lib/src/code_highlighter.dart` and the `mathBuilder` in
   `lib/src/ai_message_item.dart` are where this app supplies them.
@@ -40,13 +50,14 @@ conversations live in a drawer reached by edge-swiping from the left.
 ## Client-side tools
 
 Client-side tools let the assistant do things in the app rather than only talk about them: show an
-alert, navigate, read a sensor. Two ship here, both in
+alert, navigate, read a sensor. Three ship here, all in
 [`lib/src/client_tools.dart`](lib/src/client_tools.dart):
 
 | Tool | Arguments | Effect | Ask the assistant |
 |---|---|---|---|
 | `greetUser` | none | Shows an alert | "greet me" |
 | `setThemeMode` | `mode`: `light` \| `dark` \| `system` | Switches the app's theme | "switch to dark mode" |
+| `getLocalTime` | none | Returns the local time and time zone | "what time is it here?" |
 
 How a tool call travels:
 
@@ -61,8 +72,10 @@ How a tool call travels:
 
 Two properties of this protocol shape the code, and are worth knowing before you add a tool:
 
-- **Nothing is returned to the model.** A tool is a side effect, not a function call with a result:
-  the invocation event carries no field for one, so none of the tools here return a value.
+- **Nothing is returned to the model** on this path. A tool is a side effect, not a function call
+  with a result: the invocation event carries no field for one. `getLocalTime` returns a value only
+  when the agent asks through an `ai_tool_call` step (see [Agent steps](#agent-steps)); invoked by
+  an event, as `ai-sdk-sample` does, its result is dropped.
 - **Registrations are kept by the backend** (in memory, in `ai-sdk-sample`) and re-applied when an agent restarts. A
   conversation registered by an older build of the app can therefore invoke a tool the current build
   no longer has, which is why `dispatch` returning `false` is normal rather than an error.
@@ -85,6 +98,25 @@ the app that no longer registers it.
 None of this is part of the protocol `stream_chat_flutter_ai` implements — it takes no backend
 dependency, and a different backend can return something else, or nothing, or not surface it as a
 message at all. If you don't want the line in your transcripts, change what your backend returns.
+
+## Agent steps
+
+An agent can write each step it takes as an attachment on its reply, and the app shows them above
+the reply text ([`lib/src/agent_steps.dart`](lib/src/agent_steps.dart)). No backend in this
+repository writes them yet, so these light up once yours does:
+
+| Feature | What the backend sends | What the app sends back |
+|---|---|---|
+| Reasoning | an `ai_reasoning` attachment | — |
+| Tool calls | an `ai_tool_call` attachment, updated as its `status` changes | — |
+| Tool approvals | `status: awaiting_approval` with `target_user_id` and an `approval` | `POST /tool-approval` `{channel_id, tool_call_id, user_id, client_id, decision}` |
+| Client tools with a result | `executor: client`, `status: awaiting_client`, `target_user_id` and `target_client_id` | `POST /tool-results` `{channel_id, tool_call_id, client_id, output \| failure, summary}` |
+
+Every message the app sends carries `client_id`, which identifies this install (new on each launch),
+so the agent knows which device to target. The backend should accept an approval or result only
+from the call's target and only once, then update the step — and make `/tool-results` idempotent on
+`tool_call_id`, since a retry can post the same result twice. The payloads follow the
+[`stream_chat_flutter_ai` docs](https://github.com/GetStream/stream-chat-flutter-ai/tree/main/packages/stream_chat_flutter_ai#agent-steps-aimessagepartsview).
 
 ## Getting started
 
@@ -154,18 +186,24 @@ flutter run -t lib/main_dev.dart
 ## Usage
 
 - **Start a conversation**: tap a suggestion chip or type a message. The agent joins automatically.
-- **Browse history**: edge-swipe from the left, or tap "New chat" in that drawer to start over.
+- **Browse history**: edge-swipe from the left (or use the side panel on a wide screen), and tap
+  "New chat" there to start over.
 - **Try a tool**: ask the assistant to greet you, or to switch the app to dark mode.
 
 ## Project structure
 
 - `lib/main.dart` — entry point: Stream client setup and app theme.
 - `lib/main_dev.dart` — the same app with the Marionette binding, for driving it from tools.
-- `lib/src/home_page.dart` — the single screen: persistent composer, landing view, and history
-  drawer.
+- `lib/src/home_page.dart` — the single screen: persistent composer, landing view, and history.
+- `lib/src/home_layout.dart` — history as a drawer on phones, a side panel on wide screens.
+- `lib/src/draft_channel.dart` — creates a new chat's channel while its first message is typed.
+- `lib/src/agent_starter.dart` — starts each channel's agent once, unless one is already watching.
+- `lib/src/agent_steps.dart` — reads agent steps from attachments; answers approvals and client
+  tool calls.
 - `lib/src/conversation_view.dart` — the active conversation: message list and typing indicator.
 - `lib/src/ai_message_item.dart` — how an AI message renders, including code, math and links.
-- `lib/src/agent_service.dart` — backend calls: start the agent, register tools, summarize a title.
+- `lib/src/agent_service.dart` — backend calls: start the agent, register tools, summarize a title,
+  and send tool approvals and results.
 - `lib/src/typing_state_handler.dart` — the assistant's typing state, from `ai_indicator.*` events.
 - `lib/src/client_tools.dart` — the client-side tools and the event listener feeding the registry.
 - `lib/src/connection_banner.dart` — the reconnecting / offline banner.

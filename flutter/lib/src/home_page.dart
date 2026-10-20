@@ -300,6 +300,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _stopResponse() async {
+    // Don't wait for the rest of the reply to type out: the user asked to stop.
+    _composerController.isGenerating = false;
     try {
       await _activeChannel?.stopAIResponse();
     } catch (e) {
@@ -341,8 +343,7 @@ class _HomePageState extends State<HomePage> {
                   : ConversationView(
                       key: ValueKey(activeChannel.cid),
                       channel: activeChannel,
-                      onGeneratingChanged: (isGenerating) =>
-                          _composerController.isGenerating = isGenerating,
+                      onGeneratingChanged: (isGenerating) => _composerController.isGenerating = isGenerating,
                     ),
             ),
             if (_startingAgents.contains(activeChannel?.id)) const _StartingAssistantHint(),

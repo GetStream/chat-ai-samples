@@ -2,12 +2,7 @@ import 'package:flutter/material.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
 import 'package:stream_chat_flutter/stream_chat_flutter.dart'
-    hide
-        StreamingMessageView,
-        AITypingIndicatorView,
-        TypewriterState,
-        TypewriterController,
-        StreamTypewriterBuilder;
+    hide StreamingMessageView, AITypingIndicatorView, TypewriterState, TypewriterController, StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 import 'ai_message_item.dart';
@@ -22,8 +17,8 @@ class ConversationView extends StatefulWidget {
 
   final Channel channel;
 
-  /// Called when the assistant starts or stops replying, so the composer can
-  /// swap its send button for a stop button.
+  /// Called when the assistant starts replying, and again once its reply is
+  /// fully on screen, so the composer can show a stop button in between.
   final ValueChanged<bool>? onGeneratingChanged;
 
   @override
@@ -31,9 +26,13 @@ class ConversationView extends StatefulWidget {
 }
 
 class _ConversationViewState extends State<ConversationView> {
-  late final _typingStateHandler = TypingStateHandler(channel: widget.channel)
-    ..addListener(_reportGenerating);
+  late final _typingStateHandler = TypingStateHandler(channel: widget.channel)..addListener(_onTypingStateChanged);
   var _typewriterState = TypewriterState.idle;
+
+  /// The reply that keeps the stop button up until it is fully on screen. The
+  /// typewriter usually trails the backend, so this outlives the
+  /// `ai_indicator.clear`.
+  String? _revealingReplyId;
 
   @override
   void dispose() {
@@ -41,13 +40,32 @@ class _ConversationViewState extends State<ConversationView> {
     super.dispose();
   }
 
-  /// Follows the backend only: stopping can't cancel text that has already
-  /// arrived and is still being revealed by the typewriter.
+  void _onTypingStateChanged() {
+    final handler = _typingStateHandler;
+    if (handler.isBusy) {
+      _revealingReplyId = handler.messageId;
+    } else if (handler.value == AITypingState.error || handler.wasStopped || !_hasTextToReveal(_revealingReplyId)) {
+      // Nothing left to wait for: `onFinished` never fires for an empty reply.
+      _revealingReplyId = null;
+    }
+    _reportGenerating();
+  }
+
+  bool _hasTextToReveal(String? messageId) {
+    if (messageId == null) return false;
+    final messages = widget.channel.state?.messages ?? const <Message>[];
+    final reply = messages.where((message) => message.id == messageId).firstOrNull;
+    return reply?.text?.isNotEmpty ?? false;
+  }
+
+  void _onReplyFinished(String messageId) {
+    if (messageId != _revealingReplyId || _typingStateHandler.isBusy) return;
+    _revealingReplyId = null;
+    _reportGenerating();
+  }
+
   void _reportGenerating() {
-    widget.onGeneratingChanged?.call(switch (_typingStateHandler.value) {
-      AITypingState.thinking || AITypingState.checkingSources || AITypingState.generating => true,
-      _ => false,
-    });
+    widget.onGeneratingChanged?.call(_typingStateHandler.isBusy || _revealingReplyId != null);
   }
 
   void _onTypewriterStateChanged(TypewriterState state) {
@@ -79,9 +97,16 @@ class _ConversationViewState extends State<ConversationView> {
               ),
               messageBuilder: (context, message, defaultProps) {
                 if (message.isAI) {
-                  return AIMessageItem(
-                    message: message,
-                    onTypewriterStateChanged: _onTypewriterStateChanged,
+                  // Rebuilt on every state change, so `expectMoreText` drops
+                  // as soon as the backend is done.
+                  return ValueListenableBuilder(
+                    valueListenable: _typingStateHandler,
+                    builder: (context, _, _) => AIMessageItem(
+                      message: message,
+                      expectMoreText: _typingStateHandler.isBusy && message.id == _typingStateHandler.messageId,
+                      onFinished: () => _onReplyFinished(message.id),
+                      onTypewriterStateChanged: _onTypewriterStateChanged,
+                    ),
                   );
                 }
                 return DefaultStreamMessageItem(props: defaultProps);

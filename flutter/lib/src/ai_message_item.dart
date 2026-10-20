@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 // stream_chat_flutter ships older versions of these AI widgets; use the ones
 // from stream_chat_flutter_ai.
-import 'package:stream_chat_flutter/stream_chat_flutter.dart'
-    hide StreamingMessageView, TypewriterState;
+import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide StreamingMessageView, TypewriterState;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,10 +15,19 @@ class AIMessageItem extends StatelessWidget {
   const AIMessageItem({
     super.key,
     required this.message,
+    this.expectMoreText = false,
+    this.onFinished,
     this.onTypewriterStateChanged,
   });
 
   final Message message;
+
+  /// Whether the backend may still add text to [message].
+  final bool expectMoreText;
+
+  /// Called once [message] is completely on screen.
+  final VoidCallback? onFinished;
+
   final ValueChanged<TypewriterState>? onTypewriterStateChanged;
 
   @override
@@ -33,6 +41,8 @@ class AIMessageItem extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: StreamingMessageView(
         text: message.text ?? '',
+        expectMoreText: expectMoreText,
+        onFinished: onFinished,
         onTypewriterStateChanged: onTypewriterStateChanged,
         styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(p: bodyStyle),
 

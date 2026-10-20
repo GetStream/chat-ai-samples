@@ -12,6 +12,22 @@ class TypingStateHandler extends ValueNotifier<AITypingState> {
 
   late final StreamSubscription<Event> _subscription;
 
+  /// The AI message the latest `ai_indicator.*` event was about. Kept once the
+  /// backend goes idle, since that reply may still be typing out.
+  String? get messageId => _messageId;
+  String? _messageId;
+
+  /// Whether someone pressed stop since the latest reply started. Survives the
+  /// `ai_indicator.clear` the backend sends after stopping.
+  bool get wasStopped => _wasStopped;
+  var _wasStopped = false;
+
+  /// Whether the backend is still producing a reply.
+  bool get isBusy => switch (value) {
+    AITypingState.thinking || AITypingState.checkingSources || AITypingState.generating => true,
+    _ => false,
+  };
+
   void _onEvent(Event event) {
     final state = switch (event.type) {
       // On failure the backend sends `ai_indicator.update` with
@@ -20,7 +36,13 @@ class TypingStateHandler extends ValueNotifier<AITypingState> {
       EventType.aiIndicatorClear || EventType.aiIndicatorStop => AITypingState.idle,
       _ => null,
     };
-    if (state != null) value = state;
+    if (state == null) return;
+    _messageId = event.messageId ?? _messageId;
+    if (event.type == EventType.aiIndicatorStop) _wasStopped = true;
+    if (event.type == EventType.aiIndicatorUpdate) _wasStopped = false;
+    // A repeated state can still carry a new message or stop flag.
+    if (value == state) notifyListeners();
+    value = state;
   }
 
   @override

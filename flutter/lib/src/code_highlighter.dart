@@ -1,3 +1,5 @@
+import 'dart:ui' show Brightness;
+
 import 'package:flutter/painting.dart';
 import 'package:re_highlight/languages/bash.dart';
 import 'package:re_highlight/languages/c.dart';
@@ -31,22 +33,27 @@ import 'package:re_highlight/languages/typescript.dart';
 import 'package:re_highlight/languages/xml.dart';
 import 'package:re_highlight/languages/yaml.dart';
 import 'package:re_highlight/re_highlight.dart';
+import 'package:re_highlight/styles/atom-one-light.dart';
 import 'package:re_highlight/styles/vs2015.dart';
+import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 /// Syntax highlighting for code blocks in AI messages, using `re_highlight`.
 ///
 /// `stream_chat_flutter_ai` renders code blocks but ships no grammars, so the
 /// app supplies them. Returning null renders the block as plain text.
-TextSpan? highlightCode(String code, String language, TextStyle baseStyle) {
+TextSpan? highlightCode(CodeHighlightRequest request) {
   // `re_highlight` throws for a language it doesn't know, and models label
   // fences with anything, e.g. `pseudocode`.
-  if (_highlight.getLanguage(language) == null) return null;
+  if (_highlight.getLanguage(request.language) == null) return null;
 
-  final result = _highlight.highlight(code: code, language: language);
+  final result = _highlight.highlight(code: request.code, language: request.language);
   // On a parse failure the result holds only part of the code.
   if (result.errorRaised != null) return null;
 
-  final renderer = TextSpanRenderer(baseStyle, vs2015Theme);
+  // Pick the palette from the block's brightness, not the app's: dark tokens
+  // on a light block (or the reverse) are unreadable.
+  final palette = request.brightness == Brightness.dark ? vs2015Theme : atomOneLightTheme;
+  final renderer = TextSpanRenderer(request.baseStyle, palette);
   result.render(renderer);
   return renderer.span;
 }

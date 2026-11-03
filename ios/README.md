@@ -11,7 +11,7 @@ This library includes the following components which assist with this task:
 
 ## Sample Project
 
-Requirements: Xcode 27 or later, iOS 15 or later.
+Requirements: Xcode 27 or later. The app targets iOS 26; StreamChatAI itself supports iOS 15 or later.
 
 This sample project showcase the usage of the AI components, how they integrate with Stream Chat's SwiftUI SDK and how to connect to a backend API.
 

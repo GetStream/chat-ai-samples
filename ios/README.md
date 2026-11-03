@@ -11,6 +11,8 @@ This library includes the following components which assist with this task:
 
 ## Sample Project
 
+Requirements: Xcode 27 or later, iOS 15 or later.
+
 This sample project showcase the usage of the AI components, how they integrate with Stream Chat's SwiftUI SDK and how to connect to a backend API.
 
 The project is a ChatGPT clone, with the following features:

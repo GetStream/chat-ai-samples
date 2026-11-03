@@ -384,7 +384,7 @@
 			repositoryURL = "https://github.com/GetStream/stream-chat-swiftui";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 5.14.0;
+				minimumVersion = 5.15.0;
 			};
 		};
 		84E231212FC47FB200BABAF0 /* XCRemoteSwiftPackageReference "GenUI" */ = {
@@ -400,7 +400,7 @@
 			repositoryURL = "https://github.com/GetStream/stream-chat-swift.git";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 5.14.0;
+				minimumVersion = 5.15.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

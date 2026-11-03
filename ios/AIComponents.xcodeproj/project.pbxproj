@@ -120,7 +120,6 @@
 			packageReferences = (
 				8464FB522EABCB5B00933768 /* XCRemoteSwiftPackageReference "stream-chat-swiftui" */,
 				84144E022EB8E95D00D0D034 /* XCRemoteSwiftPackageReference "swift-sdk" */,
-				84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */,
 				84E231212FC47FB200BABAF0 /* XCRemoteSwiftPackageReference "GenUI" */,
 				591D9208B5A99BF08CF4EF94 /* XCRemoteSwiftPackageReference "stream-chat-swift" */,
 			);
@@ -384,8 +383,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GetStream/stream-chat-swiftui";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
+				kind = upToNextMinorVersion;
+				minimumVersion = 5.15.0;
 			};
 		};
 		84E231212FC47FB200BABAF0 /* XCRemoteSwiftPackageReference "GenUI" */ = {
@@ -396,20 +395,12 @@
 				minimumVersion = 0.8.0;
 			};
 		};
-		84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/GetStream/stream-chat-swift-ai.git";
-			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 0.11.0;
-			};
-		};
 		591D9208B5A99BF08CF4EF94 /* XCRemoteSwiftPackageReference "stream-chat-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/GetStream/stream-chat-swift.git";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 5.12.0;
+				minimumVersion = 5.15.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -432,7 +423,7 @@
 		};
 		84F35D3D2EDA5E6A0014D30F /* StreamChatAI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 84F35D3C2EDA5E6A0014D30F /* XCRemoteSwiftPackageReference "stream-chat-swift-ai" */;
+			package = 591D9208B5A99BF08CF4EF94 /* XCRemoteSwiftPackageReference "stream-chat-swift" */;
 			productName = StreamChatAI;
 		};
 /* End XCSwiftPackageProductDependency section */

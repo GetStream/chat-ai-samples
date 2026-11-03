@@ -23,7 +23,7 @@ struct ContentView: View {
     @State private var isSplitOpen = false
     @State private var composerHeight: CGFloat = 0
     @ObservedObject private var clientToolActionHandler = ClientToolActionHandler.shared
-    @StateObject var viewModel: ComposerViewModel
+    @StateObject var viewModel: AIComposerViewModel
     @State var clientToolRegistry: ClientToolRegistry
     @StateObject var typingIndicatorHandler: TypingIndicatorHandler
     @State private var draftChannelId: ChannelId?
@@ -126,9 +126,8 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             
-            ComposerView(
+            AIComposerView(
                 viewModel: viewModel,
-                isGenerating: typingIndicatorHandler.generatingMessageId != nil,
                 onMessageSend: { messageData in
                     sendMessage(messageData)
                 },
@@ -138,6 +137,9 @@ struct ContentView: View {
             )
             .onAppear {
                 viewModel.isTextFieldFocused = true
+            }
+            .onChange(of: typingIndicatorHandler.generatingMessageId) { oldValue, newValue in
+                viewModel.isGenerating = newValue != nil
             }
             .background(
                 GeometryReader { proxy in
@@ -388,8 +390,8 @@ struct AIAgentOverlayView: View {
     }
 }
 
-class CustomViewFactory: ComposerViewFactory {
-    func makeLeadingComposerView(options: StreamChatAI.LeadingComposerViewOptions) -> some View {
+class CustomViewFactory: AIComposerViewFactory {
+    func makeLeadingComposerView(options: AIComposerLeadingViewOptions) -> some View {
         EmptyView()
     }
 }

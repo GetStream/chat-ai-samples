@@ -5,11 +5,13 @@ The AI UI components are designed specifically for AI-first applications written
 This library includes the following components which assist with this task:
 
 - `StreamingMessageView` - a component that is able to render text, markdown and code in real-time, using character-by-character animation, similar to ChatGPT.
-- `ComposerView` - a fully featured prompt composer with attachments, suggestion chips and speech input.
+- `AIComposerView` - a fully featured prompt composer with attachments, suggestion chips and speech input.
 - `SpeechToTextButton` - a reusable button that records voice input and streams the recognized transcript back into your UI.
 - `AITypingIndicatorView` - a component that can display different states of the LLM (thinking, checking external sources, etc).
 
 ## Sample Project
+
+Requirements: Xcode 27 or later. The app targets iOS 26; StreamChatAI itself supports iOS 15 or later.
 
 This sample project showcase the usage of the AI components, how they integrate with Stream Chat's SwiftUI SDK and how to connect to a backend API.
 
@@ -107,19 +109,17 @@ struct AIAgentOverlayView: View {
 
 ### Composer View
 
-The `ComposerView` gives users a modern text-entry surface with attachment previews, suggestions, and an integrated send and speech to text buttons. Inject a `ComposerViewModel` to handle state and pass a closure that receives every `MessageData` payload when the user taps send.
+The `AIComposerView` gives users a modern text-entry surface with attachment previews, suggestions, and an integrated send and speech to text buttons. Inject an `AIComposerViewModel` to handle state and pass a closure that receives every `MessageData` payload when the user taps send.
 
 ```swift
-@available(iOS 16, *)
-ComposerView(
-    viewModel: ComposerViewModel(),
-    colors: colors
+AIComposerView(
+    viewModel: AIComposerViewModel()
 ) { message in
     print(message.text, message.attachments)
 }
 ```
 
-The view also exposes chat options (e.g. "agent" mode) via `chatOptions` on the view model and automatically resets attachments once a message is sent.
+The view model also exposes chat options (e.g. "agent" mode) via `chatOptions`, shows a stop button while `isGenerating` is true, and automatically resets attachments once a message is sent.
 
 ### Speech to Text Button
 
@@ -127,44 +127,26 @@ The view also exposes chat options (e.g. "agent" mode) via `chatOptions` on the 
 
 ```swift
 SpeechToTextButton(
-    locale: Locale(identifier: "en-US"),
-    colors: colors
+    locale: Locale(identifier: "en-US")
 ) { transcript in
     print("User said:", transcript)
 }
 ```
 
-Display it alongside `ComposerView` to let users dictate prompts when their hands are busy.
+Display it alongside `AIComposerView` to let users dictate prompts when their hands are busy.
 
 These components are designed to work seamlessly with our existing Swift UI [Chat SDK](https://getstream.io/tutorials/ios-chat/). Our [developer guide](https://getstream.io/chat/solutions/ai-integration/) explains how to get started building AI integrations with Stream and Swift UI.
 
 ### Customizing Colors
 
-The `Colors` class centralizes the palette that the AI components use. Create a single instance and inject it into the views you render to keep them in sync:
+`AIAppearance` holds the colors, fonts and icons the AI components use. Shared tokens come from `DesignSystemTokens`, so the Chat and AI components can be reskinned together:
 
 ```swift
-let colors = Colors(
-    composer: .init(
-        attachmentButtonIcon: .pink,
-        selectedOptionForeground: .purple
-    ),
-    suggestions: .init(background: .mint.opacity(0.3)),
-    transcription: .init(icon: .orange)
-)
-
-ComposerView(colors: colors) { message in
-    // Handle message
-}
-
-SuggestionsView(
-    suggestions: ["What are the docs for the AI SDK?"],
-    colors: colors,
-    onMessageSend: handleSuggestion
-)
-
-SpeechToTextButton(colors: colors) { transcript in
-    print(transcript)
-}
+let tokens = DesignSystemTokens()
+tokens.colors.accentPrimary = .systemPurple
+let appearance = AIAppearance(tokens: tokens)
+appearance.colors.reasoningRule = .systemPurple
+InjectedValues[\.aiAppearance] = appearance
 ```
 
 ### Conversation History 

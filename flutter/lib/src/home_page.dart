@@ -5,9 +5,13 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart';
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 import 'agent_service.dart';
+import 'agent_starter.dart';
+import 'agent_steps.dart';
 import 'client_tools.dart';
 import 'connection_banner.dart';
 import 'conversation_view.dart';
+import 'draft_channel.dart';
+import 'home_layout.dart';
 
 /// Prompts offered on the "new chat" screen, sent as-is when tapped.
 const _landingSuggestions = [
@@ -66,7 +70,7 @@ const _aiPlatform = 'openai';
 ///
 /// A persistent composer sits at the bottom. Above it is either the "new chat"
 /// view or the active conversation. Past conversations are in a drawer, opened
-/// by swiping from the left edge.
+/// by swiping from the left edge, or a side panel on wide screens.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.client, required this.onThemeModeChanged});
 
@@ -84,34 +88,60 @@ class _HomePageState extends State<HomePage> {
   final _composerController = ChatComposerController(chatOptions: _chatOptions);
   Channel? _activeChannel;
 
-  /// The new conversation being created, if any. A second send while it is in
+  /// The new conversation being opened, if any. A second send while it is in
   /// flight waits on it, so it neither creates a second channel nor gets lost.
   Future<Channel?>? _channelCreation;
+
+  /// The next new conversation, created while its first message is typed.
+  late final _draftChannel = DraftChannel(create: _createChannel);
 
   /// Channels whose first message already claimed the title, so two messages
   /// sent before the title exists only title the conversation once.
   final _titleClaims = <String>{};
 
-  /// One start per channel, shared by everything that needs the agent: the
-  /// send path waits on the same future the drawer started. Failed starts are
-  /// removed, so the next send tries again.
-  final _agentStarts = <String, Future<bool>>{};
-
-  /// Channels whose agent is still starting, for the progress hint.
-  final _startingAgents = <String>{};
+  late final _agentStarter = AgentStarter(
+    agentService: _agentService,
+    toolPayloads: _toolRegistry.registrationPayloads,
+    onError: _showError,
+    platform: _aiPlatform,
+  );
 
   /// The client-side tools this app offers the AI agent, the same in every
   /// conversation.
-  late final _toolRegistry = AIToolRegistry(onToolError: _onToolError)
-    ..register(GreetUserTool(onGreet: _showGreeting))
-    ..register(SetThemeModeTool(onChange: widget.onThemeModeChanged));
+  late final _clientTools = <AIClientTool>[
+    GreetUserTool(onGreet: _showGreeting),
+    SetThemeModeTool(onChange: widget.onThemeModeChanged),
+    const LocalTimeTool(),
+  ];
+
+  /// Runs the tools invoked by `custom_client_tool_invocation` events.
+  late final _toolRegistry = AIToolRegistry(onToolError: _onToolError);
+
+  /// The user and install that tool calls in agent steps are matched against.
+  late final _identity = AIClientIdentity(userId: _currentUserId, clientId: clientId);
 
   /// Listens on the client, so it keeps working across conversations.
   late final ClientToolListener _toolListener;
 
+  /// What answers each conversation's tool calls.
+  late final _agentSteps = AgentStepsByChannel(
+    (channel) => ConversationAgentSteps(
+      channelId: channel.id!,
+      identity: _identity,
+      tools: _clientTools,
+      agentService: _agentService,
+      onError: _showError,
+    ),
+  );
+
   late final _channelListController = StreamChannelListController(
     client: widget.client,
-    filter: Filter.in_('members', [_currentUserId]),
+    // Leaves out drafts: channels prepared for a chat that was never sent in.
+    filter: Filter.and([
+      Filter.in_('members', [_currentUserId]),
+      Filter.exists('last_message_at'),
+    ]),
+    eventHandler: _SentChannelsEventHandler(),
     limit: 30,
   );
 
@@ -125,14 +155,21 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _clientTools.forEach(_toolRegistry.register);
     _toolListener = ClientToolListener(client: widget.client, registry: _toolRegistry);
+    _agentStarter.addListener(_onAgentStartsChanged);
+    _composerController.textEditingController.addListener(_onComposerTextChanged);
   }
 
   @override
   void dispose() {
+    _composerController.textEditingController.removeListener(_onComposerTextChanged);
+    _draftChannel.dispose();
+    _agentStarter.dispose();
     _toolListener.dispose();
     _channelListController.dispose();
     _composerController.dispose();
+    _agentSteps.dispose();
     super.dispose();
   }
 
@@ -154,44 +191,15 @@ class _HomePageState extends State<HomePage> {
     _showError('The assistant\'s "${invocation.tool.name}" action failed.');
   }
 
-  /// Starts the AI agent for [channel] and registers the client tools with it.
-  ///
-  /// Returns whether the agent is running. Concurrent callers share one start.
-  Future<bool> _ensureAgentStarted(Channel channel) {
-    final channelId = channel.id;
-    if (channelId == null) return Future.value(false);
-
-    return _agentStarts.putIfAbsent(channelId, () async {
-      if (mounted) setState(() => _startingAgents.add(channelId));
-      final started = await _startAgent(channelId);
-      if (!started) unawaited(_agentStarts.remove(channelId));
-      if (mounted) setState(() => _startingAgents.remove(channelId));
-      return started;
-    });
+  /// Rebuilds for the "Starting assistant…" hint.
+  void _onAgentStartsChanged() {
+    if (mounted) setState(() {});
   }
 
-  Future<bool> _startAgent(String channelId) async {
-    try {
-      await _agentService.startAgent(channelId, platform: _aiPlatform);
-    } catch (e) {
-      debugPrint('Failed to start the AI agent: $e');
-      // Without this, the app looks fine but the assistant never replies.
-      _showError("Couldn't start the assistant. ${describeBackendError(e)}");
-      return false;
-    }
-
-    try {
-      // Registering again for a channel the backend already knows is harmless,
-      // and keeps it in sync with the tools this build has.
-      await _agentService.registerTools(channelId, _toolRegistry.registrationPayloads());
-    } catch (e) {
-      debugPrint('Failed to register client tools: $e');
-      _showError(
-        "The assistant is running, but can't use app actions like switching the theme. "
-        '${describeBackendError(e)}',
-      );
-    }
-    return true;
+  /// Prepares a new chat's channel and agent while its first message is typed.
+  void _onComposerTextChanged() {
+    if (_activeChannel != null) return;
+    _draftChannel.onTextChanged(_composerController.textEditingController.text);
   }
 
   void _showError(String message) {
@@ -225,18 +233,38 @@ class _HomePageState extends State<HomePage> {
     if (option != null) _composerController.selectChatOption(option);
   }
 
-  /// Creates and opens a new conversation, or returns null after showing an
-  /// error. Concurrent senders share one call through [_channelCreation].
-  Future<Channel?> _createChannel() async {
+  /// Creates a channel for a new conversation and starts its agent, without
+  /// waiting for the agent.
+  Future<Channel> _createChannel() async {
+    final channel = widget.client.channel(
+      'messaging',
+      id: const Uuid().v4(),
+      extraData: {
+        'members': [_currentUserId],
+      },
+    );
+    await channel.watch();
+    // Nobody can be watching a channel that didn't exist a moment ago. The
+    // send path reports a failure, and tries again.
+    unawaited(_agentStarter.ensureStarted(channel, checkPresence: false, reportErrors: false));
+    return channel;
+  }
+
+  /// Goes back to the new-chat screen when a new conversation's first message
+  /// couldn't go out, rather than leave an empty conversation open.
+  void _leaveIfEmpty(Channel channel) {
+    if (!mounted || _activeChannel != channel) return;
+    if (channel.state?.messages.isNotEmpty ?? false) return;
+    _draftChannel.restore(channel);
+    setState(() => _activeChannel = null);
+  }
+
+  /// Opens a new conversation, the draft if there is one, or returns null
+  /// after showing an error. Concurrent senders share one call through
+  /// [_channelCreation].
+  Future<Channel?> _openNewChannel() async {
     try {
-      final channel = widget.client.channel(
-        'messaging',
-        id: const Uuid().v4(),
-        extraData: {
-          'members': [_currentUserId],
-        },
-      );
-      await channel.watch();
+      final channel = await _draftChannel.take();
       if (!mounted) return null;
       setState(() => _activeChannel = channel);
       return channel;
@@ -258,7 +286,7 @@ class _HomePageState extends State<HomePage> {
 
     var channel = _activeChannel;
     if (channel == null) {
-      channel = await (_channelCreation ??= _createChannel());
+      channel = await (_channelCreation ??= _openNewChannel());
       if (channel == null) {
         _restoreComposer(text, option, attachments);
         return;
@@ -268,12 +296,13 @@ class _HomePageState extends State<HomePage> {
     // Wait for the agent before sending: it only answers messages that
     // arrive after it has started. If it can't start, keep the message in the
     // composer rather than send it to a channel nobody will answer in.
-    if (!await _ensureAgentStarted(channel)) {
+    if (!await _agentStarter.ensureStarted(channel)) {
+      _leaveIfEmpty(channel);
       _restoreComposer(text, option, attachments);
       return;
     }
 
-    final cid = channel.cid ?? '';
+    final cid = channel.cid!;
     final titleIt = (channel.state?.messages.isEmpty ?? true) && _titleClaims.add(cid);
     try {
       // `sendMessage` uploads the attachments itself.
@@ -284,12 +313,15 @@ class _HomePageState extends State<HomePage> {
         Message(
           text: option == null ? text : '${option.text}: $text',
           attachments: messageAttachments,
+          // Tells the agent which install to send client tool calls to.
+          extraData: {'client_id': clientId},
         ),
       );
     } catch (e) {
       debugPrint('Failed to send the message: $e');
       _showError("Couldn't send your message. Please try again.");
       if (titleIt) _titleClaims.remove(cid);
+      _leaveIfEmpty(channel);
       _restoreComposer(text, option, attachments);
       return;
     }
@@ -300,23 +332,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _stopResponse() async {
+    // Don't wait for the rest of the reply to type out: the user asked to stop.
+    _composerController.isGenerating = false;
     try {
       await _activeChannel?.stopAIResponse();
     } catch (e) {
       debugPrint('Failed to stop the AI response: $e');
+      // Still replying, so stop can be pressed again.
+      _composerController.isGenerating = true;
       _showError("Couldn't stop the reply.");
     }
   }
 
   void _openChannel(Channel? channel) {
-    Navigator.of(context).pop(); // close the drawer
     setState(() => _activeChannel = channel);
     // The next conversation view reports its own state once it's listening.
     _composerController.isGenerating = false;
     if (channel == null) {
       _composerController.clear();
     } else {
-      unawaited(_ensureAgentStarted(channel));
+      unawaited(_agentStarter.ensureStarted(channel));
     }
   }
 
@@ -324,37 +359,33 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final activeChannel = _activeChannel;
 
-    return Scaffold(
-      drawer: _ConversationDrawer(
+    return HomeLayout(
+      history: _ConversationHistory(
         controller: _channelListController,
+        activeChannel: activeChannel,
         onChannelSelected: _openChannel,
       ),
-      // The composer is in the body rather than `bottomNavigationBar`, because
-      // only the body moves up when the keyboard opens.
-      body: SafeArea(
-        child: Column(
-          children: [
-            const ConnectionBanner(),
-            Expanded(
-              child: activeChannel == null
-                  ? _LandingView(onSuggestionTap: _sendMessage)
-                  : ConversationView(
-                      key: ValueKey(activeChannel.cid),
-                      channel: activeChannel,
-                      onGeneratingChanged: (isGenerating) =>
-                          _composerController.isGenerating = isGenerating,
-                    ),
-            ),
-            if (_startingAgents.contains(activeChannel?.id)) const _StartingAssistantHint(),
-            ChatComposer(
-              controller: _composerController,
-              enableSpeechToText: true,
-              onSendPressed: (text, option, attachments) =>
-                  _sendMessage(text, option: option, attachments: attachments),
-              onStopPressed: _stopResponse,
-            ),
-          ],
-        ),
+      body: Column(
+        children: [
+          const ConnectionBanner(),
+          Expanded(
+            child: activeChannel == null
+                ? _LandingView(onSuggestionTap: _sendMessage)
+                : ConversationView(
+                    key: ValueKey(activeChannel.cid),
+                    channel: activeChannel,
+                    agentSteps: _agentSteps.of(activeChannel),
+                    onGeneratingChanged: (isGenerating) => _composerController.isGenerating = isGenerating,
+                  ),
+          ),
+          if (_agentStarter.isStarting(activeChannel?.id)) const _StartingAssistantHint(),
+          ChatComposer(
+            controller: _composerController,
+            enableSpeechToText: true,
+            onSendPressed: (text, option, attachments) => _sendMessage(text, option: option, attachments: attachments),
+            onStopPressed: _stopResponse,
+          ),
+        ],
       ),
     );
   }
@@ -380,42 +411,58 @@ class _StartingAssistantHint extends StatelessWidget {
 }
 
 /// The conversation history: a "New chat" button and the user's channels.
-class _ConversationDrawer extends StatelessWidget {
-  const _ConversationDrawer({required this.controller, required this.onChannelSelected});
+class _ConversationHistory extends StatelessWidget {
+  const _ConversationHistory({required this.controller, required this.activeChannel, required this.onChannelSelected});
 
   final StreamChannelListController controller;
+
+  /// Highlighted in the side panel.
+  final Channel? activeChannel;
 
   /// Called with the chosen channel, or `null` for a new chat.
   final ValueChanged<Channel?> onChannelSelected;
 
+  void _select(BuildContext context, Channel? channel) {
+    // Does nothing in the side panel, which has no drawer.
+    Scaffold.maybeOf(context)?.closeDrawer();
+    onChannelSelected(channel);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.add_comment_outlined),
-              title: const Text('New chat'),
-              onTap: () => onChannelSelected(null),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: StreamChannelListView(
-                controller: controller,
-                itemBuilder: (context, items, index, defaultWidget) {
-                  final channel = items[index];
-                  return ListTile(
-                    title: Text(channel.name ?? channel.id ?? ''),
-                    onTap: () => onChannelSelected(channel),
-                  );
-                },
-              ),
-            ),
-          ],
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.add_comment_outlined),
+          title: const Text('New chat'),
+          onTap: () => _select(context, null),
         ),
-      ),
+        const Divider(height: 1),
+        Expanded(
+          child: StreamChannelListView(
+            controller: controller,
+            itemBuilder: (context, items, index, defaultWidget) {
+              final channel = items[index];
+              return ListTile(
+                title: Text(channel.name ?? channel.id ?? ''),
+                selected: channel.cid == activeChannel?.cid,
+                onTap: () => _select(context, channel),
+              );
+            },
+          ),
+        ),
+      ],
     );
+  }
+}
+
+/// Keeps drafts out of the history, as its query's filter does: the default
+/// adds every channel the user is added to, including a fresh draft.
+class _SentChannelsEventHandler extends StreamChannelListEventHandler {
+  @override
+  void onNotificationAddedToChannel(Event event, StreamChannelListController controller) {
+    if (event.channel?.lastMessageAt == null) return;
+    super.onNotificationAddedToChannel(event, controller);
   }
 }
 

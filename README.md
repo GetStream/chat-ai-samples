@@ -3,7 +3,7 @@
 ![Integrating Stream Chat with AI](/assets/repo_cover.png)
 
 This repo contains sample projects that integrate our UI components for building AI chat assistants, as well as server-side integrations with Vercel's AI SDK and Langchain:
-- Our UI components (available on iOS, Android, React, and React Native) work well with Stream Chat, but can also be used standalone. These components facilitate the development of AI assistants such as ChatGPT, Grok, Gemini, and others.
+- Our UI components (available on iOS, Android, React, React Native, and Flutter) work well with Stream Chat, but can also be used standalone. These components facilitate the development of AI assistants such as ChatGPT, Grok, Gemini, and others.
 - NodeJS packages - **stream-chat-js-ai-sdk** and **stream-chat-langchain** - which provide seamless integrations with Vercel’s AI SDK and LangChain, respectively. Stream Chat delivers the realtime layer and conversational memory, while the AI SDK and LangChain each offer a clean interface to multiple LLMs and support more advanced AI workflows. Additionally, we provide an example that uses a single backend server (NodeJS or Python) to manage the lifecycle of agents and handle the connection to external providers.
 
 ## Architecture Overview 🏗️
@@ -33,10 +33,14 @@ To get started building with AI and Stream, simply pick the example most suited 
     - Docs: https://getstream.io/chat/docs/sdk/android/ai-integrations/overview/
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/android
 - **React**: Develop chat assistants for web applications with Stream's React chat SDK.
-    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react-native
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react
 - **React Native**: Step into the world of AI-enhanced chat apps with Stream's React Native SDK and our tutorial.
     - Docs: https://getstream.io/chat/docs/sdk/react-native/guides/ai-integrations/
-    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/react-native
+- **Flutter**: Build assistants for mobile, desktop and web with Stream's Flutter chat SDK and `stream_chat_flutter_ai`.
+    - Guide: https://getstream.io/blog/flutter-assistant/
+    - Components: https://github.com/GetStream/stream-chat-flutter-ai
+    - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/flutter
 
 For your backend integration, you can try out one of these options:
 
@@ -45,8 +49,8 @@ For your backend integration, you can try out one of these options:
 - **Langchain integration**: Another StreamChat server-side integration with the popular agentic framework Langchain.
     - Sample app: https://github.com/GetStream/chat-ai-samples/tree/main/langchain-sample
 - **Standalone samples**: If you prefer not to use additional dependencies, kick start your integration with our sample projects in Python and NodeJS.
-    - Python sample: https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant
-    - NodeJS sample: https://github.com/GetStream/chat-ai-samples/tree/main/python-ai-assistant
+    - Python sample: https://github.com/GetStream/chat-ai-samples/tree/main/python-ai-assistant
+    - NodeJS sample: https://github.com/GetStream/chat-ai-samples/tree/main/nodejs-ai-assistant
 
 ## **Quick Links** 🔗
 - [Stream Chat](https://getstream.io/chat/)

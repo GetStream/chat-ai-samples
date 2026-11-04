@@ -21,7 +21,13 @@ dependencies:
   # grammars, since they dwarf the package itself. See lib/src/code_highlighter.dart.
   re_highlight: ^0.0.3
   stream_chat_flutter: ^10.0.1
-  stream_chat_flutter_ai: ^0.1.0
+  # Pinned to the unreleased FLU-982 stack (GetStream/stream-chat-flutter-ai#15–#25) until it ships.
+  # Swap back to a pub version constraint once it's released.
+  stream_chat_flutter_ai:
+    git:
+      url: https://github.com/GetStream/stream-chat-flutter-ai.git
+      ref: renefloor/flu-1011-aicomponentfactory-one-place-to-replace-components-the
+      path: packages/stream_chat_flutter_ai
   # Opens links the assistant puts in its replies.
   url_launcher: ^6.3.1
   uuid: ^4.5.1

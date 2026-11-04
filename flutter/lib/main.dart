@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stream_chat_flutter/stream_chat_flutter.dart';
+import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
 import 'src/home_page.dart';
 
@@ -63,7 +64,11 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Stream Chat AI Assistant',
-      theme: ThemeData.light(),
+      // Code blocks are a dark frame in both modes by default; follow the app
+      // instead. `highlightCode` picks a token palette to match.
+      theme: ThemeData.light().copyWith(
+        extensions: const [AITheme(codeBlockTheme: CodeBlockThemeData(brightness: Brightness.light))],
+      ),
       darkTheme: ThemeData.dark(),
       themeMode: _themeMode,
       builder: (context, child) => StreamChat(client: widget.client, child: child),

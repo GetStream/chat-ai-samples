@@ -7,9 +7,10 @@ void main() {
   late Channel channel;
   late TypingStateHandler handler;
 
-  Event aiEvent(String type, {String cid = 'messaging:chat-1', String? aiState}) => Event(
+  Event aiEvent(String type, {String cid = 'messaging:chat-1', String? aiState, String? messageId}) => Event(
     type: type,
     cid: cid,
+    messageId: messageId,
     aiState: aiState == null ? null : AITypingState.values.firstWhere((s) => s.name == aiState),
   );
 
@@ -67,6 +68,44 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(handler.value, AITypingState.thinking);
+  });
+
+  test('keeps the reply message id once the backend goes idle', () async {
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    await Future<void>.delayed(Duration.zero);
+    expect(handler.messageId, 'reply-1');
+    expect(handler.isBusy, isTrue);
+
+    emit(aiEvent(EventType.aiIndicatorClear));
+    await Future<void>.delayed(Duration.zero);
+    expect(handler.messageId, 'reply-1');
+    expect(handler.isBusy, isFalse);
+  });
+
+  test('remembers a stop until the next reply starts', () async {
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    emit(aiEvent(EventType.aiIndicatorStop));
+    // The backend clears the indicator after stopping.
+    emit(aiEvent(EventType.aiIndicatorClear, messageId: 'reply-1'));
+    await Future<void>.delayed(Duration.zero);
+    expect(handler.wasStopped, isTrue);
+
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'thinking', messageId: 'reply-2'));
+    await Future<void>.delayed(Duration.zero);
+    expect(handler.wasStopped, isFalse);
+    expect(handler.messageId, 'reply-2');
+  });
+
+  test('a late update of the stopped reply keeps it stopped', () async {
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    emit(aiEvent(EventType.aiIndicatorStop));
+    emit(aiEvent(EventType.aiIndicatorClear, messageId: 'reply-1'));
+    // Sent by the backend before it saw the stop.
+    emit(aiEvent(EventType.aiIndicatorUpdate, aiState: 'generating', messageId: 'reply-1'));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(handler.wasStopped, isTrue);
+    expect(handler.isBusy, isFalse);
   });
 
   test('stops listening once disposed', () async {

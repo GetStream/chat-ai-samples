@@ -6,7 +6,9 @@
 ///    `custom_client_tool_invocation` event over the chat connection.
 /// 4. [ClientToolListener] parses it and dispatches it to the registry.
 ///
-/// Nothing is sent back to the model: a client tool is a side effect.
+/// On that event path nothing is sent back to the model: a client tool is a
+/// side effect. An agent that writes its tool calls as `ai_tool_call` steps
+/// can wait for a result instead; see [LocalTimeTool] and `agent_steps.dart`.
 library;
 
 import 'dart:async';
@@ -75,13 +77,45 @@ class SetThemeModeTool implements AIClientTool {
   }
 }
 
+/// Tells the agent the device's local time and time zone — a tool that
+/// returns a result.
+///
+/// The result reaches the model only when the agent asks through an
+/// `ai_tool_call` step, which `AIClientToolRunner` answers. Invoked through a
+/// `custom_client_tool_invocation` event, it runs and the result is dropped.
+class LocalTimeTool extends AIResultClientTool {
+  const LocalTimeTool({this.clock = DateTime.now});
+
+  final DateTime Function() clock;
+
+  @override
+  AIToolDefinition get definition => const AIToolDefinition(
+    name: 'getLocalTime',
+    description: "Get the user's current local time and time zone",
+    instructions: "Use getLocalTime when the answer depends on the user's local time, date or time zone.",
+  );
+
+  @override
+  Future<AIClientToolResult> run(AIToolCallPart call) async {
+    final now = clock();
+    return AIClientToolResult.completed(
+      {
+        'local_time': now.toIso8601String(),
+        'time_zone': now.timeZoneName,
+        'utc_offset_minutes': now.timeZoneOffset.inMinutes,
+      },
+      // Every channel member sees the summary, so it leaves the time out.
+      summary: 'Shared the local time',
+    );
+  }
+}
+
 /// Feeds `custom_client_tool_invocation` events to an [AIToolRegistry].
 ///
 /// Listens on the client rather than a channel, so invocations keep arriving
 /// while the user switches conversations.
 class ClientToolListener {
-  ClientToolListener({required StreamChatClient client, required AIToolRegistry registry})
-    : _registry = registry {
+  ClientToolListener({required StreamChatClient client, required AIToolRegistry registry}) : _registry = registry {
     _subscription = client.on(kClientToolInvocationEventType).listen(_onEvent);
   }
 

@@ -7,7 +7,8 @@ import os
 import json
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from stream_chat import StreamChatAsync
+from getstream import AsyncStream
+from getstream.models import ChannelMemberRequest, UserRequest
 from dotenv import load_dotenv
 from model import StartAgentRequest, StopAgentRequest, NewMessageRequest
 from helpers import clean_channel_id, create_bot_id
@@ -59,7 +60,7 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
     It creates a bot user and adds it to the channel.
     It also creates an agent and adds it to the agents dictionary.
     """
-    server_client = StreamChatAsync(api_key, api_secret)
+    server_client = AsyncStream(api_key=api_key, api_secret=api_secret)
 
     # Clean up channel id to remove the channel type - if necessary
     channel_id_updated = clean_channel_id(request.channel_id)
@@ -68,23 +69,19 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
     bot_id = create_bot_id(channel_id=channel_id_updated)
 
     # Upsert the bot user
-    await server_client.upsert_user(
-        {
-            "id": bot_id,
-            "name": "AI Bot",
-            "role": "admin",
-        }
+    await server_client.upsert_users(
+        UserRequest(id=bot_id, name="AI Bot", role="admin")
     )
 
     # Create a channel
-    channel = server_client.channel(request.channel_type, channel_id_updated)
+    channel = server_client.chat.channel(request.channel_type, channel_id_updated)
 
     # Add the bot to the channel
     try:
-        await channel.add_members([bot_id])
+        await channel.update(add_members=[ChannelMemberRequest(user_id=bot_id)])
     except Exception as error:
         print("Failed to add members to the channel: ", error)
-        await server_client.close()
+        await server_client.aclose()
         response.status_code = 405
         response.body = str.encode(
             json.dumps({"error": "Not possible to add the AI to distinct channels"})
@@ -95,11 +92,13 @@ async def start_ai_agent(request: StartAgentRequest, response: Response):
     # agent = AnthropicAgent(server_client, channel)
     agent = OpenAIAgent(server_client, channel)
 
+    # Clean up any old bot we might have
     if bot_id in agents:
         print("Disposing agent")
         await agents[bot_id].dispose()
-    else:
-        agents[bot_id] = agent
+
+    # Add agent to our agents
+    agents[bot_id] = agent
 
     return {"message": "AI agent started"}
 
@@ -110,7 +109,7 @@ async def stop_ai_agent(request: StopAgentRequest):
     This endpoint stops an AI agent for a given channel.
     It removes the agent from the agents dictionary and closes the server client.
     """
-    server_client = StreamChatAsync(api_key, api_secret)
+    server_client = AsyncStream(api_key=api_key, api_secret=api_secret)
 
     bot_id = create_bot_id(request.channel_id)
 
@@ -118,9 +117,9 @@ async def stop_ai_agent(request: StopAgentRequest):
         await agents[bot_id].dispose()
         del agents[bot_id]
 
-    channel = server_client.channel("messaging", request.channel_id)
-    await channel.remove_members([bot_id])
-    await server_client.close()
+    channel = server_client.chat.channel("messaging", request.channel_id)
+    await channel.update(remove_members=[bot_id])
+    await server_client.aclose()
     return {"message": "AI agent stopped"}
 
 

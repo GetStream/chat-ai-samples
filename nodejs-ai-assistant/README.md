@@ -29,6 +29,8 @@ You can provide a key for either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, depend
 
 ### Install the dependencies
 
+The project needs Node.js 22.18 or newer: `stream-chat` v10 uses Node's built-in `WebSocket` for the bot's connection.
+
 In order to install the dependencies, you should run the following command:
 
 ```

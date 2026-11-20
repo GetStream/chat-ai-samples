@@ -8,7 +8,7 @@
 	flex-shrink: 0;
 }
 
-.aicr__ai-message-composer__form {
+.str-chat__ai-message-composer__form {
 	max-width: 800px;
 	width: 100%;
 }

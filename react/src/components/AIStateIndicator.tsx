@@ -1,15 +1,23 @@
-import {
-	AIStates,
-	useAIState,
-	useChannelStateContext,
-} from "stream-chat-react";
-import { AIStateIndicator as StateIndicator } from "@stream-io/chat-react-ai";
+import { AIStates, type MessagePaginatorAggregateState } from "stream-chat";
+import { useAIState, useChannel, useStateStore } from "stream-chat-react";
+import { AIStateIndicator as StateIndicator } from "stream-chat-react/ai-components";
+
+const latestMessageIdSelector = ({
+	latestMessage,
+}: MessagePaginatorAggregateState) => ({
+	latestMessageId: latestMessage?.id,
+});
 
 export const AIStateIndicator = () => {
-	const { channel } = useChannelStateContext();
+	const channel = useChannel();
 	const { aiState } = useAIState(channel);
+	const { latestMessageId } = useStateStore(
+		channel.messagePaginator.aggregateState,
+		latestMessageIdSelector,
+	);
 
-	if (![AIStates.Generating, AIStates.Thinking].includes(aiState)) return null;
+	if (aiState !== AIStates.Generating && aiState !== AIStates.Thinking) return null;
 
-	return <StateIndicator key={channel.state.last_message_at?.toString()} />;
+	// a new message restarts the indicator's animation
+	return <StateIndicator key={latestMessageId} />;
 };

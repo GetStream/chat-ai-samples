@@ -1,4 +1,4 @@
-import { AIMessageComposer } from "@stream-io/chat-react-ai";
+import { AIMessageComposer } from "stream-chat-react/ai-components";
 import { useEffect } from "react";
 import {
 	isImageFile,
@@ -8,8 +8,7 @@ import {
 } from "stream-chat";
 import {
 	useAttachmentsForPreview,
-	useChannelActionContext,
-	useChannelStateContext,
+	useChannel,
 	useChatContext,
 	useMessageComposerController,
 } from "stream-chat-react";
@@ -17,14 +16,13 @@ import { startAiAgent, summarizeConversation } from "../api";
 
 const isWatchedByAI = (channel: Channel) => {
 	return Object.keys(channel.state.watchers).some((watcher) =>
-		watcher.startsWith("ai-bot")
+		watcher.startsWith("ai-bot"),
 	);
 };
 
 export const Composer = () => {
 	const { client } = useChatContext();
-	const { updateMessage, sendMessage } = useChannelActionContext();
-	const { channel } = useChannelStateContext();
+	const channel = useChannel();
 	const composer = useMessageComposerController();
 
 	const { attachments } = useAttachmentsForPreview();
@@ -32,10 +30,15 @@ export const Composer = () => {
 	useEffect(() => {
 		if (!composer) return;
 
-		const upload: UploadRequestFn = (file) => {
-			const f = isImageFile(file) ? client.uploadImage : client.uploadFile;
+		const upload: UploadRequestFn = async (fileLike) => {
+			const request = { file: fileLike as File };
+			const { file, thumb_url } = isImageFile(fileLike)
+				? await client.uploadImage(request)
+				: await client.uploadFile(request);
 
-			return f.call(client, file as File);
+			if (!file) throw new Error("The upload returned no file URL");
+
+			return { file, thumb_url };
 		};
 
 		const previousDefault = composer.attachmentManager.doDefaultUploadRequest;
@@ -50,7 +53,7 @@ export const Composer = () => {
 			<AIMessageComposer
 				onChange={(e) => {
 					const input = e.currentTarget.elements.namedItem(
-						"attachments"
+						"attachments",
 					) as HTMLInputElement | null;
 
 					const files = input?.files ?? null;
@@ -72,18 +75,11 @@ export const Composer = () => {
 
 					composer.textComposer.setText(message as string);
 
-					const composedData = await composer.compose();
+					// nothing to send yet, e.g. an empty prompt or an upload still running
+					if (!composer.hasSendableData) return;
 
-					if (!composedData) return;
-
-					target.reset();
-					composer.clear();
-
-					updateMessage(composedData?.localMessage);
-
-					if (!channel.initialized) {
-						await channel.watch();
-					}
+					// creates the channel on its first message; does nothing for a watched channel
+					await channel.watch();
 
 					const [platform, model] = (platformModel as string).split("|");
 
@@ -91,21 +87,28 @@ export const Composer = () => {
 						await startAiAgent(channel, model, platform);
 					}
 
-					await sendMessage(composedData);
+					// composes the message, shows it in the list right away and clears the composer
+					const result = await composer.send();
+
+					if (result === "nothing-to-send") return;
+
+					target.reset();
+
+					if (result !== "sent") return;
 
 					if (
-						typeof channel.data?.summary !== "string" ||
-						!channel.data.summary.length
+						typeof channel.data?.custom?.summary !== "string" ||
+						!channel.data.custom.summary.length
 					) {
 						const summary = await summarizeConversation(
-							message as string
+							message as string,
 						).catch(() => {
-							console.warn("Failed to summarize conversation");
+							console.warn("Failed to summarize");
 							return null;
 						});
 
 						if (typeof summary === "string" && summary.length > 0) {
-							await channel.update({ summary });
+							await channel.updatePartial({ set: { summary } });
 						}
 					}
 				}}
@@ -126,8 +129,8 @@ export const Composer = () => {
 								]);
 							}}
 							onRetry={() => {
-								composer.attachmentManager.uploadAttachment(
-									attachment as LocalUploadAttachment
+								composer.attachmentManager.uploadFile(
+									attachment as LocalUploadAttachment,
 								);
 							}}
 						/>

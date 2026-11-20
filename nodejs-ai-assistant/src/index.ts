@@ -64,19 +64,24 @@ app.post('/start-ai-agent', async (req, res) => {
     if (!aiAgentCache.has(user_id) && !pendingAiAgents.has(user_id)) {
       pendingAiAgents.add(user_id);
 
-      await serverClient.upsertUser({
-        id: user_id,
-        name: 'AI Bot',
-        role: 'admin',
-      });
-      const channel = serverClient.channel(channel_type, channel_id_updated);
+      await serverClient.upsertUsers([
+        {
+          id: user_id,
+          name: 'AI Bot',
+          role: 'admin',
+        },
+      ]);
+      const channel = serverClient.chat.channel(
+        channel_type,
+        channel_id_updated,
+      );
       try {
-        await channel.addMembers([user_id]);
+        await channel.update({ add_members: [{ user_id }] });
       } catch (error) {
         console.error('Failed to add members to channel', error);
       }
 
-      await channel.watch();
+      await channel.getOrCreate();
 
       const agent = await createAgent(
         user_id,
@@ -132,11 +137,11 @@ app.post('/stop-ai-agent', async (req, res) => {
 async function disposeAiAgent(aiAgent: AIAgent, userId: string) {
   await aiAgent.dispose();
 
-  const channel = serverClient.channel(
+  const channel = serverClient.chat.channel(
     aiAgent.channel.type,
     aiAgent.channel.id,
   );
-  await channel.removeMembers([userId]);
+  await channel.update({ remove_members: [userId] });
 }
 
 // Start the Express server

@@ -1,4 +1,4 @@
-import type { ChannelFilters, ChannelOptions, ChannelSort } from "stream-chat";
+import type { ChannelFilters, SortParamRequest } from "stream-chat";
 import { Chat, useCreateChatClient } from "stream-chat-react";
 
 import { ChatContent } from "./components/ChatContent";
@@ -27,8 +27,12 @@ const filters: ChannelFilters = {
 	type: "messaging",
 	archived: false,
 };
-const options: ChannelOptions = { limit: 5 };
-const sort: ChannelSort = { pinned_at: 1, last_message_at: -1, updated_at: -1 };
+const pageSize = 5;
+const sort: SortParamRequest[] = [
+	{ direction: 1, field: "pinned_at" },
+	{ direction: -1, field: "last_message_at" },
+	{ direction: -1, field: "updated_at" },
+];
 
 function App() {
 	const chatClient = useCreateChatClient({
@@ -45,7 +49,7 @@ function App() {
 
 	return (
 		<Chat client={chatClient}>
-			<ChatContent filters={filters} sort={sort} options={options} />
+			<ChatContent filters={filters} sort={sort} pageSize={pageSize} />
 		</Chat>
 	);
 }

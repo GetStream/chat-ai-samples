@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AnthropicResponseHandler } from './AnthropicResponseHandler';
-import type { MessageParam } from '@anthropic-ai/sdk/src/resources/messages';
-import type { Channel, Event, StreamChat } from 'stream-chat';
+import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
+import type { Channel, EventPayload, StreamChat } from 'stream-chat';
 import type { AIAgent } from '../types';
 
 export class AnthropicAgent implements AIAgent {
@@ -34,13 +34,13 @@ export class AnthropicAgent implements AIAgent {
     this.chatClient.on('message.new', this.handleMessage);
   };
 
-  private handleMessage = async (e: Event) => {
+  private handleMessage = async (e: EventPayload<'message.new'>) => {
     if (!this.anthropic) {
       console.error('Anthropic SDK is not initialized');
       return;
     }
 
-    if (!e.message || e.message.ai_generated) {
+    if (!e.message || e.message.custom?.ai_generated) {
       console.log('Skip handling ai generated message');
       return;
     }
@@ -50,7 +50,7 @@ export class AnthropicAgent implements AIAgent {
 
     this.lastInteractionTs = Date.now();
 
-    const messages = this.channel.state.messages
+    const messages = this.channel.messagePaginator.anchoredHeadItems
       .slice(-5)
       .filter((msg) => msg.text && msg.text.trim() !== '')
       .map<MessageParam>((message) => ({
@@ -73,16 +73,11 @@ export class AnthropicAgent implements AIAgent {
     });
 
     const { message: channelMessage } = await this.channel.sendMessage({
-      text: '',
-      ai_generated: true,
+      message: { text: '', custom: { ai_generated: true } },
     });
 
     try {
-      await this.channel.sendEvent({
-        type: 'ai_indicator.update',
-        ai_state: 'AI_STATE_THINKING',
-        message_id: channelMessage.id,
-      });
+      await this.channel.updateAIState(channelMessage.id, 'AI_STATE_THINKING');
     } catch (error) {
       console.error('Failed to send ai indicator update', error);
     }

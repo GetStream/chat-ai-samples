@@ -10,14 +10,12 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"@stream-io/chat-react-ai": "^0.2.0",
 		"clsx": "^2.1.1",
-		"material-symbols": "^0.40.0",
 		"nanoid": "^5.1.6",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5",
-		"stream-chat": "^9.41.0",
-		"stream-chat-react": "^14.0.1"
+		"stream-chat": "^10.2.0",
+		"stream-chat-react": "^15.0.2"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",

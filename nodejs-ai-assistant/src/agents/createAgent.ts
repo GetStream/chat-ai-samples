@@ -10,8 +10,11 @@ export const createAgent = async (
   channel_type: string,
   channel_id: string,
 ): Promise<AIAgent> => {
-  const client = new StreamChat(apiKey, { allowServerSideConnect: true });
-  const token = serverClient.createToken(user_id);
+  const client = new StreamChat(apiKey, {
+    client: { allowServerSideConnect: true },
+  });
+  // The bot connects with a fixed token, so mint one that doesn't expire.
+  const token = serverClient.generatePermanentUserToken({ user_id });
   await client.connectUser({ id: user_id }, token);
   console.log(`User ${user_id} [${platform}] connected successfully.`);
 

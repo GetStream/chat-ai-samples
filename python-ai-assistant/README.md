@@ -1,6 +1,6 @@
 ## AI Assistant Python
 
-This repo contains a sample project that shows you how you can integrate StreamChat with AI services, such as Anthropic.
+This repo contains a sample project that shows you how you can integrate StreamChat with AI services, such as Anthropic and OpenAI. It uses Stream's Python SDK, [`getstream`](https://pypi.org/project/getstream/), and needs Python 3.11 or newer.
 
 The project exposes three endpoints:
 - `/start-ai-agent` - this will create an AI agent, that will join a channel where it was invoked from.
@@ -21,9 +21,12 @@ There's a `.env.example` that you can use as a template. You should provide valu
 
 ```
 ANTHROPIC_API_KEY=insert_your_key
+OPENAI_API_KEY=insert_your_key
 STREAM_API_KEY=insert_your_key
 STREAM_API_SECRET=insert_your_secret
 ```
+
+The server starts an OpenAI agent by default (`OpenAIAgent` in `main.py`). To use Anthropic instead, switch to the commented-out `AnthropicAgent` line. You only need the key of the provider you use.
 
 ### Install the dependencies
 
@@ -59,15 +62,15 @@ python main.py
 
 This will start listening for requests on localhost:8001.
 
-You need to be able to listen to new messages using a Websocket. To configure this, follow the steps in the [blog post](https://getstream.io/blog/python-assistant/#listen-to-messages-using-a-webhook).
+You need to be able to listen to new messages using a webhook. To configure this, follow the steps in the [blog post](https://getstream.io/blog/python-assistant/#listen-to-messages-using-a-webhook).
 
 ## Starting the AI Agent
 
 When `start-ai-agent` endpoint is called the following happens:
 
 - ai user with id `ai-bot-{channel-id}` is created using `admin` role, this way it can work on any channel by default.
-- the bot establishes a WS connection and joins the channel.
-- on the new message event, the bot starts talking to Anthropic.
+- the bot is added to the channel as a member.
+- when the `/new-message` webhook receives a new message, the bot starts talking to OpenAI (or Anthropic).
 - a new empty message is created and a new event called `ai_indicator.update` with an `ai_state` value of “AI_STATE_THINKING” is sent to the watchers.
 - the message has a custom data field called `ai_generated` with the value of `true`, to tell the clients it’s AI generated. The sender is the AI Bot from the backend.
 - when the response starts streaming, an `ai_indicator.update` event with an `ai_state` value of “AI_STATE_GENERATING” is sent to the watchers. The client can hide the thinking UI.

@@ -1,10 +1,9 @@
-import axios from 'axios';
 import OpenAI from 'openai';
 import type {
   Channel,
   MessageResponse,
-  PartialMessageUpdate,
   StreamChat,
+  UpdateMessagePartialRequest,
 } from 'stream-chat';
 import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
@@ -195,8 +194,11 @@ export class OpenAIResponseHandler {
     const encodedLocation = encodeURIComponent(location);
     const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodedLocation}&units=metric&appid=${apiKey}`;
 
-    const response = await axios.get(url);
-    const { data } = response;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`OpenWeatherMap request failed: ${response.status}`);
+    }
+    const data = await response.json();
     if (!data || !data.main || typeof data.main.temp !== 'number') {
       throw new Error('Temperature data not found in the API response.');
     }
@@ -209,18 +211,18 @@ export class OpenAIResponseHandler {
       clearTimeout(this.pendingUpdateTimer);
       this.pendingUpdateTimer = null;
     }
-    await this.safeSendEvent({
-      type: 'ai_indicator.update',
-      ai_state: 'AI_STATE_ERROR',
-      cid: this.message.cid,
-      message_id: this.message.id,
-    });
-    await this.chatClient.partialUpdateMessage(this.message.id, {
-      set: {
-        text: error.message ?? 'Error generating the message',
-        generating: false,
+    await this.safeSendEvent(() =>
+      this.channel.updateAIState(this.message.id, 'AI_STATE_ERROR'),
+    );
+    await this.chatClient.updateMessagePartial(
+      { id: this.message.id },
+      {
+        set: {
+          text: error.message ?? 'Error generating the message',
+          generating: false,
+        },
       },
-    });
+    );
   };
 
   private schedulePartialUpdate() {
@@ -238,9 +240,7 @@ export class OpenAIResponseHandler {
     const id = this.message.id;
     this.lastUpdatePromise = this.lastUpdatePromise.then(() =>
       this.chatClient
-        .partialUpdateMessage(id, {
-          set: { text, generating: true },
-        })
+        .updateMessagePartial({ id }, { set: { text, generating: true } })
         .then(() => undefined),
     );
     await this.lastUpdatePromise;
@@ -252,31 +252,24 @@ export class OpenAIResponseHandler {
     if (this.currentIndicator === state) return;
     this.currentIndicator = state;
     this.indicatorCleared = false;
-    await this.safeSendEvent({
-      type: 'ai_indicator.update',
-      ai_state: state,
-      cid: this.message.cid,
-      message_id: this.message.id,
-    });
+    await this.safeSendEvent(() =>
+      this.channel.updateAIState(this.message.id, state),
+    );
   }
 
   private async clearIndicator() {
     if (this.indicatorCleared) return;
     this.currentIndicator = undefined;
     this.indicatorCleared = true;
-    await this.safeSendEvent({
-      type: 'ai_indicator.clear',
-      cid: this.message.cid,
-      message_id: this.message.id,
-    });
+    await this.safeSendEvent(() => this.channel.clearAIIndicator());
   }
 
-  private async safeSendEvent(event: Record<string, unknown>) {
+  private async safeSendEvent(send: () => Promise<void>) {
     const maxAttempts = 5;
     let delay = 100;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await this.channel.sendEvent(event as any);
+        await send();
         return;
       } catch (err) {
         const status = (err as any)?.status || (err as any)?.response?.status;
@@ -305,7 +298,7 @@ export class OpenAIResponseHandler {
     await this.lastUpdatePromise.catch(() => Promise.resolve());
     const text = this.message_text;
 
-    const partialMessage: PartialMessageUpdate = {
+    const partialMessage: UpdateMessagePartialRequest = {
       set: { generating: false },
     };
 
@@ -314,7 +307,10 @@ export class OpenAIResponseHandler {
       partialMessage.set!.text = text;
     }
 
-    await this.chatClient.partialUpdateMessage(this.message.id, partialMessage);
+    await this.chatClient.updateMessagePartial(
+      { id: this.message.id },
+      partialMessage,
+    );
     await this.clearIndicator();
   }
 }

@@ -3,13 +3,14 @@
 from abc import abstractmethod
 from enum import Enum
 from typing import Protocol
-from stream_chat import StreamChat, Channel
+from getstream import AsyncStream
+from getstream.chat.async_channel import Channel
 
 
 class AIAgent(Protocol):
     """Protocol defining the interface for AI Agents."""
 
-    chatClient: StreamChat
+    chat_client: AsyncStream
     channel: Channel
 
     @abstractmethod

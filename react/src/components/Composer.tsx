@@ -1,5 +1,5 @@
 import { AIMessageComposer } from "stream-chat-react/ai-components";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
 	isImageFile,
 	type Channel,
@@ -24,6 +24,8 @@ export const Composer = () => {
 	const { client } = useChatContext();
 	const channel = useChannel();
 	const composer = useMessageComposerController();
+	// the first submit awaits channel creation and the agent start before sending
+	const isSubmitting = useRef(false);
 
 	const { attachments } = useAttachmentsForPreview();
 
@@ -66,6 +68,8 @@ export const Composer = () => {
 					const event = e;
 					event.preventDefault();
 
+					if (isSubmitting.current) return;
+
 					const target = event.currentTarget;
 
 					const formData = new FormData(target);
@@ -78,21 +82,28 @@ export const Composer = () => {
 					// nothing to send yet, e.g. an empty prompt or an upload still running
 					if (!composer.hasSendableData) return;
 
-					// creates the channel on its first message; does nothing for a watched channel
-					await channel.watch();
+					isSubmitting.current = true;
+					// the prompt is already in the composer state
+					target.reset();
 
-					const [platform, model] = (platformModel as string).split("|");
+					let result: Awaited<ReturnType<typeof composer.send>>;
+					try {
+						// creates the channel on its first message; does nothing for a watched channel
+						await channel.watch();
 
-					if (!isWatchedByAI(channel)) {
-						await startAiAgent(channel, model, platform);
+						const [platform, model] = (platformModel as string).split("|");
+
+						if (!isWatchedByAI(channel)) {
+							await startAiAgent(channel, model, platform);
+						}
+
+						// composes the message, shows it in the list right away and clears the composer
+						result = await composer.send();
+					} finally {
+						isSubmitting.current = false;
 					}
 
-					// composes the message, shows it in the list right away and clears the composer
-					const result = await composer.send();
-
 					if (result === "nothing-to-send") return;
-
-					target.reset();
 
 					if (result !== "sent") return;
 

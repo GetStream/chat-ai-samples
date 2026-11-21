@@ -43,7 +43,7 @@ app.post('/start-ai-agent', async (req, res) => {
     channel_id,
     channel_type = 'messaging',
     platform = AgentPlatform.ANTHROPIC
-  } = req.body;
+  } = req.body ?? {};
 
   // Simple validation
   if (!channel_id) {
@@ -116,7 +116,7 @@ app.post('/start-ai-agent', async (req, res) => {
  * Handle the request to stop the AI Agent
  */
 app.post('/stop-ai-agent', async (req, res) => {
-  const { channel_id } = req.body;
+  const { channel_id } = req.body ?? {};
   try {
     const userId = `ai-bot-${channel_id.replace(/!/g, '')}`;
     const aiAgent = aiAgentCache.get(userId);

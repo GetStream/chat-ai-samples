@@ -16,7 +16,8 @@ export class AnthropicAgent implements AIAgent {
 
   dispose = async () => {
     this.chatClient.off('message.new', this.handleMessage);
-    await this.chatClient.disconnectUser();
+    // Node's WebSocket never reports the close frame, so cap the wait for it.
+    await this.chatClient.disconnectUser(100);
 
     this.handlers.forEach((handler) => handler.dispose());
     this.handlers = [];

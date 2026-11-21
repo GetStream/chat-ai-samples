@@ -45,6 +45,13 @@ body {
 		min-height: 0;
 	}
 
+	/* ChannelList's theme scope is display: contents, so its list (or empty state) paints the sidebar */
+	.tut__sidebar > .str-chat__theme-scope > * {
+		flex: 1;
+		background-color: var(--str-chat__background-core-app);
+		border-inline-end: 1px solid var(--str-chat__border-core-default);
+	}
+
 	.str-chat__channel {
 		flex-grow: 1;
 	}

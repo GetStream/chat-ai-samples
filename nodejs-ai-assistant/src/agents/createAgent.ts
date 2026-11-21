@@ -1,8 +1,12 @@
 import { AgentPlatform, AIAgent } from './types';
-import { StreamChat } from 'stream-chat';
+import { chatLoggerSystem, StreamChat } from 'stream-chat';
 import { OpenAIAgent } from './openai/OpenAIAgent';
 import { AnthropicAgent } from './anthropic/AnthropicAgent';
 import { apiKey, serverClient } from '../serverClient';
+
+// Keep stream-chat's warnings and errors, but not its info-level
+// connect/watch/disconnect lines for every bot.
+chatLoggerSystem.configureLoggers({ default: { level: 'warn' } });
 
 export const createAgent = async (
   user_id: string,

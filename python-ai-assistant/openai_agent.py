@@ -4,8 +4,15 @@ import os
 import asyncio
 from typing import Any
 from openai import AsyncOpenAI
+from getstream.models import MessageRequest
 from model import NewMessageRequest
-from helpers import create_bot_id, get_last_messages_from_channel
+from helpers import (
+    clear_ai_indicator,
+    create_bot_id,
+    get_last_messages_from_channel,
+    is_ai_generated,
+    update_ai_state,
+)
 
 
 class OpenAIAgent:
@@ -29,7 +36,7 @@ class OpenAIAgent:
     async def dispose(self):
         """Dispose of the agent"""
         self.channel = None
-        await self.chat_client.close()
+        await self.chat_client.aclose()
         await self.openai.close()
 
     async def handle_message(self, event: NewMessageRequest):
@@ -43,7 +50,7 @@ class OpenAIAgent:
                 print("OpenAI SDK is not initialized")
                 return
 
-            if not event.message or event.message.get("ai_generated"):
+            if not event.message or is_ai_generated(event.message):
                 print("Skip handling ai generated message")
                 return
 
@@ -65,26 +72,21 @@ class OpenAIAgent:
             # If the message has a parent_id it is part of a threaded message and
             # we need to append the message to the messages list
             if "parent_id" in event.message:
-                message_to_append = {"role": "user", "content": message["text"]}
+                message_to_append = {"role": "user", "content": message}
                 print("Message to append: ", message_to_append)
-                messages.append({"role": "user", "content": message["text"]})
+                messages.append(message_to_append)
 
-            bot_id = create_bot_id(channel_id=self.channel.id)
+            bot_id = create_bot_id(channel_id=self.channel.channel_id)
 
             channel_message = await self.channel.send_message(
-                {"text": "", "ai_generated": True}, bot_id
+                MessageRequest(text="", user_id=bot_id, custom={"ai_generated": True})
             )
-            message_id = channel_message["message"]["id"]
+            message_id = channel_message.data.message.id
 
             try:
                 if message_id:
-                    await self.channel.send_event(
-                        {
-                            "type": "ai_indicator.update",
-                            "ai_state": "AI_STATE_THINKING",
-                            "message_id": message_id,
-                        },
-                        bot_id,
+                    await update_ai_state(
+                        self.channel, bot_id, message_id, "AI_STATE_THINKING"
                     )
 
                 openai_stream = await self.openai.chat.completions.create(
@@ -97,23 +99,12 @@ class OpenAIAgent:
                 async for chunk in openai_stream:
                     await self.handle(chunk, message_id, bot_id)
 
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.clear",
-                        "message_id": message_id,
-                    },
-                    bot_id,
-                )
+                await clear_ai_indicator(self.channel, bot_id)
 
             except Exception as error:
                 print("Error in message handling:", error)
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.update",
-                        "ai_state": "AI_STATE_ERROR",
-                        "message_id": message_id,
-                    },
-                    bot_id,
+                await update_ai_state(
+                    self.channel, bot_id, message_id, "AI_STATE_ERROR"
                 )
         finally:
             self.processing = False
@@ -127,13 +118,8 @@ class OpenAIAgent:
             # First chunk - start generating indicator
             if self.chunk_counter == 0:
                 # Add await here to ensure the event is processed before continuing
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.update",
-                        "ai_state": "AI_STATE_GENERATING",
-                        "message_id": message_id,
-                    },
-                    bot_id,
+                await update_ai_state(
+                    self.channel, bot_id, message_id, "AI_STATE_GENERATING"
                 )
                 # Add a small delay to ensure the UI has time to process the event
                 await asyncio.sleep(0.1)
@@ -146,7 +132,6 @@ class OpenAIAgent:
                 and hasattr(chunk.choices[0].delta, "content")
                 and chunk.choices[0].delta.content is not None
             ):
-
                 delta_text = chunk.choices[0].delta.content
                 self.message_text += delta_text
                 self.chunk_counter += 1
@@ -157,10 +142,10 @@ class OpenAIAgent:
                 ):
                     try:
                         # Add await here to ensure the update completes
-                        await self.chat_client.update_message_partial(
+                        await self.chat_client.chat.update_message_partial(
                             message_id,
-                            {"set": {"text": self.message_text, "generating": True}},
-                            bot_id,
+                            set={"text": self.message_text, "generating": True},
+                            user_id=bot_id,
                         )
                         # Small delay after updates
                         await asyncio.sleep(0.05)
@@ -173,32 +158,18 @@ class OpenAIAgent:
                 and len(chunk.choices) > 0
                 and chunk.choices[0].finish_reason is not None
             ):
-
                 # Increased delay before final updates
                 await asyncio.sleep(0.5)
                 # Final message update
-                await self.chat_client.update_message_partial(
+                await self.chat_client.chat.update_message_partial(
                     message_id,
-                    {"set": {"text": self.message_text, "generating": False}},
-                    bot_id,
+                    set={"text": self.message_text, "generating": False},
+                    user_id=bot_id,
                 )
                 # Clear the AI indicator
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.clear",
-                        "message_id": message_id,
-                    },
-                    bot_id,
-                )
+                await clear_ai_indicator(self.channel, bot_id)
 
         except Exception as e:
             print(f"Error handling chunk: {str(e)}")
-            await self.channel.send_event(
-                {
-                    "type": "ai_indicator.update",
-                    "ai_state": "AI_STATE_ERROR",
-                    "message_id": message_id,
-                },
-                bot_id,
-            )
+            await update_ai_state(self.channel, bot_id, message_id, "AI_STATE_ERROR")
             raise

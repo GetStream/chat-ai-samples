@@ -1,4 +1,4 @@
-import { StreamChat } from 'stream-chat';
+import { StreamClient } from '@stream-io/node-sdk';
 
 export const apiKey = process.env.STREAM_API_KEY as string;
 export const apiSecret = process.env.STREAM_API_SECRET as string;
@@ -9,4 +9,4 @@ if (!apiKey || !apiSecret) {
   );
 }
 
-export const serverClient = new StreamChat(apiKey, apiSecret);
+export const serverClient = new StreamClient(apiKey, apiSecret);

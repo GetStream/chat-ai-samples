@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { OpenAIResponseHandler } from './OpenAIResponseHandler';
 import type { AIAgent } from '../types';
-import type { Channel, Event, StreamChat } from 'stream-chat';
+import type { Channel, EventPayload, StreamChat } from 'stream-chat';
 import { ResponseInput, Tool } from 'openai/resources/responses/responses';
 
 export class OpenAIAgent implements AIAgent {
@@ -18,7 +18,8 @@ export class OpenAIAgent implements AIAgent {
 
   dispose = async () => {
     this.chatClient.off('message.new', this.handleMessage);
-    await this.chatClient.disconnectUser();
+    // Node's WebSocket never reports the close frame, so cap the wait for it.
+    await this.chatClient.disconnectUser(100);
 
     this.handlers.forEach((handler) => handler.dispose());
     this.handlers = [];
@@ -37,13 +38,13 @@ export class OpenAIAgent implements AIAgent {
     this.chatClient.on('message.new', this.handleMessage);
   };
 
-  private handleMessage = async (e: Event) => {
+  private handleMessage = async (e: EventPayload<'message.new'>) => {
     if (!this.openai) {
       console.log('OpenAI not initialized');
       return;
     }
 
-    if (!e.message || e.message.ai_generated) {
+    if (!e.message || e.message.custom?.ai_generated) {
       console.log('Skip handling ai generated message');
       return;
     }
@@ -54,16 +55,12 @@ export class OpenAIAgent implements AIAgent {
     this.lastInteractionTs = Date.now();
 
     const { message: channelMessage } = await this.channel.sendMessage({
-      text: '',
-      ai_generated: true,
+      message: { text: '', custom: { ai_generated: true } },
     });
 
-    await this.safeSendEvent({
-      type: 'ai_indicator.update',
-      ai_state: 'AI_STATE_THINKING',
-      cid: channelMessage.cid,
-      message_id: channelMessage.id,
-    });
+    await this.safeSendEvent(() =>
+      this.channel.updateAIState(channelMessage.id, 'AI_STATE_THINKING'),
+    );
 
     // Provide a system prompt and the latest user message.
     // Conversation state is maintained via previous_response_id.
@@ -116,12 +113,12 @@ export class OpenAIAgent implements AIAgent {
     this.handlers.push(handler);
   };
 
-  private async safeSendEvent(event: Record<string, unknown>) {
+  private async safeSendEvent(send: () => Promise<void>) {
     const maxAttempts = 5;
     let delay = 100;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await this.channel.sendEvent(event as any);
+        await send();
         return;
       } catch (err) {
         const status = (err as any)?.status || (err as any)?.response?.status;

@@ -4,8 +4,15 @@ import os
 import asyncio
 from typing import Any
 from anthropic import AsyncAnthropic
+from getstream.models import MessageRequest
 from model import NewMessageRequest
-from helpers import create_bot_id, get_last_messages_from_channel
+from helpers import (
+    clear_ai_indicator,
+    create_bot_id,
+    get_last_messages_from_channel,
+    is_ai_generated,
+    update_ai_state,
+)
 
 
 class AnthropicAgent:
@@ -26,7 +33,7 @@ class AnthropicAgent:
     async def dispose(self):
         """Dispose of the agent"""
         self.channel = None
-        await self.chat_client.close()
+        await self.chat_client.aclose()
         await self.anthropic.close()
 
     async def handle_message(self, event: NewMessageRequest):
@@ -40,7 +47,7 @@ class AnthropicAgent:
                 print("Anthropic SDK is not initialized")
                 return
 
-            if not event.message or event.message.get("ai_generated"):
+            if not event.message or is_ai_generated(event.message):
                 print("Skip handling ai generated message")
                 return
 
@@ -62,26 +69,21 @@ class AnthropicAgent:
             # If the message has a parent_id it is part of a threaded message and
             # we need to append the message to the messages list
             if "parent_id" in event.message:
-                message_to_append = {"role": "user", "content": message["text"]}
+                message_to_append = {"role": "user", "content": message}
                 print("Message to append: ", message_to_append)
-                messages.append({"role": "user", "content": message["text"]})
+                messages.append(message_to_append)
 
-            bot_id = create_bot_id(channel_id=self.channel.id)
+            bot_id = create_bot_id(channel_id=self.channel.channel_id)
 
             channel_message = await self.channel.send_message(
-                {"text": "", "ai_generated": True}, bot_id
+                MessageRequest(text="", user_id=bot_id, custom={"ai_generated": True})
             )
-            message_id = channel_message["message"]["id"]
+            message_id = channel_message.data.message.id
 
             try:
                 if message_id:
-                    await self.channel.send_event(
-                        {
-                            "type": "ai_indicator.update",
-                            "ai_state": "AI_STATE_THINKING",
-                            "message_id": message_id,
-                        },
-                        bot_id,
+                    await update_ai_state(
+                        self.channel, bot_id, message_id, "AI_STATE_THINKING"
                     )
 
                 anthropic_stream = await self.anthropic.messages.create(
@@ -94,22 +96,11 @@ class AnthropicAgent:
                 async for message_stream_event in anthropic_stream:
                     await self.handle(message_stream_event, message_id, bot_id)
 
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.clear",
-                        "message_id": message_id,
-                    },
-                    bot_id,
-                )
+                await clear_ai_indicator(self.channel, bot_id)
             except Exception as error:
                 print("Failed to send ai indicator update", error)
-                await self.channel.send_event(
-                    {
-                        "type": "ai_indicator.update",
-                        "ai_state": "AI_STATE_ERROR",
-                        "message_id": message_id,
-                    },
-                    bot_id,
+                await update_ai_state(
+                    self.channel, bot_id, message_id, "AI_STATE_ERROR"
                 )
         finally:
             self.processing = False
@@ -119,13 +110,8 @@ class AnthropicAgent:
         event_type = message_stream_event.type
 
         if event_type == "content_block_start":
-            await self.channel.send_event(
-                {
-                    "type": "ai_indicator.update",
-                    "ai_state": "AI_STATE_GENERATING",
-                    "message_id": message_id,
-                },
-                bot_id,
+            await update_ai_state(
+                self.channel, bot_id, message_id, "AI_STATE_GENERATING"
             )
 
         elif event_type == "content_block_delta":
@@ -139,31 +125,25 @@ class AnthropicAgent:
                 self.chunk_counter < 8 and self.chunk_counter % 2 != 0
             ):
                 try:
-                    await self.chat_client.update_message_partial(
+                    await self.chat_client.chat.update_message_partial(
                         message_id,
-                        {"set": {"text": self.message_text, "generating": True}},
-                        bot_id,
+                        set={"text": self.message_text, "generating": True},
+                        user_id=bot_id,
                     )
                 except Exception as error:
                     print("Error updating message", error)
 
         elif event_type in ["message_delta"]:
-            await self.chat_client.update_message_partial(
+            await self.chat_client.chat.update_message_partial(
                 message_id,
-                {"set": {"text": self.message_text, "generating": False}},
-                bot_id,
+                set={"text": self.message_text, "generating": False},
+                user_id=bot_id,
             )
         elif event_type == "message_stop":
             await asyncio.sleep(0.5)
-            await self.chat_client.update_message_partial(
+            await self.chat_client.chat.update_message_partial(
                 message_id,
-                {"set": {"text": self.message_text, "generating": False}},
-                bot_id,
+                set={"text": self.message_text, "generating": False},
+                user_id=bot_id,
             )
-            await self.channel.send_event(
-                {
-                    "type": "ai_indicator.clear",
-                    "message_id": message_id,
-                },
-                bot_id,
-            )
+            await clear_ai_indicator(self.channel, bot_id)

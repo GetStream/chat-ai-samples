@@ -1,8 +1,7 @@
 @layer stream, stream-overrides, stream-ai, stream-ai-overrides;
 
-@import "material-symbols/rounded.css";
-@import url("stream-chat-react/css/index.css") layer(stream);
-@import url("@stream-io/chat-react-ai/styles/index.css") layer(stream-ai);
+@import url("stream-chat-react/dist/css/index.css") layer(stream);
+@import url("stream-chat-react/dist/css/ai-components.css") layer(stream-ai);
 
 @import url("./components/Composer.css");
 @import url("./components/ChannelListItem.css");
@@ -32,9 +31,25 @@ body {
 }
 
 @layer stream-overrides {
-	.str-chat__channel-list {
+	/* our own sidebar: ChannelList renders only the scrolling list */
+	.tut__sidebar {
+		display: flex;
+		flex-direction: column;
 		flex-basis: 350px;
 		flex-shrink: 1;
+		min-height: 0;
+	}
+
+	.tut__sidebar .str-chat__infinite-scroll-paginator {
+		flex: 1;
+		min-height: 0;
+	}
+
+	/* ChannelList's theme scope is display: contents, so its list (or empty state) paints the sidebar */
+	.tut__sidebar > .str-chat__theme-scope > * {
+		flex: 1;
+		background-color: var(--str-chat__background-core-app);
+		border-inline-end: 1px solid var(--str-chat__border-core-default);
 	}
 
 	.str-chat__channel {
@@ -46,7 +61,7 @@ body {
 		width: 100%;
 	}
 
-	.str-chat__virtual-list {
+	.str-chat__list {
 		display: flex;
 		justify-content: center;
 		scrollbar-gutter: stable;
@@ -64,7 +79,7 @@ body {
 }
 
 @layer stream-ai-overrides {
-	.aicr__pre {
+	.str-chat__ai-pre {
 		white-space: break-spaces;
 	}
 }

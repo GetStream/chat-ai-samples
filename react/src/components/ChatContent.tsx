@@ -1,60 +1,97 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+	ChannelPaginator,
+	type Channel as StreamChannel,
+	type ChannelFilters,
+	type SortParamRequest,
+} from "stream-chat";
 import {
 	Channel,
 	MessageList,
 	ChannelList,
-	Window,
 	MessageComposer,
-	WithComponents,
+	defaultWorkspaceNavigation,
 	useChatContext,
-	type ChannelListProps,
+	WithComponents,
+	WorkspaceNavigationProvider,
+	type WorkspaceNavigation,
 } from "stream-chat-react";
-import { Composer } from "./Composer";
 import { MessageBubble } from "./MessageBubble";
-import { AIStateIndicator } from "./AIStateIndicator";
-import { useEffect } from "react";
 import { nanoid } from "nanoid";
+import { Composer } from "./Composer";
 import { ChannelListItem } from "./ChannelListItem";
+import { AIStateIndicator } from "./AIStateIndicator";
 
-export const ChatContent = ({
-	filters,
-	options,
-	sort,
-}: Pick<ChannelListProps, "options" | "sort" | "filters">) => {
-	const { setActiveChannel, client, channel } = useChatContext();
+export type ChatContentProps = {
+	filters: ChannelFilters;
+	sort: SortParamRequest[];
+	pageSize: number;
+};
+
+export const ChatContent = ({ filters, sort, pageSize }: ChatContentProps) => {
+	const { client } = useChatContext();
+	// start with an empty new chat; the composer creates it on the first message
+	const [channel, setChannel] = useState<StreamChannel>(() => {
+		const newChannel = client.channel("messaging", `ai-${nanoid()}`, {
+			members: [{ user_id: client.userId as string }],
+		});
+		// lets the composer upload files before the channel is created
+		newChannel.data = {
+			...newChannel.data,
+			own_capabilities: ["upload-file"],
+		};
+		return newChannel;
+	});
+
+	const paginator = useMemo(
+		() =>
+			new ChannelPaginator({
+				client,
+				filters,
+				id: "channels:ai",
+				paginatorOptions: { pageSize },
+				sort,
+			}),
+		[client, filters, sort, pageSize],
+	);
 
 	useEffect(() => {
-		if (!channel) {
-			setActiveChannel(
-				client.channel("messaging", `ai-${nanoid()}`, {
-					members: [client.userID as string],
-					// @ts-expect-error fix - this is a hack that allows a custom upload function to run
-					own_capabilities: ["upload-file"],
-				})
-			);
-		}
-	}, [channel]);
+		client.channelManager.insertPaginator({ paginator });
+		return () => {
+			client.channelManager.removePaginator(paginator);
+		};
+	}, [client, paginator]);
+
+	const navigation = useMemo<WorkspaceNavigation>(
+		() => ({
+			...defaultWorkspaceNavigation,
+			isChannelActive: (cid) => cid !== undefined && cid === channel?.cid,
+			openChannel: (nextChannel) => setChannel(nextChannel),
+			openChannels: channel ? [channel] : [],
+		}),
+		[channel],
+	);
 
 	return (
-		<WithComponents
-			overrides={{
-				ChannelListItemUI: ChannelListItem,
-				Message: MessageBubble,
-				MessageComposerUI: Composer,
-			}}
-		>
-			<ChannelList
-				setActiveChannelOnMount={false}
-				filters={filters}
-				sort={sort}
-				options={options}
-			/>
-			<Channel initializeOnMount={false}>
-				<Window>
-					<MessageList />
-					<AIStateIndicator />
-					<MessageComposer />
-				</Window>
-			</Channel>
-		</WithComponents>
+		<WorkspaceNavigationProvider value={navigation}>
+			<WithComponents
+				overrides={{
+					MessageUI: MessageBubble,
+					MessageComposerUI: Composer,
+					ChannelListItemUI: ChannelListItem,
+				}}
+			>
+				<div className="tut__sidebar">
+					<ChannelList paginator={paginator} />
+				</div>
+				{channel && (
+					<Channel channel={channel}>
+						<MessageList />
+						<AIStateIndicator />
+						<MessageComposer />
+					</Channel>
+				)}
+			</WithComponents>
+		</WorkspaceNavigationProvider>
 	);
 };

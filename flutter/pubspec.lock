@@ -1192,10 +1192,11 @@ packages:
   stream_chat_flutter_ai:
     dependency: "direct main"
     description:
-      name: stream_chat_flutter_ai
-      sha256: "3008c9fda36bbcaf645b5e26a61f81df2ce4087349a52f45351492c752a51284"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/stream_chat_flutter_ai"
+      ref: "renefloor/flu-1011-aicomponentfactory-one-place-to-replace-components-the"
+      resolved-ref: d4bf3b90b41a23d6bc5b53f638ff35c2e02922c6
+      url: "https://github.com/GetStream/stream-chat-flutter-ai.git"
+    source: git
     version: "0.1.0"
   stream_chat_flutter_core:
     dependency: transitive

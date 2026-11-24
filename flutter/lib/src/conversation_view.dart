@@ -7,6 +7,7 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart'
     hide StreamingMessageView, AITypingIndicatorView, TypewriterState, TypewriterController, StreamTypewriterBuilder;
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 
+import 'a2ui.dart';
 import 'agent_steps.dart';
 import 'ai_message_item.dart';
 import 'generating_tracker.dart';
@@ -17,7 +18,13 @@ import 'typing_state_handler.dart';
 /// Give it a key derived from the channel (e.g. `ValueKey(channel.cid)`), so
 /// switching channels creates a fresh [TypingStateHandler].
 class ConversationView extends StatefulWidget {
-  const ConversationView({super.key, required this.channel, this.agentSteps, this.onGeneratingChanged});
+  const ConversationView({
+    super.key,
+    required this.channel,
+    this.agentSteps,
+    this.onGeneratingChanged,
+    required this.onSendMessage,
+  });
 
   final Channel channel;
 
@@ -29,6 +36,10 @@ class ConversationView extends StatefulWidget {
   /// fully on screen, so the composer can show a stop button in between.
   final ValueChanged<bool>? onGeneratingChanged;
 
+  /// Sends a message the view built itself, such as an A2UI action. Throws if
+  /// the message couldn't be sent; the view shows the error.
+  final Future<void> Function(Channel channel, Message message) onSendMessage;
+
   @override
   State<ConversationView> createState() => _ConversationViewState();
 }
@@ -38,6 +49,16 @@ class _ConversationViewState extends State<ConversationView> {
   late final GeneratingTracker _generating;
   var _typewriterState = TypewriterState.idle;
   StreamSubscription<List<Message>>? _messagesSubscription;
+
+  /// Outlives the message items, so form input survives scrolling.
+  final _surfaces = A2uiSurfaceStore();
+
+  late final _actions = A2uiActionSender(
+    send: (message) => widget.onSendMessage(widget.channel, message),
+    onError: (error) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(error)));
+    },
+  );
 
   @override
   void initState() {
@@ -59,6 +80,7 @@ class _ConversationViewState extends State<ConversationView> {
   void dispose() {
     unawaited(_messagesSubscription?.cancel());
     _generating.dispose();
+    _surfaces.dispose();
     _typingStateHandler.dispose();
     super.dispose();
   }
@@ -110,11 +132,17 @@ class _ConversationViewState extends State<ConversationView> {
                         onFinished: () => _generating.replyFinished(message.id),
                         onTypewriterStateChanged: _onTypewriterStateChanged,
                         approver: widget.agentSteps?.approver,
+                        surface: _surfaces.surfaceOf(message),
+                        onSurfaceAction: (action) => unawaited(_actions.handle(action, sourceMessageId: message.id)),
                       ),
                     ),
                   );
                 }
-                return DefaultStreamMessageItem(props: defaultProps);
+                // An A2UI action shows what the user did, not what the model reads.
+                final displayed = displayedA2uiMessage(message);
+                return DefaultStreamMessageItem(
+                  props: identical(displayed, message) ? defaultProps : defaultProps.copyWith(message: displayed),
+                );
               },
             ),
           ),

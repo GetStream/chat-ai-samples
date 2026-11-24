@@ -6,6 +6,7 @@ import 'package:stream_chat_flutter/stream_chat_flutter.dart' hide StreamingMess
 import 'package:stream_chat_flutter_ai/stream_chat_flutter_ai.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'a2ui.dart';
 import 'agent_steps.dart';
 import 'code_highlighter.dart';
 
@@ -13,7 +14,8 @@ import 'code_highlighter.dart';
 const replyTypingSpeed = Duration(milliseconds: 10);
 
 /// Renders an AI message as streaming markdown, without a bubble or avatar,
-/// under the agent's steps (reasoning and tool calls), if it wrote any.
+/// under the agent's steps (reasoning and tool calls) and above its A2UI
+/// surface, if it has them.
 ///
 /// The user's own messages keep the SDK's regular bubble.
 class AIMessageItem extends StatelessWidget {
@@ -24,6 +26,8 @@ class AIMessageItem extends StatelessWidget {
     this.onFinished,
     this.onTypewriterStateChanged,
     this.approver,
+    this.surface,
+    this.onSurfaceAction,
   });
 
   final Message message;
@@ -39,6 +43,12 @@ class AIMessageItem extends StatelessWidget {
   /// Asks under each tool call waiting for this user's approval.
   final AIToolApprover? approver;
 
+  /// The generative UI attached to [message], see `a2ui.dart`.
+  final A2uiSurface? surface;
+
+  /// Called when a button on [surface] triggers an action.
+  final ValueChanged<A2uiAction>? onSurfaceAction;
+
   @override
   Widget build(BuildContext context) {
     // Use the same text style as the regular message bubbles.
@@ -47,6 +57,7 @@ class AIMessageItem extends StatelessWidget {
     );
 
     final steps = message.agentSteps;
+    final surface = this.surface;
     final reply = StreamingMessageView(
       text: message.text ?? '',
       expectMoreText: expectMoreText,
@@ -77,6 +88,11 @@ class AIMessageItem extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           reply,
+          if (surface != null) ...[
+            // The booking form and confirmation come without text.
+            if (message.text?.isNotEmpty ?? false) const SizedBox(height: 12),
+            A2uiSurfaceView(surface: surface, onAction: (action) => onSurfaceAction?.call(action)),
+          ],
         ],
       ),
     );
